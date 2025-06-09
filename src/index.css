@@ -57,13 +57,13 @@
     --background: 222.2 84% 4.9%;
     --foreground: 210 40% 98%;
 
-    --card: 222.2 84% 4.9%;
+    --card: 217.2 32.6% 17.5%;
     --card-foreground: 210 40% 98%;
 
-    --popover: 222.2 84% 4.9%;
+    --popover: 217.2 32.6% 17.5%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 210 100% 50%;
+    --primary: 210 100% 60%;
     --primary-foreground: 222.2 47.4% 11.2%;
 
     --secondary: 217.2 32.6% 17.5%;
@@ -72,7 +72,7 @@
     --muted: 217.2 32.6% 17.5%;
     --muted-foreground: 215 20.2% 65.1%;
 
-    --accent: 168 76% 42%;
+    --accent: 168 76% 52%;
     --accent-foreground: 210 40% 98%;
 
     --destructive: 0 62.8% 30.6%;
@@ -81,6 +81,21 @@
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 212.7 26.8% 83.9%;
+
+    /* Dark mode LMS Colors */
+    --success: 142 71% 55%;
+    --success-foreground: 355.7 100% 97.3%;
+    
+    --warning: 38 92% 60%;
+    --warning-foreground: 48 96% 89%;
+    
+    --info: 199 89% 58%;
+    --info-foreground: 210 40% 98%;
+
+    /* Dark Dashboard Colors */
+    --dashboard-bg: 222.2 84% 4.9%;
+    --sidebar-bg: 217.2 32.6% 15%;
+    --sidebar-text: 210 40% 98%;
   }
 }
 
@@ -90,7 +105,11 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground transition-colors duration-300;
+  }
+
+  html {
+    scroll-behavior: smooth;
   }
 }
 
@@ -100,10 +119,25 @@
   }
   
   .dashboard-card {
-    @apply bg-card border border-border rounded-lg shadow-sm hover:shadow-md transition-shadow;
+    @apply bg-card border border-border rounded-lg shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105;
   }
   
   .stats-card {
-    @apply dashboard-card p-6;
+    @apply dashboard-card p-6 bg-gradient-to-br from-card to-card/50;
+  }
+
+  .glass-effect {
+    @apply bg-card/80 backdrop-blur-sm border border-border/50;
+  }
+
+  .animate-gradient {
+    background-size: 200% 200%;
+    animation: gradient 3s ease infinite;
+  }
+
+  @keyframes gradient {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
   }
 }

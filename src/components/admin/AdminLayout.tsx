@@ -18,6 +18,7 @@ import {
   X
 } from 'lucide-react';
 import { useState } from 'react';
+import AIFloatingActions from '@/components/shared/AIFloatingActions';
 
 const AdminLayout = ({ children }: { children: React.ReactNode }) => {
   const { user, logout } = useAuth();
@@ -50,19 +51,24 @@ const AdminLayout = ({ children }: { children: React.ReactNode }) => {
 
       {/* Sidebar */}
       <aside className={`
-        fixed lg:static inset-y-0 left-0 z-50 w-64 bg-sidebar-bg text-sidebar-text
+        fixed lg:static inset-y-0 left-0 z-50 w-64 bg-card border-r border-border
         transform transition-transform duration-300 ease-in-out
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+        dark:bg-gray-900
       `}>
-        <div className="flex items-center justify-between p-6 border-b border-sidebar-border">
+        <div className="flex items-center justify-between p-6 border-b border-border">
           <div className="flex items-center space-x-2">
-            <Shield className="h-8 w-8 text-primary" />
-            <span className="text-xl font-bold">AvoCop Admin</span>
+            <div className="w-8 h-8 bg-gradient-to-r from-primary to-accent rounded-full flex items-center justify-center">
+              <Shield className="h-5 w-5 text-white" />
+            </div>
+            <span className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+              AvoCop Admin
+            </span>
           </div>
           <Button
             variant="ghost"
             size="sm"
-            className="lg:hidden text-sidebar-text hover:bg-sidebar-accent"
+            className="lg:hidden"
             onClick={() => setSidebarOpen(false)}
           >
             <X className="h-4 w-4" />
@@ -76,10 +82,10 @@ const AdminLayout = ({ children }: { children: React.ReactNode }) => {
                 key={item.path}
                 to={item.path}
                 className={`
-                  flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors
+                  flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200
                   ${isActive(item.path) 
-                    ? 'bg-sidebar-accent text-sidebar-accent-foreground' 
-                    : 'text-sidebar-text hover:bg-sidebar-accent/50'
+                    ? 'bg-gradient-to-r from-primary to-accent text-white shadow-lg' 
+                    : 'text-foreground hover:bg-muted hover:scale-105'
                   }
                 `}
                 onClick={() => setSidebarOpen(false)}
@@ -91,23 +97,26 @@ const AdminLayout = ({ children }: { children: React.ReactNode }) => {
           </div>
         </nav>
 
-        <div className="p-4 border-t border-sidebar-border">
+        <div className="p-4 border-t border-border">
           <div className="flex items-center space-x-3 mb-4">
-            <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
-              <span className="text-xs font-semibold text-primary-foreground">
+            <div className="w-10 h-10 bg-gradient-to-r from-primary to-accent rounded-full flex items-center justify-center shadow-lg">
+              <span className="text-sm font-semibold text-white">
                 {user?.name.charAt(0).toUpperCase()}
               </span>
             </div>
             <div>
               <p className="text-sm font-medium">{user?.name}</p>
               <p className="text-xs text-muted-foreground">{user?.email}</p>
+              <span className="inline-block px-2 py-1 text-xs bg-accent text-accent-foreground rounded-full mt-1">
+                Admin
+              </span>
             </div>
           </div>
           <Button
             onClick={logout}
             variant="outline"
             size="sm"
-            className="w-full justify-start text-sidebar-text border-sidebar-border hover:bg-sidebar-accent"
+            className="w-full justify-start hover:bg-destructive hover:text-destructive-foreground transition-colors"
           >
             <LogOut className="h-4 w-4 mr-2" />
             Sign Out
@@ -118,7 +127,7 @@ const AdminLayout = ({ children }: { children: React.ReactNode }) => {
       {/* Main content */}
       <div className="flex-1 flex flex-col min-h-screen">
         {/* Header */}
-        <header className="bg-background border-b border-border px-6 py-4">
+        <header className="bg-card/95 backdrop-blur-sm border-b border-border px-6 py-4 sticky top-0 z-30">
           <div className="flex items-center justify-between">
             <Button
               variant="ghost"
@@ -131,14 +140,22 @@ const AdminLayout = ({ children }: { children: React.ReactNode }) => {
             <h1 className="text-2xl font-semibold text-foreground">
               {menuItems.find(item => isActive(item.path))?.label || 'Admin Dashboard'}
             </h1>
+            <div className="flex items-center space-x-2">
+              <div className="hidden sm:block text-sm text-muted-foreground">
+                Welcome back, {user?.name}
+              </div>
+            </div>
           </div>
         </header>
 
         {/* Page content */}
-        <main className="flex-1 p-6 bg-dashboard-bg/50">
+        <main className="flex-1 p-6 bg-gradient-to-br from-background via-background to-muted/20">
           {children}
         </main>
       </div>
+
+      {/* AI Floating Actions */}
+      <AIFloatingActions userRole="admin" />
     </div>
   );
 };

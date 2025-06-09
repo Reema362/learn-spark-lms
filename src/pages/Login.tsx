@@ -1,21 +1,22 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
-import { Shield, AlertTriangle } from "lucide-react";
+import { Shield, Sun, Moon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useTheme } from "@/context/ThemeContext";
+import SecurityAlert from "../components/SecurityAlert";
 
 const Login = () => {
   const [learnerEmail, setLearnerEmail] = useState('');
   const [adminEmail, setAdminEmail] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
   const { login, loading, isDemoMode } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -113,48 +114,90 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen gradient-bg flex items-center justify-center p-4">
-      <div className="w-full max-w-6xl grid lg:grid-cols-2 gap-8 items-center">
-        {/* Left side - Branding */}
+    <div className="min-h-screen bg-gradient-to-br from-primary via-primary/90 to-accent flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Animated background elements */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-white/10 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-white/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }}></div>
+      </div>
+
+      {/* Theme toggle button */}
+      <Button
+        onClick={toggleTheme}
+        variant="outline"
+        size="sm"
+        className="fixed top-4 right-4 z-50 bg-white/20 backdrop-blur-sm border-white/30 text-white hover:bg-white/30"
+      >
+        {theme === 'light' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+      </Button>
+
+      <div className="w-full max-w-6xl grid lg:grid-cols-2 gap-8 items-center relative z-10">
+        {/* Left side - Enhanced Branding */}
         <div className="text-center lg:text-left text-white animate-fade-in">
           <div className="flex items-center justify-center lg:justify-start mb-6">
-            <Shield className="h-12 w-12 mr-3" />
-            <h1 className="text-4xl font-bold">AvoCop</h1>
+            <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center mr-4 shadow-2xl">
+              <Shield className="h-8 w-8 text-white" />
+            </div>
+            <div>
+              <h1 className="text-5xl font-bold bg-gradient-to-r from-white to-white/80 bg-clip-text text-transparent">
+                AvoCop
+              </h1>
+              <p className="text-white/60 text-sm">Powered by AI</p>
+            </div>
           </div>
-          <h2 className="text-2xl font-semibold mb-4">Learning Management System</h2>
-          <p className="text-lg opacity-90 mb-8">
-            Empowering organizations with comprehensive information security training and certification management.
+          <h2 className="text-3xl font-semibold mb-4 leading-tight">
+            Next-Generation Learning Management System
+          </h2>
+          <p className="text-lg opacity-90 mb-8 leading-relaxed">
+            Empowering organizations with comprehensive information security training, 
+            AI-powered assistance, and certification management.
           </p>
+          
+          {/* Feature highlights */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
+              <h3 className="font-semibold mb-2">🤖 AI Assistant</h3>
+              <p className="text-sm opacity-80">Voice-powered learning companion</p>
+            </div>
+            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
+              <h3 className="font-semibold mb-2">💬 Smart Chatbot</h3>
+              <p className="text-sm opacity-80">24/7 intelligent support</p>
+            </div>
+            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
+              <h3 className="font-semibold mb-2">🎯 Personalized Learning</h3>
+              <p className="text-sm opacity-80">Adaptive course recommendations</p>
+            </div>
+            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
+              <h3 className="font-semibold mb-2">📊 Advanced Analytics</h3>
+              <p className="text-sm opacity-80">Real-time progress tracking</p>
+            </div>
+          </div>
         </div>
 
-        {/* Right side - Login Form */}
+        {/* Right side - Enhanced Login Form */}
         <div className="w-full max-w-md mx-auto animate-fade-in">
-          {isDemoMode && (
-            <Alert className="mb-4 border-warning bg-warning/10">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertDescription className="text-warning-foreground">
-                <strong>Demo Mode:</strong> This application is running in demo mode with mock authentication. 
-                Not suitable for production use.
-              </AlertDescription>
-            </Alert>
-          )}
+          <SecurityAlert variant="demo" className="mb-4" />
           
-          <Card className="shadow-2xl">
-            <CardHeader className="text-center">
-              <CardTitle className="text-2xl font-normal">Welcome to AvoCop</CardTitle>
-              <CardDescription>Sign in to your learning portal</CardDescription>
+          <Card className="shadow-2xl bg-card/95 backdrop-blur-sm border-0">
+            <CardHeader className="text-center pb-2">
+              <CardTitle className="text-3xl font-normal bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                Welcome to AvoCop
+              </CardTitle>
+              <CardDescription className="text-base">
+                Sign in to your intelligent learning portal
+              </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-2">
               <Tabs defaultValue="learner" className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="learner">Learner</TabsTrigger>
-                  <TabsTrigger value="admin">Admin</TabsTrigger>
+                <TabsList className="grid w-full grid-cols-2 mb-6">
+                  <TabsTrigger value="learner" className="text-sm">Learner Portal</TabsTrigger>
+                  <TabsTrigger value="admin" className="text-sm">Admin Portal</TabsTrigger>
                 </TabsList>
                 
                 <TabsContent value="learner" className="space-y-4">
                   <form onSubmit={handleLearnerLogin} className="space-y-4">
                     <div className="space-y-2">
-                      <Label htmlFor="learner-email">Email Address</Label>
+                      <Label htmlFor="learner-email" className="text-sm font-medium">Email Address</Label>
                       <Input 
                         id="learner-email" 
                         type="email" 
@@ -164,21 +207,22 @@ const Login = () => {
                         required 
                         maxLength={254}
                         autoComplete="email"
+                        className="h-11"
                       />
                     </div>
-                    <Button type="submit" className="w-full" disabled={loading}>
-                      {loading ? "Signing in..." : "Sign in with SSO"}
+                    <Button type="submit" className="w-full h-11 bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90" disabled={loading}>
+                      {loading ? "Signing in..." : "🚀 Sign in with SSO"}
                     </Button>
                   </form>
                   <p className="text-sm text-muted-foreground text-center">
-                    Single Sign-On authentication for learners
+                    🔐 Secure Single Sign-On authentication for learners
                   </p>
                 </TabsContent>
                 
                 <TabsContent value="admin" className="space-y-4">
                   <form onSubmit={handleAdminLogin} className="space-y-4">
                     <div className="space-y-2">
-                      <Label htmlFor="admin-email">Email Address</Label>
+                      <Label htmlFor="admin-email" className="text-sm font-medium">Email Address</Label>
                       <Input 
                         id="admin-email" 
                         type="email" 
@@ -188,10 +232,11 @@ const Login = () => {
                         required 
                         maxLength={254}
                         autoComplete="email"
+                        className="h-11"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="admin-password">Password</Label>
+                      <Label htmlFor="admin-password" className="text-sm font-medium">Password</Label>
                       <Input 
                         id="admin-password" 
                         type="password" 
@@ -202,18 +247,19 @@ const Login = () => {
                         minLength={8}
                         maxLength={128}
                         autoComplete="current-password"
+                        className="h-11"
                       />
                     </div>
-                    <Button type="submit" className="w-full" disabled={loading}>
-                      {loading ? "Signing in..." : "Sign in"}
+                    <Button type="submit" className="w-full h-11 bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90" disabled={loading}>
+                      {loading ? "Signing in..." : "🔑 Admin Sign in"}
                     </Button>
                   </form>
                   {isDemoMode && (
-                    <div className="text-sm text-center p-3 bg-muted/20 rounded border border-warning/20">
-                      <p className="text-muted-foreground">
+                    <div className="text-sm text-center p-4 bg-gradient-to-r from-warning/20 to-warning/10 rounded-lg border border-warning/20">
+                      <p className="text-muted-foreground mb-2">
                         <strong>Demo credentials:</strong> admin@avocop.com / admin123
                       </p>
-                      <p className="text-xs text-warning mt-1">
+                      <p className="text-xs text-warning">
                         ⚠️ Remove hardcoded credentials before production deployment
                       </p>
                     </div>
