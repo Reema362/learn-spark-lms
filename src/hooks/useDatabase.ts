@@ -7,6 +7,8 @@ export const useCourses = () => {
   return useQuery({
     queryKey: ['courses'],
     queryFn: DatabaseService.getCourses,
+    staleTime: 30000, // Cache for 30 seconds
+    retry: 3,
   });
 };
 
@@ -14,6 +16,8 @@ export const useUsers = () => {
   return useQuery({
     queryKey: ['users'],
     queryFn: DatabaseService.getUsers,
+    staleTime: 30000, // Cache for 30 seconds
+    retry: 3,
   });
 };
 
@@ -21,6 +25,8 @@ export const useCourseCategories = () => {
   return useQuery({
     queryKey: ['course-categories'],
     queryFn: DatabaseService.getCourseCategories,
+    staleTime: 300000, // Cache for 5 minutes
+    retry: 3,
   });
 };
 
@@ -28,6 +34,8 @@ export const useAnalytics = () => {
   return useQuery({
     queryKey: ['analytics'],
     queryFn: DatabaseService.getAnalytics,
+    staleTime: 60000, // Cache for 1 minute
+    retry: 3,
   });
 };
 
@@ -39,12 +47,14 @@ export const useCreateCourse = () => {
     mutationFn: DatabaseService.createCourse,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['courses'] });
+      queryClient.invalidateQueries({ queryKey: ['analytics'] });
       toast({
         title: "Success",
         description: "Course created successfully",
       });
     },
     onError: (error) => {
+      console.error('Create course error:', error);
       toast({
         title: "Error",
         description: error.message,
@@ -63,12 +73,14 @@ export const useUpdateCourse = () => {
       DatabaseService.updateCourse(id, updates),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['courses'] });
+      queryClient.invalidateQueries({ queryKey: ['analytics'] });
       toast({
         title: "Success",
         description: "Course updated successfully",
       });
     },
     onError: (error) => {
+      console.error('Update course error:', error);
       toast({
         title: "Error",
         description: error.message,
@@ -86,12 +98,14 @@ export const useDeleteCourse = () => {
     mutationFn: DatabaseService.deleteCourse,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['courses'] });
+      queryClient.invalidateQueries({ queryKey: ['analytics'] });
       toast({
         title: "Success",
         description: "Course deleted successfully",
       });
     },
     onError: (error) => {
+      console.error('Delete course error:', error);
       toast({
         title: "Error",
         description: error.message,
@@ -109,12 +123,14 @@ export const useCreateUser = () => {
     mutationFn: DatabaseService.createUser,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
+      queryClient.invalidateQueries({ queryKey: ['analytics'] });
       toast({
         title: "Success",
         description: "User created successfully",
       });
     },
     onError: (error) => {
+      console.error('Create user error:', error);
       toast({
         title: "Error",
         description: error.message,
@@ -137,6 +153,7 @@ export const useUploadFile = () => {
       });
     },
     onError: (error) => {
+      console.error('File upload error:', error);
       toast({
         title: "Error",
         description: error.message,

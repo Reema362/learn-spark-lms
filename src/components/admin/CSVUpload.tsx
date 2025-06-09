@@ -3,9 +3,10 @@ import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Upload, FileText, CheckCircle, AlertCircle } from 'lucide-react';
+import { Upload, FileText, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { DatabaseService } from '@/services/database';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface CSVUser {
   email: string;
@@ -20,17 +21,20 @@ const CSVUpload = () => {
   const [uploading, setUploading] = useState(false);
   const [results, setResults] = useState<any[]>([]);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const parseCSV = (text: string): CSVUser[] => {
     const lines = text.trim().split('\n');
     const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
     
-    return lines.slice(1).map(line => {
+    console.log('CSV Headers:', headers);
+    
+    return lines.slice(1).map((line, index) => {
       const values = line.split(',');
       const user: CSVUser = { email: '' };
       
       headers.forEach((header, index) => {
-        const value = values[index]?.trim();
+        const value = values[index]?.trim().replace(/"/g, ''); // Remove quotes
         if (value) {
           switch (header) {
             case 'email':
@@ -38,10 +42,12 @@ const CSVUpload = () => {
               break;
             case 'first_name':
             case 'firstname':
+            case 'first name':
               user.first_name = value;
               break;
             case 'last_name':
             case 'lastname':
+            case 'last name':
               user.last_name = value;
               break;
             case 'department':
@@ -54,13 +60,14 @@ const CSVUpload = () => {
         }
       });
       
+      console.log(`Parsed user ${index + 1}:`, user);
       return user;
-    }).filter(user => user.email);
+    }).filter(user => user.email && user.email.includes('@'));
   };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
-    if (selectedFile && selectedFile.type === 'text/csv') {
+    if (selectedFile && (selectedFile.type === 'text/csv' || selectedFile.name.endsWith('.csv'))) {
       setFile(selectedFile);
       setResults([]);
     } else {
@@ -77,23 +84,33 @@ const CSVUpload = () => {
 
     setUploading(true);
     try {
+      console.log('Starting CSV upload process...');
       const text = await file.text();
+      console.log('CSV file content:', text.substring(0, 200) + '...');
+      
       const users = parseCSV(text);
+      console.log('Parsed users:', users);
       
       if (users.length === 0) {
         toast({
-          title: "No Users Found",
-          description: "The CSV file doesn't contain valid user data",
+          title: "No Valid Users Found",
+          description: "The CSV file doesn't contain valid user data with email addresses",
           variant: "destructive"
         });
         return;
       }
 
+      console.log(`Processing ${users.length} users...`);
       const uploadResults = await DatabaseService.bulkCreateUsers(users);
+      console.log('Upload results:', uploadResults);
+      
       setResults(uploadResults);
       
       const successCount = uploadResults.filter(r => r.success).length;
       const errorCount = uploadResults.filter(r => !r.success).length;
+      
+      // Refresh the users list
+      queryClient.invalidateQueries({ queryKey: ['users'] });
       
       toast({
         title: "Upload Complete",
@@ -102,9 +119,10 @@ const CSVUpload = () => {
       });
       
     } catch (error: any) {
+      console.error('CSV upload error:', error);
       toast({
         title: "Upload Failed",
-        description: error.message,
+        description: error.message || "An unexpected error occurred",
         variant: "destructive"
       });
     } finally {
@@ -130,13 +148,21 @@ const CSVUpload = () => {
             accept=".csv"
             onChange={handleFileChange}
             className="flex-1"
+            disabled={uploading}
           />
           <Button 
             onClick={handleUpload} 
             disabled={!file || uploading}
             className="min-w-[120px]"
           >
-            {uploading ? 'Uploading...' : 'Upload CSV'}
+            {uploading ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Uploading...
+              </>
+            ) : (
+              'Upload CSV'
+            )}
           </Button>
         </div>
         
@@ -153,13 +179,13 @@ const CSVUpload = () => {
             {results.map((result, index) => (
               <div key={index} className="flex items-center gap-2 text-sm p-2 rounded border">
                 {result.success ? (
-                  <CheckCircle className="h-4 w-4 text-green-500" />
+                  <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
                 ) : (
-                  <AlertCircle className="h-4 w-4 text-red-500" />
+                  <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
                 )}
                 <span className="flex-1">
                   {result.success 
-                    ? `✓ ${result.user.email} - Temp password: ${result.tempPassword}`
+                    ? `✓ ${result.email} - Temp password: ${result.tempPassword}`
                     : `✗ ${result.email} - ${result.error}`
                   }
                 </span>

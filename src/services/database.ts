@@ -101,7 +101,7 @@ export class DatabaseService {
     if (error) throw error;
   }
 
-  // User Management - Fixed version
+  // User Management - Fixed and optimized version
   static async getUsers() {
     const { data, error } = await supabase
       .from('profiles')
@@ -109,7 +109,7 @@ export class DatabaseService {
       .order('created_at', { ascending: false });
     
     if (error) throw error;
-    return data;
+    return data || [];
   }
 
   static async createUser(userData: {
@@ -121,6 +121,19 @@ export class DatabaseService {
     department?: string;
   }) {
     try {
+      console.log('Creating user with data:', userData);
+      
+      // Check if user already exists
+      const { data: existingUser } = await supabase
+        .from('profiles')
+        .select('email')
+        .eq('email', userData.email)
+        .maybeSingle();
+
+      if (existingUser) {
+        throw new Error(`User with email ${userData.email} already exists`);
+      }
+
       // Create user profile directly in the profiles table
       const userId = crypto.randomUUID();
       
@@ -129,18 +142,23 @@ export class DatabaseService {
         .insert({
           id: userId,
           email: userData.email,
-          first_name: userData.first_name,
-          last_name: userData.last_name,
+          first_name: userData.first_name || '',
+          last_name: userData.last_name || '',
           role: userData.role || 'user',
-          department: userData.department
+          department: userData.department || ''
         })
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Database error creating user:', error);
+        throw error;
+      }
 
-      return { id: userId, email: userData.email, ...data };
+      console.log('User created successfully:', data);
+      return data;
     } catch (error) {
+      console.error('Error in createUser:', error);
       throw new Error(`Failed to create user: ${error.message}`);
     }
   }
@@ -153,9 +171,20 @@ export class DatabaseService {
     role?: 'admin' | 'user';
   }>) {
     const results = [];
+    let successCount = 0;
     
-    for (const user of users) {
+    console.log(`Starting bulk creation of ${users.length} users`);
+    
+    for (let i = 0; i < users.length; i++) {
+      const user = users[i];
+      console.log(`Processing user ${i + 1}/${users.length}: ${user.email}`);
+      
       try {
+        // Validate email format
+        if (!user.email || !user.email.includes('@')) {
+          throw new Error('Invalid email format');
+        }
+
         // Generate a temporary password
         const tempPassword = Math.random().toString(36).slice(-8) + 'Temp123!';
         
@@ -165,12 +194,26 @@ export class DatabaseService {
           role: user.role || 'user'
         });
         
-        results.push({ success: true, user: result, tempPassword });
+        successCount++;
+        results.push({ 
+          success: true, 
+          user: result, 
+          tempPassword,
+          email: user.email 
+        });
+        
+        console.log(`Successfully created user: ${user.email}`);
       } catch (error) {
-        results.push({ success: false, error: error.message, email: user.email });
+        console.error(`Failed to create user ${user.email}:`, error);
+        results.push({ 
+          success: false, 
+          error: error.message, 
+          email: user.email 
+        });
       }
     }
     
+    console.log(`Bulk creation completed: ${successCount} successful, ${results.length - successCount} failed`);
     return results;
   }
 
@@ -187,7 +230,11 @@ export class DatabaseService {
   }
 
   static async deleteUser(id: string) {
-    const { error } = await supabase.auth.admin.deleteUser(id);
+    const { error } = await supabase
+      .from('profiles')
+      .delete()
+      .eq('id', id);
+
     if (error) throw error;
   }
 
@@ -199,7 +246,7 @@ export class DatabaseService {
       .order('name');
     
     if (error) throw error;
-    return data;
+    return data || [];
   }
 
   static async createCourseCategory(category: { name: string; description?: string; color?: string }) {
