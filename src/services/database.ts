@@ -515,4 +515,315 @@ export class DatabaseService {
     if (error) throw error;
     return data;
   }
+
+  // Campaign Management
+  static async getCampaigns() {
+    const { data, error } = await supabase
+      .from('campaigns')
+      .select(`
+        *,
+        profiles(first_name, last_name)
+      `)
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    return data;
+  }
+
+  static async createCampaign(campaign: {
+    name: string;
+    description?: string;
+    status?: string;
+    start_date?: string;
+    end_date?: string;
+    target_audience?: string[];
+    tags?: string[];
+  }) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
+    const { data, error } = await supabase
+      .from('campaigns')
+      .insert({
+        ...campaign,
+        created_by: user.id
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  static async updateCampaign(id: string, updates: any) {
+    const { data, error } = await supabase
+      .from('campaigns')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  // Escalation Management
+  static async getEscalations() {
+    const { data, error } = await supabase
+      .from('escalations')
+      .select(`
+        *,
+        assigned_to_profile:profiles!escalations_assigned_to_fkey(first_name, last_name),
+        created_by_profile:profiles!escalations_created_by_fkey(first_name, last_name)
+      `)
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    return data;
+  }
+
+  static async createEscalation(escalation: {
+    title: string;
+    description: string;
+    priority?: string;
+    assigned_to?: string;
+  }) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
+    const { data, error } = await supabase
+      .from('escalations')
+      .insert({
+        ...escalation,
+        created_by: user.id
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  // Query Management
+  static async getQueries() {
+    const { data, error } = await supabase
+      .from('queries')
+      .select(`
+        *,
+        submitted_by_profile:profiles!queries_submitted_by_fkey(first_name, last_name),
+        assigned_to_profile:profiles!queries_assigned_to_fkey(first_name, last_name)
+      `)
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    return data;
+  }
+
+  static async createQuery(query: {
+    title: string;
+    description: string;
+    category: string;
+  }) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
+    const { data, error } = await supabase
+      .from('queries')
+      .insert({
+        ...query,
+        submitted_by: user.id
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  // Template Management
+  static async getTemplates() {
+    const { data, error } = await supabase
+      .from('templates')
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    return data;
+  }
+
+  static async createTemplate(template: {
+    name: string;
+    type: string;
+    subject?: string;
+    content: string;
+    variables?: any[];
+    is_active?: boolean;
+  }) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
+    const { data, error } = await supabase
+      .from('templates')
+      .insert({
+        ...template,
+        created_by: user.id
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  static async updateTemplate(id: string, updates: any) {
+    const { data, error } = await supabase
+      .from('templates')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  // IAM Management
+  static async getRoles() {
+    const { data, error } = await supabase
+      .from('roles')
+      .select('*')
+      .order('name');
+    
+    if (error) throw error;
+    return data;
+  }
+
+  static async getUserRoles() {
+    const { data, error } = await supabase
+      .from('user_roles')
+      .select(`
+        *,
+        profiles(first_name, last_name, email),
+        roles(name)
+      `)
+      .order('assigned_at', { ascending: false });
+    
+    if (error) throw error;
+    return data;
+  }
+
+  static async getAuditLogs() {
+    const { data, error } = await supabase
+      .from('audit_logs')
+      .select(`
+        *,
+        profiles(first_name, last_name, email)
+      `)
+      .order('created_at', { ascending: false })
+      .limit(100);
+    
+    if (error) throw error;
+    return data;
+  }
+
+  // Gamification
+  static async getGames() {
+    const { data, error } = await supabase
+      .from('games')
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    return data;
+  }
+
+  static async getGameBadges() {
+    const { data, error } = await supabase
+      .from('game_badges')
+      .select('*')
+      .order('tier', { ascending: true });
+    
+    if (error) throw error;
+    return data;
+  }
+
+  static async createGame(game: {
+    title: string;
+    description?: string;
+    game_type: string;
+    difficulty?: string;
+    topic: string;
+    time_limit_seconds?: number;
+    questions: any[];
+    passing_score?: number;
+  }) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
+    const { data, error } = await supabase
+      .from('games')
+      .insert({
+        ...game,
+        created_by: user.id
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  static async submitGameSession(gameId: string, score: number, timeTaken: number, answers: any) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
+    const { data, error } = await supabase
+      .from('game_sessions')
+      .insert({
+        game_id: gameId,
+        user_id: user.id,
+        score,
+        time_taken_seconds: timeTaken,
+        answers
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  static async getUserGameStats(userId?: string) {
+    const { data: { user } } = await supabase.auth.getUser();
+    const targetUserId = userId || user?.id;
+    
+    if (!targetUserId) throw new Error('Not authenticated');
+
+    const { data, error } = await supabase
+      .from('game_sessions')
+      .select(`
+        *,
+        games(title, topic)
+      `)
+      .eq('user_id', targetUserId)
+      .order('completed_at', { ascending: false });
+
+    if (error) throw error;
+    return data;
+  }
+
+  static async getLeaderboard() {
+    const { data, error } = await supabase
+      .from('game_sessions')
+      .select(`
+        user_id,
+        score,
+        profiles(first_name, last_name)
+      `)
+      .order('score', { ascending: false })
+      .limit(10);
+
+    if (error) throw error;
+    return data;
+  }
 }

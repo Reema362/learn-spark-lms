@@ -3,13 +3,13 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { GamePad2, Trophy, Users, Play, Plus, Star, Clock, Target } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Plus, Play, Trophy, Users, Clock, Target, Edit, Eye, Gamepad2 } from 'lucide-react';
 import { useGames, useGameBadges, useCreateGame, useLeaderboard, useUserGameStats } from '@/hooks/useDatabase';
 
 const GamificationManagement = () => {
@@ -27,12 +27,12 @@ const GamificationManagement = () => {
 
   const { data: games, isLoading: gamesLoading } = useGames();
   const { data: badges, isLoading: badgesLoading } = useGameBadges();
-  const { data: leaderboard, isLoading: leaderboardLoading } = useLeaderboard();
-  const { data: userStats, isLoading: statsLoading } = useUserGameStats();
+  const { data: leaderboard } = useLeaderboard();
+  const { data: userStats } = useUserGameStats();
   const createGameMutation = useCreateGame();
 
   const handleCreateGame = async () => {
-    if (!newGame.title || !newGame.questions.length) return;
+    if (!newGame.title || !newGame.topic) return;
 
     try {
       await createGameMutation.mutateAsync(newGame);
@@ -52,34 +52,40 @@ const GamificationManagement = () => {
     }
   };
 
-  const getDifficultyBadge = (difficulty: string) => {
-    switch (difficulty) {
-      case 'easy':
-        return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Easy</Badge>;
-      case 'medium':
-        return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">Medium</Badge>;
-      case 'hard':
-        return <Badge variant="destructive">Hard</Badge>;
-      default:
-        return <Badge variant="secondary">Unknown</Badge>;
-    }
-  };
+  const gameTopics = [
+    { value: 'phishing', label: 'Phishing Awareness' },
+    { value: 'password_safety', label: 'Password Safety' },
+    { value: 'social_engineering', label: 'Social Engineering' },
+    { value: 'two_factor_auth', label: 'Two-Factor Authentication' },
+    { value: 'data_handling', label: 'Data Handling' }
+  ];
 
-  const getBadgeTierBadge = (tier: string) => {
+  const gameTypes = [
+    { value: 'mcq', label: 'Multiple Choice Quiz' },
+    { value: 'drag_drop', label: 'Drag & Drop' },
+    { value: 'scenario', label: 'Scenario-Based Challenge' }
+  ];
+
+  const getBadgeColor = (tier: string) => {
     switch (tier) {
-      case 'bronze':
-        return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">Bronze</Badge>;
-      case 'silver':
-        return <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200">Silver</Badge>;
-      case 'gold':
-        return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">Gold</Badge>;
-      default:
-        return <Badge variant="secondary">Unknown</Badge>;
+      case 'gold': return 'bg-yellow-100 text-yellow-800 border-yellow-300';
+      case 'silver': return 'bg-gray-100 text-gray-800 border-gray-300';
+      case 'bronze': return 'bg-orange-100 text-orange-800 border-orange-300';
+      default: return 'bg-gray-100 text-gray-800 border-gray-300';
     }
   };
 
-  if (gamesLoading || badgesLoading || leaderboardLoading || statsLoading) {
-    return <div className="flex items-center justify-center h-64">Loading...</div>;
+  const getDifficultyColor = (difficulty: string) => {
+    switch (difficulty) {
+      case 'easy': return 'bg-green-100 text-green-800 border-green-300';
+      case 'medium': return 'bg-yellow-100 text-yellow-800 border-yellow-300';
+      case 'hard': return 'bg-red-100 text-red-800 border-red-300';
+      default: return 'bg-gray-100 text-gray-800 border-gray-300';
+    }
+  };
+
+  if (gamesLoading || badgesLoading) {
+    return <div className="flex items-center justify-center h-64">Loading gamification data...</div>;
   }
 
   return (
@@ -100,7 +106,7 @@ const GamificationManagement = () => {
           <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>Create New Security Game</DialogTitle>
-              <DialogDescription>Design a new interactive security awareness game</DialogDescription>
+              <DialogDescription>Design a new information security awareness game</DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -115,46 +121,49 @@ const GamificationManagement = () => {
                 </div>
                 <div>
                   <Label htmlFor="topic">Security Topic</Label>
-                  <Select value={newGame.topic} onValueChange={(value) => setNewGame({ ...newGame, topic: value })}>
+                  <Select 
+                    value={newGame.topic} 
+                    onValueChange={(value) => setNewGame({ ...newGame, topic: value })}
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="phishing">Phishing Awareness</SelectItem>
-                      <SelectItem value="password_safety">Password Safety</SelectItem>
-                      <SelectItem value="social_engineering">Social Engineering</SelectItem>
-                      <SelectItem value="two_factor_auth">Two-Factor Authentication</SelectItem>
-                      <SelectItem value="data_handling">Data Handling</SelectItem>
+                      {gameTopics.map((topic) => (
+                        <SelectItem key={topic.value} value={topic.value}>
+                          {topic.label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
               </div>
-              <div>
-                <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
-                  value={newGame.description}
-                  onChange={(e) => setNewGame({ ...newGame, description: e.target.value })}
-                  placeholder="Describe what this game teaches..."
-                />
-              </div>
+              
               <div className="grid grid-cols-3 gap-4">
                 <div>
                   <Label htmlFor="game_type">Game Type</Label>
-                  <Select value={newGame.game_type} onValueChange={(value) => setNewGame({ ...newGame, game_type: value })}>
+                  <Select 
+                    value={newGame.game_type} 
+                    onValueChange={(value) => setNewGame({ ...newGame, game_type: value })}
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="mcq">Multiple Choice Quiz</SelectItem>
-                      <SelectItem value="drag_drop">Drag & Drop</SelectItem>
-                      <SelectItem value="scenario">Scenario Based</SelectItem>
+                      {gameTypes.map((type) => (
+                        <SelectItem key={type.value} value={type.value}>
+                          {type.label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
                   <Label htmlFor="difficulty">Difficulty</Label>
-                  <Select value={newGame.difficulty} onValueChange={(value) => setNewGame({ ...newGame, difficulty: value })}>
+                  <Select 
+                    value={newGame.difficulty} 
+                    onValueChange={(value) => setNewGame({ ...newGame, difficulty: value })}
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -175,6 +184,18 @@ const GamificationManagement = () => {
                   />
                 </div>
               </div>
+
+              <div>
+                <Label htmlFor="description">Description</Label>
+                <Textarea
+                  id="description"
+                  value={newGame.description}
+                  onChange={(e) => setNewGame({ ...newGame, description: e.target.value })}
+                  placeholder="Describe the game objectives and rules..."
+                  className="min-h-[100px]"
+                />
+              </div>
+
               <div className="flex justify-end space-x-2">
                 <Button variant="outline" onClick={() => setIsCreateGameOpen(false)}>Cancel</Button>
                 <Button onClick={handleCreateGame} disabled={createGameMutation.isPending}>
@@ -191,79 +212,101 @@ const GamificationManagement = () => {
         <Card className="stats-card">
           <CardContent className="p-6 text-center">
             <div className="text-2xl font-bold text-primary">{games?.length || 0}</div>
-            <div className="text-sm text-muted-foreground">Active Games</div>
+            <div className="text-sm text-muted-foreground">Total Games</div>
           </CardContent>
         </Card>
         <Card className="stats-card">
           <CardContent className="p-6 text-center">
-            <div className="text-2xl font-bold text-success">{userStats?.totalGamesPlayed || 0}</div>
-            <div className="text-sm text-muted-foreground">Games Played</div>
-          </CardContent>
-        </Card>
-        <Card className="stats-card">
-          <CardContent className="p-6 text-center">
-            <div className="text-2xl font-bold text-info">{badges?.length || 0}</div>
+            <div className="text-2xl font-bold text-success">{badges?.length || 0}</div>
             <div className="text-sm text-muted-foreground">Available Badges</div>
           </CardContent>
         </Card>
         <Card className="stats-card">
           <CardContent className="p-6 text-center">
-            <div className="text-2xl font-bold text-accent">{userStats?.totalBadgesEarned || 0}</div>
-            <div className="text-sm text-muted-foreground">Badges Earned</div>
+            <div className="text-2xl font-bold text-info">{userStats?.length || 0}</div>
+            <div className="text-sm text-muted-foreground">Game Sessions</div>
+          </CardContent>
+        </Card>
+        <Card className="stats-card">
+          <CardContent className="p-6 text-center">
+            <div className="text-2xl font-bold text-accent">{leaderboard?.length || 0}</div>
+            <div className="text-sm text-muted-foreground">Active Players</div>
           </CardContent>
         </Card>
       </div>
 
       <Tabs defaultValue="games" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList>
           <TabsTrigger value="games">Games Library</TabsTrigger>
           <TabsTrigger value="badges">Badge System</TabsTrigger>
           <TabsTrigger value="leaderboard">Leaderboard</TabsTrigger>
-          <TabsTrigger value="analytics">Analytics</TabsTrigger>
+          <TabsTrigger value="stats">Analytics</TabsTrigger>
         </TabsList>
 
         <TabsContent value="games" className="space-y-6">
           <Card className="dashboard-card">
             <CardHeader>
               <CardTitle className="flex items-center">
-                <GamePad2 className="h-5 w-5 mr-2 text-primary" />
-                Security Games Library
+                <Gamepad2 className="h-5 w-5 mr-2" />
+                Security Awareness Games
               </CardTitle>
-              <CardDescription>Interactive security awareness games</CardDescription>
+              <CardDescription>Interactive games to test and improve security knowledge</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {games?.map((game) => (
+                {games?.map((game: any) => (
                   <Card key={game.id} className="game-card hover:shadow-lg transition-shadow">
                     <CardContent className="p-6">
                       <div className="space-y-4">
                         <div className="flex justify-between items-start">
                           <h3 className="font-semibold text-lg">{game.title}</h3>
-                          {getDifficultyBadge(game.difficulty || 'easy')}
+                          <Badge variant={game.is_active ? "default" : "secondary"}>
+                            {game.is_active ? "Active" : "Inactive"}
+                          </Badge>
                         </div>
-                        <p className="text-sm text-muted-foreground">{game.description}</p>
-                        <div className="flex items-center justify-between text-sm">
-                          <div className="flex items-center">
-                            <Clock className="h-4 w-4 mr-1 text-muted-foreground" />
-                            <span>{Math.floor((game.time_limit_seconds || 0) / 60)}m</span>
-                          </div>
-                          <div className="flex items-center">
-                            <Target className="h-4 w-4 mr-1 text-muted-foreground" />
-                            <span>{game.passing_score}%</span>
-                          </div>
-                        </div>
+
                         <div className="space-y-2">
-                          <Badge variant="outline" className="text-xs">
-                            {game.topic?.replace('_', ' ').toUpperCase()}
-                          </Badge>
-                          <Badge variant="secondary" className="text-xs ml-2">
-                            {game.game_type?.replace('_', ' ').toUpperCase()}
-                          </Badge>
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-muted-foreground">Topic:</span>
+                            <Badge variant="outline">{game.topic?.replace('_', ' ')}</Badge>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-muted-foreground">Type:</span>
+                            <span className="text-sm">{game.game_type?.toUpperCase()}</span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-muted-foreground">Difficulty:</span>
+                            <Badge className={getDifficultyColor(game.difficulty)}>
+                              {game.difficulty}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-muted-foreground">Time Limit:</span>
+                            <span className="text-sm flex items-center">
+                              <Clock className="h-3 w-3 mr-1" />
+                              {Math.floor(game.time_limit_seconds / 60)}m
+                            </span>
+                          </div>
                         </div>
-                        <Button className="w-full" size="sm">
-                          <Play className="h-4 w-4 mr-2" />
-                          Play Game
-                        </Button>
+
+                        {game.description && (
+                          <p className="text-sm text-muted-foreground line-clamp-2">
+                            {game.description}
+                          </p>
+                        )}
+
+                        <div className="flex space-x-2">
+                          <Button size="sm" variant="outline" className="flex-1">
+                            <Play className="h-3 w-3 mr-1" />
+                            Play
+                          </Button>
+                          <Button size="sm" variant="outline">
+                            <Eye className="h-3 w-3" />
+                          </Button>
+                          <Button size="sm" variant="outline">
+                            <Edit className="h-3 w-3" />
+                          </Button>
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
@@ -277,37 +320,33 @@ const GamificationManagement = () => {
           <Card className="dashboard-card">
             <CardHeader>
               <CardTitle className="flex items-center">
-                <Trophy className="h-5 w-5 mr-2 text-accent" />
-                Badge System
+                <Trophy className="h-5 w-5 mr-2" />
+                Achievement Badges
               </CardTitle>
-              <CardDescription>Achievement badges for security awareness</CardDescription>
+              <CardDescription>Recognition system for top performers</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {badges?.map((badge) => (
+                {badges?.map((badge: any) => (
                   <Card key={badge.id} className="badge-card">
                     <CardContent className="p-6 text-center">
                       <div className="space-y-4">
-                        <div className="mx-auto w-16 h-16 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center">
+                        <div className="mx-auto w-16 h-16 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center">
                           <Trophy className="h-8 w-8 text-white" />
                         </div>
+                        
                         <div>
                           <h3 className="font-semibold">{badge.name}</h3>
                           <p className="text-sm text-muted-foreground">{badge.description}</p>
                         </div>
-                        <div className="flex justify-center space-x-2">
-                          {getBadgeTierBadge(badge.tier)}
-                          <Badge variant="outline" className="text-xs">
-                            {badge.topic?.replace('_', ' ').toUpperCase()}
+
+                        <div className="space-y-2">
+                          <Badge className={getBadgeColor(badge.tier)}>
+                            {badge.tier?.toUpperCase()} TIER
                           </Badge>
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {badge.criteria && typeof badge.criteria === 'object' && (
-                            <div>
-                              Min Score: {(badge.criteria as any).min_score}% | 
-                              Max Time: {Math.floor((badge.criteria as any).max_time / 60)}m
-                            </div>
-                          )}
+                          <div className="text-xs text-muted-foreground">
+                            Topic: {badge.topic?.replace('_', ' ')}
+                          </div>
                         </div>
                       </div>
                     </CardContent>
@@ -322,29 +361,31 @@ const GamificationManagement = () => {
           <Card className="dashboard-card">
             <CardHeader>
               <CardTitle className="flex items-center">
-                <Users className="h-5 w-5 mr-2 text-info" />
-                Leaderboard
+                <Users className="h-5 w-5 mr-2" />
+                Top Performers
               </CardTitle>
-              <CardDescription>Top performing users in security games</CardDescription>
+              <CardDescription>Leading players in security awareness games</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {leaderboard?.map((entry, index) => (
-                  <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
+                {leaderboard?.map((entry: any, index: number) => (
+                  <div key={entry.user_id} className="flex items-center justify-between p-4 rounded-lg border">
                     <div className="flex items-center space-x-4">
-                      <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground font-bold">
-                        {index + 1}
+                      <div className="font-bold text-lg text-muted-foreground">
+                        #{index + 1}
                       </div>
                       <div>
-                        <h4 className="font-medium">
+                        <div className="font-medium">
                           {entry.profiles?.first_name} {entry.profiles?.last_name}
-                        </h4>
-                        <p className="text-sm text-muted-foreground">Security Champion</p>
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          Best Score: {entry.score}
+                        </div>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <div className="font-bold text-lg">{entry.score}</div>
-                      <div className="text-sm text-muted-foreground">points</div>
+                    <div className="flex items-center space-x-2">
+                      <Target className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-semibold">{entry.score}</span>
                     </div>
                   </div>
                 ))}
@@ -353,58 +394,18 @@ const GamificationManagement = () => {
           </Card>
         </TabsContent>
 
-        <TabsContent value="analytics" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card className="dashboard-card">
-              <CardHeader>
-                <CardTitle>Game Performance</CardTitle>
-                <CardDescription>Overview of game engagement</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex justify-between">
-                    <span>Average Score</span>
-                    <span className="font-bold">{Math.round(userStats?.averageScore || 0)}%</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Games Completed</span>
-                    <span className="font-bold">{userStats?.totalGamesPlayed || 0}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Badges Earned</span>
-                    <span className="font-bold">{userStats?.totalBadgesEarned || 0}</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="dashboard-card">
-              <CardHeader>
-                <CardTitle>Popular Topics</CardTitle>
-                <CardDescription>Most played security topics</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center">
-                    <span>Phishing Awareness</span>
-                    <Badge variant="outline">85%</Badge>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span>Password Safety</span>
-                    <Badge variant="outline">72%</Badge>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span>Social Engineering</span>
-                    <Badge variant="outline">68%</Badge>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span>Two-Factor Auth</span>
-                    <Badge variant="outline">54%</Badge>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+        <TabsContent value="stats" className="space-y-6">
+          <Card className="dashboard-card">
+            <CardHeader>
+              <CardTitle>Game Analytics</CardTitle>
+              <CardDescription>Performance metrics and engagement statistics</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">Analytics dashboard coming soon...</p>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>

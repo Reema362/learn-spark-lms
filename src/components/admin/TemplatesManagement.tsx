@@ -16,7 +16,7 @@ import { useTemplates, useCreateTemplate, useUpdateTemplate } from '@/hooks/useD
 const TemplatesManagement = () => {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
-  const [previewTemplate, setPreviewTemplate] = useState(null);
+  const [previewTemplate, setPreviewTemplate] = useState<any>(null);
   const [newTemplate, setNewTemplate] = useState({
     name: '',
     type: 'email',
@@ -72,14 +72,14 @@ const TemplatesManagement = () => {
       notification: 'bg-purple-50 text-purple-700 border-purple-200'
     };
     return (
-      <Badge variant="outline" className={colors[type] || 'bg-gray-50 text-gray-700 border-gray-200'}>
+      <Badge variant="outline" className={colors[type as keyof typeof colors] || 'bg-gray-50 text-gray-700 border-gray-200'}>
         {type?.toUpperCase()}
       </Badge>
     );
   };
 
   const sampleTemplates = {
-    email: `Subject: {{subject}}
+    email: `Subject: Welcome to our Security Training Program
 
 Dear {{firstName}},
 
@@ -112,6 +112,8 @@ Click here to view more details: {{actionUrl}}`
   if (isLoading) {
     return <div className="flex items-center justify-center h-64">Loading templates...</div>;
   }
+
+  const templatesArray = Array.isArray(templates) ? templates : [];
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -151,8 +153,8 @@ Click here to view more details: {{actionUrl}}`
                     onValueChange={(value) => setNewTemplate({ 
                       ...newTemplate, 
                       type: value,
-                      content: sampleTemplates[value] || '',
-                      subject: value === 'email' ? 'Welcome to {{organizationName}}' : ''
+                      content: sampleTemplates[value as keyof typeof sampleTemplates] || '',
+                      subject: value === 'email' ? 'Welcome to our Organization' : ''
                     })}
                   >
                     <SelectTrigger>
@@ -190,7 +192,7 @@ Click here to view more details: {{actionUrl}}`
                   className="min-h-[300px] font-mono"
                 />
                 <div className="text-xs text-muted-foreground mt-1">
-                  Use variables like {{firstName}}, {{eventDate}}, {{organizationName}} in your template
+                  Use variables like {`{{firstName}}`}, {`{{eventDate}}`}, {`{{organizationName}}`} in your template
                 </div>
               </div>
 
@@ -218,25 +220,25 @@ Click here to view more details: {{actionUrl}}`
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card className="stats-card">
           <CardContent className="p-6 text-center">
-            <div className="text-2xl font-bold text-primary">{templates?.length || 0}</div>
+            <div className="text-2xl font-bold text-primary">{templatesArray.length}</div>
             <div className="text-sm text-muted-foreground">Total Templates</div>
           </CardContent>
         </Card>
         <Card className="stats-card">
           <CardContent className="p-6 text-center">
-            <div className="text-2xl font-bold text-success">{templates?.filter(t => t.is_active).length || 0}</div>
+            <div className="text-2xl font-bold text-success">{templatesArray.filter((t: any) => t.is_active).length}</div>
             <div className="text-sm text-muted-foreground">Active Templates</div>
           </CardContent>
         </Card>
         <Card className="stats-card">
           <CardContent className="p-6 text-center">
-            <div className="text-2xl font-bold text-info">{templates?.filter(t => t.type === 'email').length || 0}</div>
+            <div className="text-2xl font-bold text-info">{templatesArray.filter((t: any) => t.type === 'email').length}</div>
             <div className="text-sm text-muted-foreground">Email Templates</div>
           </CardContent>
         </Card>
         <Card className="stats-card">
           <CardContent className="p-6 text-center">
-            <div className="text-2xl font-bold text-accent">{templates?.filter(t => t.type === 'sms').length || 0}</div>
+            <div className="text-2xl font-bold text-accent">{templatesArray.filter((t: any) => t.type === 'sms').length}</div>
             <div className="text-sm text-muted-foreground">SMS Templates</div>
           </CardContent>
         </Card>
@@ -259,7 +261,7 @@ Click here to view more details: {{actionUrl}}`
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {templates?.map((template) => (
+                {templatesArray.map((template: any) => (
                   <Card key={template.id} className="template-card hover:shadow-lg transition-shadow">
                     <CardContent className="p-6">
                       <div className="space-y-4">
@@ -337,7 +339,7 @@ Click here to view more details: {{actionUrl}}`
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {templates?.filter(t => t.type === type).map((template) => (
+                  {templatesArray.filter((t: any) => t.type === type).map((template: any) => (
                     <Card key={template.id} className="template-card hover:shadow-lg transition-shadow">
                       <CardContent className="p-6">
                         <div className="space-y-4">
