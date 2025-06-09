@@ -97,13 +97,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       // For learner SSO-style login (no password required)
       if (userType === 'learner' && !password) {
-        // Check if user exists in profiles
-        const { data: profile } = await supabase
+        // Create or find learner profile
+        let { data: profile } = await supabase
           .from('profiles')
           .select('*')
           .eq('email', email)
-          .eq('role', 'learner')
           .single();
+
+        if (!profile) {
+          // Create new learner profile
+          const { data: newProfile, error: insertError } = await supabase
+            .from('profiles')
+            .insert({
+              id: crypto.randomUUID(),
+              email: email,
+              first_name: email.split('@')[0],
+              last_name: '',
+              role: 'user' // Use 'user' instead of 'learner' to match database schema
+            })
+            .select()
+            .single();
+
+          if (insertError) {
+            console.error('Error creating learner profile:', insertError);
+            toast({
+              title: "Error",
+              description: "Failed to create learner profile. Please try again.",
+              variant: "destructive",
+            });
+            return false;
+          }
+          profile = newProfile;
+        }
 
         if (profile) {
           // Create a session for the learner (simulated SSO)
@@ -124,13 +149,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           });
           
           return true;
-        } else {
-          toast({
-            title: "User Not Found",
-            description: "Please contact your administrator to get access.",
-            variant: "destructive",
-          });
-          return false;
         }
       }
 
@@ -150,6 +168,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
 
       if (error) {
+        console.error('Login error:', error);
         toast({
           title: "Login Failed",
           description: "Invalid email or password. Please check your credentials.",

@@ -64,9 +64,14 @@ const LearnerLoginForm: React.FC = () => {
       <Button type="submit" className="w-full h-11 bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90" disabled={loading}>
         {loading ? "Signing in..." : "🚀 Sign in with SSO"}
       </Button>
-      <p className="text-sm text-muted-foreground text-center">
-        🔐 Secure Single Sign-On authentication for learners
-      </p>
+      <div className="text-sm text-center p-4 bg-gradient-to-r from-muted/50 to-muted/30 rounded-lg border border-muted">
+        <p className="text-muted-foreground mb-1">
+          <strong>🔐 SSO Authentication</strong>
+        </p>
+        <p className="text-muted-foreground text-xs">
+          Enter any valid email address to simulate SSO login
+        </p>
+      </div>
     </form>
   );
 };
