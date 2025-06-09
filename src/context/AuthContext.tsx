@@ -113,7 +113,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               email: email,
               first_name: email.split('@')[0],
               last_name: '',
-              role: 'user' // Use 'user' instead of 'learner' to match database schema
+              role: 'user'
             })
             .select()
             .single();
@@ -152,61 +152,48 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
 
-      // For admin login with password
-      if (!password) {
-        toast({
-          title: "Error",
-          description: "Password is required for admin login",
-          variant: "destructive",
-        });
-        return false;
-      }
+      // For admin login - use hardcoded credentials for demo
+      if (userType === 'admin' && password) {
+        // Demo admin credentials
+        const adminCredentials = [
+          { email: 'naveen.v1@slksoftware.com', password: 'SecurePass123!', name: 'Naveen V' },
+          { email: 'reema.jain@slksoftware.com', password: 'SecurePass123!', name: 'Reema Jain' }
+        ];
 
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+        const adminUser = adminCredentials.find(admin => 
+          admin.email === email && admin.password === password
+        );
 
-      if (error) {
-        console.error('Login error:', error);
-        toast({
-          title: "Login Failed",
-          description: "Invalid email or password. Please check your credentials.",
-          variant: "destructive",
-        });
-        return false;
-      }
+        if (adminUser) {
+          // Create or update admin profile
+          const { data: profile, error: upsertError } = await supabase
+            .from('profiles')
+            .upsert({
+              id: crypto.randomUUID(),
+              email: adminUser.email,
+              first_name: adminUser.name.split(' ')[0],
+              last_name: adminUser.name.split(' ')[1] || '',
+              role: 'admin'
+            }, {
+              onConflict: 'email'
+            })
+            .select()
+            .single();
 
-      if (data.user) {
-        // Get user profile
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', data.user.id)
-          .single();
-
-        if (profile) {
-          // Check if user type matches if specified
-          if (userType && userType === 'admin' && profile.role !== 'admin') {
-            await supabase.auth.signOut();
-            toast({
-              title: "Access Denied",
-              description: "Admin access required",
-              variant: "destructive",
-            });
-            return false;
+          if (upsertError) {
+            console.error('Error creating/updating admin profile:', upsertError);
           }
 
           const userData: User = {
-            id: data.user.id,
-            email: profile.email,
-            name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.email,
-            role: profile.role === 'admin' ? 'admin' : 'learner'
+            id: profile?.id || crypto.randomUUID(),
+            email: adminUser.email,
+            name: adminUser.name,
+            role: 'admin'
           };
 
           setUser(userData);
           saveUserSession(userData);
-          logAuditEvent(`User ${userData.email} (${userData.role}) logged in`);
+          logAuditEvent(`User ${userData.email} (admin) logged in`);
           
           toast({
             title: "Welcome back!",
@@ -216,13 +203,68 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           return true;
         } else {
           toast({
-            title: "Profile Not Found",
-            description: "User profile not found. Please contact administrator.",
+            title: "Login Failed",
+            description: "Invalid email or password. Please check your credentials.",
             variant: "destructive",
           });
           return false;
         }
       }
+
+      // If no userType specified, try Supabase auth for backward compatibility
+      if (password) {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+
+        if (error) {
+          console.error('Login error:', error);
+          toast({
+            title: "Login Failed",
+            description: "Invalid email or password. Please check your credentials.",
+            variant: "destructive",
+          });
+          return false;
+        }
+
+        if (data.user) {
+          // Get user profile
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', data.user.id)
+            .single();
+
+          if (profile) {
+            const userData: User = {
+              id: data.user.id,
+              email: profile.email,
+              name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.email,
+              role: profile.role === 'admin' ? 'admin' : 'learner'
+            };
+
+            setUser(userData);
+            saveUserSession(userData);
+            logAuditEvent(`User ${userData.email} (${userData.role}) logged in`);
+            
+            toast({
+              title: "Welcome back!",
+              description: `Successfully logged in as ${userData.name}`,
+            });
+            
+            return true;
+          }
+        }
+      }
+
+      toast({
+        title: "Error",
+        description: "Password is required for admin login",
+        variant: "destructive",
+      });
+      return false;
+
     } catch (error: any) {
       console.error('Login error:', error);
       toast({
