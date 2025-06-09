@@ -56,16 +56,6 @@ const AdminLoginForm: React.FC = () => {
     const success = await login(adminEmail, adminPassword, 'admin');
     if (success) {
       navigate('/admin');
-      toast({
-        title: "Welcome Admin!",
-        description: "Successfully logged in to admin portal"
-      });
-    } else {
-      toast({
-        title: "Login Failed",
-        description: "Invalid credentials. Please check your email and password.",
-        variant: "destructive"
-      });
     }
   };
 
@@ -105,10 +95,13 @@ const AdminLoginForm: React.FC = () => {
       </Button>
       <div className="text-sm text-center p-4 bg-gradient-to-r from-muted/50 to-muted/30 rounded-lg border border-muted">
         <p className="text-muted-foreground mb-1">
-          <strong>Demo credentials:</strong>
+          <strong>Test Admin Credentials:</strong>
+        </p>
+        <p className="text-muted-foreground text-xs mb-1">
+          Email: naveen.v1@slksoftware.com | Password: SecurePass123!
         </p>
         <p className="text-muted-foreground text-xs">
-          Email: admin@avocop.com | Password: admin123
+          Email: reema.jain@slksoftware.com | Password: SecurePass123!
         </p>
       </div>
     </form>

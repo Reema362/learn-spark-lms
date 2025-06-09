@@ -29,27 +29,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     // Check for existing session
     const getSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        // Get user profile
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', session.user.id)
-          .single();
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          // Get user profile
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
 
-        if (profile) {
-          const userData: User = {
-            id: session.user.id,
-            email: profile.email,
-            name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.email,
-            role: profile.role === 'admin' ? 'admin' : 'learner'
-          };
-          setUser(userData);
-          saveUserSession(userData);
+          if (profile) {
+            const userData: User = {
+              id: session.user.id,
+              email: profile.email,
+              name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.email,
+              role: profile.role === 'admin' ? 'admin' : 'learner'
+            };
+            setUser(userData);
+            saveUserSession(userData);
+          }
         }
+      } catch (error) {
+        console.error('Error getting session:', error);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     getSession();
@@ -57,21 +62,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session?.user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', session.user.id)
-          .single();
+        try {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
 
-        if (profile) {
-          const userData: User = {
-            id: session.user.id,
-            email: profile.email,
-            name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.email,
-            role: profile.role === 'admin' ? 'admin' : 'learner'
-          };
-          setUser(userData);
-          saveUserSession(userData);
+          if (profile) {
+            const userData: User = {
+              id: session.user.id,
+              email: profile.email,
+              name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.email,
+              role: profile.role === 'admin' ? 'admin' : 'learner'
+            };
+            setUser(userData);
+            saveUserSession(userData);
+          }
+        } catch (error) {
+          console.error('Error fetching profile:', error);
         }
       } else if (event === 'SIGNED_OUT') {
         setUser(null);
@@ -93,10 +102,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           .from('profiles')
           .select('*')
           .eq('email', email)
+          .eq('role', 'learner')
           .single();
 
         if (profile) {
-          // Simulate SSO login
+          // Create a session for the learner (simulated SSO)
           const userData: User = {
             id: profile.id,
             email: profile.email,
@@ -142,7 +152,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error) {
         toast({
           title: "Login Failed",
-          description: error.message,
+          description: "Invalid email or password. Please check your credentials.",
           variant: "destructive",
         });
         return false;
@@ -185,12 +195,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           });
           
           return true;
+        } else {
+          toast({
+            title: "Profile Not Found",
+            description: "User profile not found. Please contact administrator.",
+            variant: "destructive",
+          });
+          return false;
         }
       }
     } catch (error: any) {
+      console.error('Login error:', error);
       toast({
         title: "Login Error",
-        description: error.message || "An unexpected error occurred",
+        description: "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
     } finally {
