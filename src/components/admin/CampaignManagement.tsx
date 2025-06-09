@@ -17,7 +17,7 @@ const CampaignManagement = () => {
   const [newCampaign, setNewCampaign] = useState({
     name: '',
     description: '',
-    status: 'draft',
+    status: 'draft' as 'draft' | 'active' | 'paused' | 'completed' | 'cancelled',
     start_date: '',
     end_date: '',
     target_audience: [],
