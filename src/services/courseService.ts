@@ -1,6 +1,20 @@
 
 import { supabase } from '@/integrations/supabase/client';
 
+interface Course {
+  id?: string;
+  title: string;
+  description?: string;
+  content?: string;
+  category_id?: string | null;
+  duration_hours?: number;
+  difficulty_level?: string;
+  is_mandatory?: boolean;
+  thumbnail_url?: string;
+  video_url?: string;
+  status?: string;
+}
+
 export class CourseService {
   static async getCourses() {
     const { data, error } = await supabase
@@ -65,35 +79,35 @@ export class CourseService {
   }
 
   static async updateCourse(id: string, updates: Partial<Course>) {
-  // Validate category if updating
-  if (updates.category_id !== undefined) {
-    if (updates.category_id) {
-      // Check if category exists when a non-null value is provided
-      const { data: category, error: categoryError } = await supabase
-        .from('course_categories')
-        .select('id')
-        .eq('id', updates.category_id)
-        .single();
+    // Validate category if updating
+    if (updates.category_id !== undefined) {
+      if (updates.category_id) {
+        // Check if category exists when a non-null value is provided
+        const { data: category, error: categoryError } = await supabase
+          .from('course_categories')
+          .select('id')
+          .eq('id', updates.category_id)
+          .single();
 
-      if (categoryError || !category) {
-        throw new Error('Invalid category_id provided');
+        if (categoryError || !category) {
+          throw new Error('Invalid category_id provided');
+        }
+      } else {
+        // Explicitly set to null if empty value is provided
+        updates.category_id = null;
       }
-    } else {
-      // Explicitly set to null if empty value is provided
-      updates.category_id = null;
     }
+
+    const { data, error } = await supabase
+      .from('courses')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
   }
-
-  const { data, error } = await supabase
-    .from('courses')
-    .update(updates)
-    .eq('id', id)
-    .select()
-    .single();
-
-  if (error) throw error;
-  return data;
-}
 
   static async deleteCourse(id: string) {
     const { error } = await supabase

@@ -2,50 +2,37 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Edit, Eye, Play, Upload, Calendar, Users, Target, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
-import { useGames, useGameBadges, useCreateGame } from '@/hooks/useDatabase';
-import { useToast } from '@/hooks/use-toast';
-import {
-  Table,
-  TableBody,
-  TableCaption,
-  TableCell,
-  TableFooter,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
+import { Plus, Trophy, Target, Clock, Users, Star, Award } from 'lucide-react';
+import { useGames, useGameBadges, useCreateGame, useUserGameStats, useLeaderboard } from '@/hooks/useDatabase';
 
 const GamificationManagement = () => {
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isCreateGameDialogOpen, setIsCreateGameDialogOpen] = useState(false);
   const [newGame, setNewGame] = useState({
     title: '',
     description: '',
     game_type: 'quiz',
-    difficulty: 'easy',
+    difficulty: 'easy' as 'easy' | 'medium' | 'hard',
     topic: '',
     time_limit_seconds: 300,
-    questions: [],
+    questions: [] as any[],
     passing_score: 70
   });
 
-  const { data: games, isLoading } = useGames();
-  const { data: gameBadges, isLoading: isBadgesLoading } = useGameBadges();
-  const createGameMutation = useCreateGame();
-  const { toast } = useToast();
+  const { data: games = [], isLoading: gamesLoading } = useGames();
+  const { data: badges = [], isLoading: badgesLoading } = useGameBadges();
+  const { data: leaderboard = [], isLoading: leaderboardLoading } = useLeaderboard();
+  const createGame = useCreateGame();
 
   const handleCreateGame = async () => {
-    if (!newGame.title || !newGame.topic) return;
-
     try {
-      await createGameMutation.mutateAsync(newGame);
-      setIsCreateOpen(false);
+      await createGame.mutateAsync(newGame);
+      setIsCreateGameDialogOpen(false);
       setNewGame({
         title: '',
         description: '',
@@ -56,35 +43,37 @@ const GamificationManagement = () => {
         questions: [],
         passing_score: 70
       });
-      toast({
-        title: "Success",
-        description: "Game created successfully",
-      });
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error creating game:', error);
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
     }
   };
 
-  const getDifficultyColor = (difficulty: string) => {
+  const getDifficultyBadge = (difficulty: string) => {
     switch (difficulty) {
-      case 'easy': return 'bg-green-100 text-green-800 border-green-300';
-      case 'medium': return 'bg-yellow-100 text-yellow-800 border-yellow-300';
-      case 'hard': return 'bg-red-100 text-red-800 border-red-300';
-      default: return 'bg-gray-100 text-gray-800 border-gray-300';
+      case 'easy':
+        return <Badge variant="outline">Easy</Badge>;
+      case 'medium':
+        return <Badge>Medium</Badge>;
+      case 'hard':
+        return <Badge variant="destructive">Hard</Badge>;
+      default:
+        return <Badge variant="secondary">Unknown</Badge>;
     }
   };
 
-  if (isLoading || isBadgesLoading) {
-    return <div className="flex items-center justify-center h-64">Loading...</div>;
-  }
+  const gameStats = {
+    total: games.length,
+    quiz: games.filter(game => game.game_type === 'quiz').length,
+    challenge: games.filter(game => game.game_type === 'challenge').length
+  };
 
-  const gamesArray = Array.isArray(games) ? games : [];
-  const badgesArray = Array.isArray(gameBadges) ? gameBadges : [];
+  if (gamesLoading || badgesLoading || leaderboardLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -92,80 +81,70 @@ const GamificationManagement = () => {
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-3xl font-bold">Gamification Management</h2>
-          <p className="text-muted-foreground">Create and manage games and badges</p>
+          <p className="text-muted-foreground">Manage games, badges, and leaderboards</p>
         </div>
-        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+        <Dialog open={isCreateGameDialogOpen} onOpenChange={setIsCreateGameDialogOpen}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="h-4 w-4 mr-2" />
-              Create Game
+              Add Game
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl">
+          <DialogContent>
             <DialogHeader>
               <DialogTitle>Create New Game</DialogTitle>
-              <DialogDescription>Design a new security awareness game</DialogDescription>
+              <DialogDescription>
+                Add a new game to the platform
+              </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="title">Game Title</Label>
-                <Input
-                  id="title"
-                  value={newGame.title}
-                  onChange={(e) => setNewGame({ ...newGame, title: e.target.value })}
-                  placeholder="e.g., Phishing Quiz"
-                />
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="title">Title</Label>
+                  <Input
+                    id="title"
+                    value={newGame.title}
+                    onChange={(e) => setNewGame(prev => ({ ...prev, title: e.target.value }))}
+                    placeholder="Cybersecurity Quiz"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="topic">Topic</Label>
+                  <Input
+                    id="topic"
+                    value={newGame.topic}
+                    onChange={(e) => setNewGame(prev => ({ ...prev, topic: e.target.value }))}
+                    placeholder="Phishing Awareness"
+                  />
+                </div>
               </div>
-
-              <div>
+              <div className="grid gap-2">
                 <Label htmlFor="description">Description</Label>
                 <Textarea
                   id="description"
                   value={newGame.description}
-                  onChange={(e) => setNewGame({ ...newGame, description: e.target.value })}
-                  placeholder="Describe the game objectives and target audience..."
-                  className="min-h-[100px]"
+                  onChange={(e) => setNewGame(prev => ({ ...prev, description: e.target.value }))}
+                  placeholder="A quiz to test your knowledge on cybersecurity"
                 />
               </div>
-
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="topic">Topic</Label>
-                  <Input
-                    id="topic"
-                    type="text"
-                    value={newGame.topic}
-                    onChange={(e) => setNewGame({ ...newGame, topic: e.target.value })}
-                    placeholder="e.g., Phishing, Malware, Password Security"
-                  />
-                </div>
-                <div>
+                <div className="grid gap-2">
                   <Label htmlFor="game_type">Game Type</Label>
-                  <Select
-                    value={newGame.game_type}
-                    onValueChange={(value) => setNewGame({ ...newGame, game_type: value })}
-                  >
+                  <Select value={newGame.game_type} onValueChange={(value: any) => setNewGame(prev => ({ ...prev, game_type: value }))}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select a type" />
+                      <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="quiz">Quiz</SelectItem>
                       <SelectItem value="challenge">Challenge</SelectItem>
-                      <SelectItem value="simulation">Simulation</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
+                <div className="grid gap-2">
                   <Label htmlFor="difficulty">Difficulty</Label>
-                  <Select
-                    value={newGame.difficulty}
-                    onValueChange={(value) => setNewGame({ ...newGame, difficulty: value })}
-                  >
+                  <Select value={newGame.difficulty} onValueChange={(value: any) => setNewGame(prev => ({ ...prev, difficulty: value }))}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select difficulty" />
+                      <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="easy">Easy</SelectItem>
@@ -174,34 +153,36 @@ const GamificationManagement = () => {
                     </SelectContent>
                   </Select>
                 </div>
-                <div>
-                  <Label htmlFor="time_limit_seconds">Time Limit (seconds)</Label>
-                  <Input
-                    id="time_limit_seconds"
-                    type="number"
-                    value={newGame.time_limit_seconds}
-                    onChange={(e) => setNewGame({ ...newGame, time_limit_seconds: parseInt(e.target.value) })}
-                  />
-                </div>
               </div>
-
-              <div>
+              <div className="grid gap-2">
+                <Label htmlFor="time_limit_seconds">Time Limit (seconds)</Label>
+                <Input
+                  id="time_limit_seconds"
+                  type="number"
+                  value={newGame.time_limit_seconds}
+                  onChange={(e) => setNewGame(prev => ({ ...prev, time_limit_seconds: parseInt(e.target.value) }))}
+                  placeholder="300"
+                />
+              </div>
+              <div className="grid gap-2">
                 <Label htmlFor="passing_score">Passing Score (%)</Label>
                 <Input
                   id="passing_score"
                   type="number"
                   value={newGame.passing_score}
-                  onChange={(e) => setNewGame({ ...newGame, passing_score: parseInt(e.target.value) })}
+                  onChange={(e) => setNewGame(prev => ({ ...prev, passing_score: parseInt(e.target.value) }))}
+                  placeholder="70"
                 />
               </div>
-
-              <div className="flex justify-end space-x-2">
-                <Button variant="outline" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
-                <Button onClick={handleCreateGame} disabled={createGameMutation.isPending}>
-                  {createGameMutation.isPending ? 'Creating...' : 'Create Game'}
-                </Button>
-              </div>
             </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsCreateGameDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleCreateGame} disabled={createGame.isPending}>
+                {createGame.isPending ? 'Creating...' : 'Create Game'}
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
@@ -210,114 +191,174 @@ const GamificationManagement = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card className="stats-card">
           <CardContent className="p-6 text-center">
-            <div className="text-2xl font-bold text-primary">{gamesArray.length}</div>
+            <div className="text-2xl font-bold text-primary">{gameStats.total}</div>
             <div className="text-sm text-muted-foreground">Total Games</div>
           </CardContent>
         </Card>
         <Card className="stats-card">
           <CardContent className="p-6 text-center">
-            <div className="text-2xl font-bold text-success">{badgesArray.length}</div>
-            <div className="text-sm text-muted-foreground">Total Badges</div>
+            <div className="text-2xl font-bold text-secondary">{gameStats.quiz}</div>
+            <div className="text-sm text-muted-foreground">Quizzes</div>
+          </CardContent>
+        </Card>
+        <Card className="stats-card">
+          <CardContent className="p-6 text-center">
+            <div className="text-2xl font-bold text-success">{gameStats.challenge}</div>
+            <div className="text-sm text-muted-foreground">Challenges</div>
           </CardContent>
         </Card>
       </div>
 
-      <Tabs defaultValue="games" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="games">Games</TabsTrigger>
+      {/* Tabs for different gamification sections */}
+      <Tabs defaultValue="games" className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="games">Games List</TabsTrigger>
           <TabsTrigger value="badges">Badges</TabsTrigger>
+          <TabsTrigger value="leaderboard">Leaderboard</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="games" className="space-y-6">
+        <TabsContent value="games" className="space-y-4">
           <Card className="dashboard-card">
             <CardHeader>
-              <CardTitle>Games</CardTitle>
-              <CardDescription>Manage your security awareness games</CardDescription>
+              <CardTitle>All Games</CardTitle>
+              <CardDescription>Manage individual game settings</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {gamesArray.map((game: any) => (
-                  <Card key={game.id} className="campaign-card hover:shadow-lg transition-shadow">
-                    <CardContent className="p-6">
-                      <div className="space-y-4">
-                        <div className="flex justify-between items-start">
-                          <h3 className="font-semibold text-lg">{game.title}</h3>
+              <div className="space-y-4">
+                {games.map((game: any) => (
+                  <div key={game.id} className="border rounded-lg p-4 space-y-3">
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-2 mb-1">
+                          <h3 className="font-semibold">
+                            {game.title}
+                          </h3>
+                          {getDifficultyBadge(game.difficulty)}
                         </div>
-
-                        {game.description && (
-                          <p className="text-sm text-muted-foreground line-clamp-3">
-                            {game.description}
-                          </p>
-                        )}
-
-                        <div className="space-y-2">
-                          <div className="flex items-center text-sm text-muted-foreground">
-                            <Target className="h-3 w-3 mr-2" />
-                            Topic: {game.topic}
-                          </div>
-                          <div className="flex items-center text-sm text-muted-foreground">
-                            <Badge className={getDifficultyColor(game.difficulty)}>
-                              {game.difficulty?.toUpperCase()}
-                            </Badge>
-                          </div>
-                        </div>
-
-                        <div className="flex space-x-2">
-                          <Button size="sm" variant="outline" className="flex-1">
-                            <Eye className="h-3 w-3 mr-1" />
-                            View
-                          </Button>
-                          <Button size="sm" variant="outline">
-                            <Edit className="h-3 w-3 mr-1" />
-                            Edit
-                          </Button>
-                          <Button size="sm" variant="outline">
-                            <Play className="h-3 w-3 mr-1" />
-                            Play
-                          </Button>
-                        </div>
+                        <p className="text-sm text-muted-foreground mb-1">
+                          {game.description}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Topic: {game.topic}
+                        </p>
                       </div>
-                    </CardContent>
-                  </Card>
+                      <div className="flex space-x-2">
+                        <Button size="sm" variant="outline">
+                          <Edit className="h-4 w-4 mr-2" />
+                          Edit
+                        </Button>
+                        <Button size="sm" variant="outline">
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Remove
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                      <div>
+                        <span className="text-muted-foreground">Type:</span>
+                        <span className="ml-1">{game.game_type}</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Time Limit:</span>
+                        <span className="ml-1">{game.time_limit_seconds}s</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Passing Score:</span>
+                        <span className="ml-1">{game.passing_score}%</span>
+                      </div>
+                    </div>
+                  </div>
                 ))}
               </div>
             </CardContent>
           </Card>
+
+          {games.length === 0 && (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground">No games found.</p>
+            </div>
+          )}
         </TabsContent>
 
-        <TabsContent value="badges" className="space-y-6">
+        <TabsContent value="badges">
           <Card className="dashboard-card">
             <CardHeader>
-              <CardTitle>Badges</CardTitle>
-              <CardDescription>Manage game badges</CardDescription>
+              <CardTitle>All Badges</CardTitle>
+              <CardDescription>Manage individual badge settings</CardDescription>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[100px]">Tier</TableHead>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Description</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {badgesArray.map((badge) => (
-                    <TableRow key={badge.id}>
-                      <TableCell className="font-medium">{badge.tier}</TableCell>
-                      <TableCell>{badge.name}</TableCell>
-                      <TableCell>{badge.description}</TableCell>
-                      <TableCell className="text-right">
-                        <Button variant="ghost" size="sm">
-                          View
+              <div className="space-y-4">
+                {badges.map((badge: any) => (
+                  <div key={badge.id} className="border rounded-lg p-4 space-y-3">
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-2 mb-1">
+                          <h3 className="font-semibold">
+                            {badge.name}
+                          </h3>
+                        </div>
+                        <p className="text-sm text-muted-foreground mb-1">
+                          {badge.description}
+                        </p>
+                      </div>
+                      <div className="flex space-x-2">
+                        <Button size="sm" variant="outline">
+                          <Edit className="h-4 w-4 mr-2" />
+                          Edit
                         </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                        <Button size="sm" variant="outline">
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Remove
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </CardContent>
           </Card>
+
+          {badges.length === 0 && (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground">No badges found.</p>
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="leaderboard">
+          <Card className="dashboard-card">
+            <CardHeader>
+              <CardTitle>Leaderboard</CardTitle>
+              <CardDescription>View top performing users</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {leaderboard.map((entry: any, index: number) => (
+                  <div key={index} className="border rounded-lg p-4 space-y-3">
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-2 mb-1">
+                          <h3 className="font-semibold">
+                            {entry.profiles.first_name} {entry.profiles.last_name}
+                          </h3>
+                        </div>
+                        <p className="text-sm text-muted-foreground mb-1">
+                          Score: {entry.total_score}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {leaderboard.length === 0 && (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground">No leaderboard entries found.</p>
+            </div>
+          )}
         </TabsContent>
       </Tabs>
     </div>

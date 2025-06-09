@@ -23,6 +23,7 @@ export class UserService {
     try {
       console.log('Creating user with data:', userData);
       
+      // Create user in Supabase Auth first
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: userData.email,
         password: userData.password,
@@ -45,11 +46,12 @@ export class UserService {
         throw new Error('Failed to create user in auth');
       }
 
-      let retries = 3;
+      // Wait for the trigger to create the profile, or create it manually if needed
+      let retries = 5;
       let profile = null;
       
       while (retries > 0 && !profile) {
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise(resolve => setTimeout(resolve, 1000));
         
         const { data: existingProfile } = await supabase
           .from('profiles')
@@ -65,6 +67,7 @@ export class UserService {
         retries--;
       }
 
+      // If profile wasn't created by trigger, create it manually
       if (!profile) {
         const { data: newProfile, error: profileError } = await supabase
           .from('profiles')
@@ -81,6 +84,7 @@ export class UserService {
 
         if (profileError) {
           console.error('Profile creation error:', profileError);
+          // Clean up auth user if profile creation fails
           await supabase.auth.admin.deleteUser(authData.user.id);
           throw profileError;
         }
@@ -105,52 +109,64 @@ export class UserService {
     const results = [];
     let successCount = 0;
     
-    console.log(`Starting bulk creation of ${users.length} users`);
+    console.log(`Starting bulk creation of ${users.length} users with 2-second delays`);
     
-    const batchSize = 5;
-    for (let i = 0; i < users.length; i += batchSize) {
-      const batch = users.slice(i, i + batchSize);
+    for (let i = 0; i < users.length; i++) {
+      const user = users[i];
+      console.log(`Processing user ${i + 1}/${users.length}: ${user.email}`);
       
-      for (const user of batch) {
-        try {
-          if (!user.email || !user.email.includes('@')) {
-            throw new Error('Invalid email format');
-          }
-
-          const tempPassword = Math.random().toString(36).slice(-8) + 'Temp123!';
-          
-          const result = await this.createUser({
-            ...user,
-            password: tempPassword,
-            role: user.role || 'user'
-          });
-          
-          successCount++;
-          results.push({ 
-            success: true, 
-            user: result, 
-            tempPassword,
-            email: user.email 
-          });
-          
-          console.log(`Successfully created user: ${user.email}`);
-        } catch (error: any) {
-          console.error(`Failed to create user ${user.email}:`, error);
-          results.push({ 
-            success: false, 
-            error: error.message, 
-            email: user.email 
-          });
+      try {
+        if (!user.email || !user.email.includes('@')) {
+          throw new Error('Invalid email format');
         }
+
+        // Generate a temporary password
+        const tempPassword = Math.random().toString(36).slice(-8) + 'Temp123!';
+        
+        const result = await this.createUser({
+          ...user,
+          password: tempPassword,
+          role: user.role || 'user'
+        });
+        
+        successCount++;
+        results.push({ 
+          success: true, 
+          user: result, 
+          tempPassword,
+          email: user.email 
+        });
+        
+        console.log(`✓ Successfully created user: ${user.email}`);
+      } catch (error: any) {
+        console.error(`✗ Failed to create user ${user.email}:`, error);
+        results.push({ 
+          success: false, 
+          error: error.message, 
+          email: user.email 
+        });
       }
       
-      if (i + batchSize < users.length) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
+      // Add 2-second delay between each user creation to avoid rate limits
+      if (i < users.length - 1) {
+        console.log(`Waiting 2 seconds before processing next user...`);
+        await new Promise(resolve => setTimeout(resolve, 2000));
       }
     }
     
     console.log(`Bulk creation completed: ${successCount} successful, ${results.length - successCount} failed`);
     return results;
+  }
+
+  static async retryFailedUsers(failedUsers: Array<{
+    email: string;
+    first_name?: string;
+    last_name?: string;
+    department?: string;
+    role?: 'admin' | 'user';
+  }>) {
+    console.log(`Retrying ${failedUsers.length} failed users`);
+    return await this.bulkCreateUsers(failedUsers);
   }
 
   static async updateUser(id: string, updates: any) {
