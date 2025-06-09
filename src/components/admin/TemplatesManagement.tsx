@@ -1,294 +1,432 @@
-import React from 'react';
+
+import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { FileText, Mail, MessageSquare, Plus, Edit, Copy, Trash2 } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Plus, Edit, Copy, Trash2, Eye, Mail, MessageSquare, Bell, FileText } from 'lucide-react';
+import { useTemplates, useCreateTemplate, useUpdateTemplate } from '@/hooks/useDatabase';
 
 const TemplatesManagement = () => {
-  const emailTemplates = [
-    {
-      id: 1,
-      name: "Course Assignment Notification",
-      type: "course_assignment",
-      subject: "New Course Assigned: {{course_name}}",
-      description: "Notify learners when a new course is assigned to them",
-      lastModified: "2024-01-10",
-      usage: "847 sent this month",
-      status: "active"
-    },
-    {
-      id: 2,
-      name: "Course Completion Congratulations",
-      type: "course_completion",
-      subject: "Congratulations! You've completed {{course_name}}",
-      description: "Celebrate learner achievements upon course completion",
-      lastModified: "2024-01-08",
-      usage: "234 sent this month",
-      status: "active"
-    },
-    {
-      id: 3,
-      name: "Course Reminder",
-      type: "course_reminder",
-      subject: "Reminder: {{course_name}} due in {{days_remaining}} days",
-      description: "Remind learners about upcoming course deadlines",
-      lastModified: "2024-01-05",
-      usage: "156 sent this month",
-      status: "active"
-    },
-    {
-      id: 4,
-      name: "Certificate Issuance",
-      type: "certificate_issued",
-      subject: "Your {{certificate_name}} certificate is ready!",
-      description: "Notify learners when their certificate is available",
-      lastModified: "2024-01-03",
-      usage: "89 sent this month",
-      status: "active"
-    },
-    {
-      id: 5,
-      name: "Escalation Alert",
-      type: "escalation",
-      subject: "Action Required: {{learner_name}} - Overdue Course",
-      description: "Alert managers about overdue courses or issues",
-      lastModified: "2023-12-28",
-      usage: "23 sent this month",
-      status: "draft"
-    }
-  ];
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [previewTemplate, setPreviewTemplate] = useState(null);
+  const [newTemplate, setNewTemplate] = useState({
+    name: '',
+    type: 'email',
+    subject: '',
+    content: '',
+    variables: [],
+    is_active: true
+  });
 
-  const messageTemplates = [
-    {
-      id: 1,
-      name: "Welcome Message",
-      type: "welcome",
-      description: "Welcome new learners to the platform",
-      lastModified: "2024-01-09",
-      status: "active"
-    },
-    {
-      id: 2,
-      name: "Support Response Template",
-      type: "support",
-      description: "Standard response for common support queries",
-      lastModified: "2024-01-07",
-      status: "active"
-    },
-    {
-      id: 3,
-      name: "Course Instructions",
-      type: "instructions",
-      description: "How to navigate and complete courses",
-      lastModified: "2024-01-06",
-      status: "active"
-    }
-  ];
+  const { data: templates, isLoading } = useTemplates();
+  const createTemplateMutation = useCreateTemplate();
+  const updateTemplateMutation = useUpdateTemplate();
 
-  const templateCategories = [
-    { name: "Course Assignment", count: 3, icon: FileText, color: "primary" },
-    { name: "Completion & Certificates", count: 4, icon: Mail, color: "success" },
-    { name: "Reminders & Escalations", count: 5, icon: MessageSquare, color: "warning" },
-    { name: "Support & Help", count: 2, icon: MessageSquare, color: "info" }
-  ];
+  const handleCreateTemplate = async () => {
+    if (!newTemplate.name || !newTemplate.content) return;
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'active':
-        return <Badge variant="default" className="bg-success text-success-foreground">Active</Badge>;
-      case 'draft':
-        return <Badge variant="secondary">Draft</Badge>;
-      case 'archived':
-        return <Badge variant="outline">Archived</Badge>;
-      default:
-        return <Badge variant="secondary">Unknown</Badge>;
+    try {
+      await createTemplateMutation.mutateAsync(newTemplate);
+      setIsCreateOpen(false);
+      setNewTemplate({
+        name: '',
+        type: 'email',
+        subject: '',
+        content: '',
+        variables: [],
+        is_active: true
+      });
+    } catch (error) {
+      console.error('Error creating template:', error);
     }
   };
+
+  const getTypeIcon = (type: string) => {
+    switch (type) {
+      case 'email':
+        return <Mail className="h-4 w-4" />;
+      case 'sms':
+        return <MessageSquare className="h-4 w-4" />;
+      case 'alert':
+        return <Bell className="h-4 w-4" />;
+      case 'notification':
+        return <FileText className="h-4 w-4" />;
+      default:
+        return <FileText className="h-4 w-4" />;
+    }
+  };
+
+  const getTypeBadge = (type: string) => {
+    const colors = {
+      email: 'bg-blue-50 text-blue-700 border-blue-200',
+      sms: 'bg-green-50 text-green-700 border-green-200',
+      alert: 'bg-red-50 text-red-700 border-red-200',
+      notification: 'bg-purple-50 text-purple-700 border-purple-200'
+    };
+    return (
+      <Badge variant="outline" className={colors[type] || 'bg-gray-50 text-gray-700 border-gray-200'}>
+        {type?.toUpperCase()}
+      </Badge>
+    );
+  };
+
+  const sampleTemplates = {
+    email: `Subject: {{subject}}
+
+Dear {{firstName}},
+
+We hope this email finds you well. This is a friendly reminder about {{eventName}} scheduled for {{eventDate}}.
+
+Key Details:
+- Date: {{eventDate}}
+- Time: {{eventTime}}
+- Location: {{location}}
+
+Please confirm your attendance by replying to this email.
+
+Best regards,
+{{organizationName}} Team`,
+    sms: `Hi {{firstName}}, reminder: {{eventName}} on {{eventDate}} at {{eventTime}}. Reply STOP to opt out.`,
+    alert: `URGENT: {{alertTitle}}
+
+Description: {{alertDescription}}
+Action Required: {{actionRequired}}
+Deadline: {{deadline}}
+
+Please take immediate action.`,
+    notification: `{{title}}
+
+{{message}}
+
+Click here to view more details: {{actionUrl}}`
+  };
+
+  if (isLoading) {
+    return <div className="flex items-center justify-center h-64">Loading templates...</div>;
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-3xl font-bold">Templates Management</h2>
-          <p className="text-muted-foreground">Create and manage email and message templates</p>
+          <h2 className="text-3xl font-bold">Template Management</h2>
+          <p className="text-muted-foreground">Create and manage communication templates</p>
         </div>
-        <div className="flex space-x-2">
-          <Button variant="outline">
-            <Plus className="h-4 w-4 mr-2" />
-            Message Template
-          </Button>
-          <Button>
-            <Plus className="h-4 w-4 mr-2" />
-            Email Template
-          </Button>
-        </div>
+        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+          <DialogTrigger asChild>
+            <Button>
+              <Plus className="h-4 w-4 mr-2" />
+              Create Template
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Create New Template</DialogTitle>
+              <DialogDescription>Design a new communication template</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="name">Template Name</Label>
+                  <Input
+                    id="name"
+                    value={newTemplate.name}
+                    onChange={(e) => setNewTemplate({ ...newTemplate, name: e.target.value })}
+                    placeholder="e.g., Welcome Email Template"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="type">Template Type</Label>
+                  <Select 
+                    value={newTemplate.type} 
+                    onValueChange={(value) => setNewTemplate({ 
+                      ...newTemplate, 
+                      type: value,
+                      content: sampleTemplates[value] || '',
+                      subject: value === 'email' ? 'Welcome to {{organizationName}}' : ''
+                    })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="email">Email</SelectItem>
+                      <SelectItem value="sms">SMS</SelectItem>
+                      <SelectItem value="alert">Alert</SelectItem>
+                      <SelectItem value="notification">Notification</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              
+              {newTemplate.type === 'email' && (
+                <div>
+                  <Label htmlFor="subject">Email Subject</Label>
+                  <Input
+                    id="subject"
+                    value={newTemplate.subject}
+                    onChange={(e) => setNewTemplate({ ...newTemplate, subject: e.target.value })}
+                    placeholder="Enter email subject line"
+                  />
+                </div>
+              )}
+
+              <div>
+                <Label htmlFor="content">Template Content</Label>
+                <Textarea
+                  id="content"
+                  value={newTemplate.content}
+                  onChange={(e) => setNewTemplate({ ...newTemplate, content: e.target.value })}
+                  placeholder="Enter your template content here..."
+                  className="min-h-[300px] font-mono"
+                />
+                <div className="text-xs text-muted-foreground mt-1">
+                  Use variables like {{firstName}}, {{eventDate}}, {{organizationName}} in your template
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="active"
+                  checked={newTemplate.is_active}
+                  onCheckedChange={(checked) => setNewTemplate({ ...newTemplate, is_active: checked })}
+                />
+                <Label htmlFor="active">Template is active</Label>
+              </div>
+
+              <div className="flex justify-end space-x-2">
+                <Button variant="outline" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
+                <Button onClick={handleCreateTemplate} disabled={createTemplateMutation.isPending}>
+                  {createTemplateMutation.isPending ? 'Creating...' : 'Create Template'}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
-      {/* Template Categories */}
+      {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        {templateCategories.map((category, index) => (
-          <Card key={index} className="stats-card cursor-pointer hover:shadow-md transition-shadow">
-            <CardContent className="p-6 text-center">
-              <category.icon className={`h-8 w-8 mx-auto mb-2 text-${category.color}`} />
-              <div className="text-lg font-bold">{category.count}</div>
-              <div className="text-sm text-muted-foreground">{category.name}</div>
+        <Card className="stats-card">
+          <CardContent className="p-6 text-center">
+            <div className="text-2xl font-bold text-primary">{templates?.length || 0}</div>
+            <div className="text-sm text-muted-foreground">Total Templates</div>
+          </CardContent>
+        </Card>
+        <Card className="stats-card">
+          <CardContent className="p-6 text-center">
+            <div className="text-2xl font-bold text-success">{templates?.filter(t => t.is_active).length || 0}</div>
+            <div className="text-sm text-muted-foreground">Active Templates</div>
+          </CardContent>
+        </Card>
+        <Card className="stats-card">
+          <CardContent className="p-6 text-center">
+            <div className="text-2xl font-bold text-info">{templates?.filter(t => t.type === 'email').length || 0}</div>
+            <div className="text-sm text-muted-foreground">Email Templates</div>
+          </CardContent>
+        </Card>
+        <Card className="stats-card">
+          <CardContent className="p-6 text-center">
+            <div className="text-2xl font-bold text-accent">{templates?.filter(t => t.type === 'sms').length || 0}</div>
+            <div className="text-sm text-muted-foreground">SMS Templates</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Tabs defaultValue="all" className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="all">All Templates</TabsTrigger>
+          <TabsTrigger value="email">Email</TabsTrigger>
+          <TabsTrigger value="sms">SMS</TabsTrigger>
+          <TabsTrigger value="alert">Alerts</TabsTrigger>
+          <TabsTrigger value="notification">Notifications</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="all" className="space-y-6">
+          <Card className="dashboard-card">
+            <CardHeader>
+              <CardTitle>All Templates</CardTitle>
+              <CardDescription>Manage your communication templates</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {templates?.map((template) => (
+                  <Card key={template.id} className="template-card hover:shadow-lg transition-shadow">
+                    <CardContent className="p-6">
+                      <div className="space-y-4">
+                        <div className="flex justify-between items-start">
+                          <div className="flex items-center space-x-2">
+                            {getTypeIcon(template.type)}
+                            <h3 className="font-semibold">{template.name}</h3>
+                          </div>
+                          {getTypeBadge(template.type)}
+                        </div>
+
+                        {template.type === 'email' && template.subject && (
+                          <div>
+                            <div className="text-xs text-muted-foreground mb-1">Subject:</div>
+                            <div className="text-sm font-medium truncate">{template.subject}</div>
+                          </div>
+                        )}
+
+                        <div>
+                          <div className="text-xs text-muted-foreground mb-1">Preview:</div>
+                          <div className="text-sm text-muted-foreground line-clamp-3">
+                            {template.content?.substring(0, 150)}...
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <Badge variant={template.is_active ? "default" : "secondary"}>
+                            {template.is_active ? "Active" : "Inactive"}
+                          </Badge>
+                          <div className="text-xs text-muted-foreground">
+                            {new Date(template.created_at).toLocaleDateString()}
+                          </div>
+                        </div>
+
+                        <div className="flex space-x-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="flex-1"
+                            onClick={() => {
+                              setPreviewTemplate(template);
+                              setIsPreviewOpen(true);
+                            }}
+                          >
+                            <Eye className="h-3 w-3 mr-1" />
+                            Preview
+                          </Button>
+                          <Button size="sm" variant="outline">
+                            <Edit className="h-3 w-3 mr-1" />
+                            Edit
+                          </Button>
+                          <Button size="sm" variant="outline">
+                            <Copy className="h-3 w-3 mr-1" />
+                            Clone
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {['email', 'sms', 'alert', 'notification'].map((type) => (
+          <TabsContent key={type} value={type} className="space-y-6">
+            <Card className="dashboard-card">
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  {getTypeIcon(type)}
+                  <span className="ml-2">{type.charAt(0).toUpperCase() + type.slice(1)} Templates</span>
+                </CardTitle>
+                <CardDescription>Manage your {type} templates</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {templates?.filter(t => t.type === type).map((template) => (
+                    <Card key={template.id} className="template-card hover:shadow-lg transition-shadow">
+                      <CardContent className="p-6">
+                        <div className="space-y-4">
+                          <div className="flex justify-between items-start">
+                            <h3 className="font-semibold">{template.name}</h3>
+                            <Badge variant={template.is_active ? "default" : "secondary"}>
+                              {template.is_active ? "Active" : "Inactive"}
+                            </Badge>
+                          </div>
+
+                          {template.type === 'email' && template.subject && (
+                            <div>
+                              <div className="text-xs text-muted-foreground mb-1">Subject:</div>
+                              <div className="text-sm font-medium truncate">{template.subject}</div>
+                            </div>
+                          )}
+
+                          <div>
+                            <div className="text-xs text-muted-foreground mb-1">Content:</div>
+                            <div className="text-sm text-muted-foreground line-clamp-3">
+                              {template.content?.substring(0, 150)}...
+                            </div>
+                          </div>
+
+                          <div className="flex space-x-2">
+                            <Button size="sm" variant="outline" className="flex-1">
+                              <Eye className="h-3 w-3 mr-1" />
+                              Preview
+                            </Button>
+                            <Button size="sm" variant="outline">
+                              <Edit className="h-3 w-3" />
+                            </Button>
+                            <Button size="sm" variant="outline">
+                              <Copy className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
         ))}
-      </div>
+      </Tabs>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Email Templates */}
-        <div className="lg:col-span-2">
-          <Card className="dashboard-card">
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <Mail className="h-5 w-5 mr-2 text-primary" />
-                Email Templates
-              </CardTitle>
-              <CardDescription>Manage automated email notifications</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {emailTemplates.map((template) => (
-                  <div key={template.id} className="border rounded-lg p-4 space-y-3">
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-2 mb-1">
-                          <h3 className="font-semibold">{template.name}</h3>
-                          {getStatusBadge(template.status)}
-                        </div>
-                        <p className="text-sm text-muted-foreground mb-2">{template.description}</p>
-                        <div className="text-xs text-muted-foreground bg-muted/20 rounded p-2">
-                          <strong>Subject:</strong> {template.subject}
-                        </div>
-                      </div>
-                      <div className="flex space-x-2">
-                        <Button size="sm" variant="outline">
-                          <Copy className="h-4 w-4 mr-2" />
-                          Duplicate
-                        </Button>
-                        <Button size="sm" variant="outline">
-                          <Edit className="h-4 w-4 mr-2" />
-                          Edit
-                        </Button>
-                        <Button size="sm" variant="outline">
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Delete
-                        </Button>
-                      </div>
-                    </div>
-
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-muted-foreground">
-                        Last modified: {new Date(template.lastModified).toLocaleDateString()}
-                      </span>
-                      <span className="text-success font-medium">{template.usage}</span>
-                    </div>
-                  </div>
-                ))}
+      {/* Preview Dialog */}
+      <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center">
+              {previewTemplate && getTypeIcon(previewTemplate.type)}
+              <span className="ml-2">Template Preview: {previewTemplate?.name}</span>
+            </DialogTitle>
+            <DialogDescription>Preview how this template will appear</DialogDescription>
+          </DialogHeader>
+          {previewTemplate && (
+            <div className="space-y-4">
+              <div className="flex items-center space-x-2">
+                {getTypeBadge(previewTemplate.type)}
+                <Badge variant={previewTemplate.is_active ? "default" : "secondary"}>
+                  {previewTemplate.is_active ? "Active" : "Inactive"}
+                </Badge>
               </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Message Templates & Quick Actions */}
-        <div className="space-y-6">
-          <Card className="dashboard-card">
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <MessageSquare className="h-5 w-5 mr-2 text-accent" />
-                Message Templates
-              </CardTitle>
-              <CardDescription>In-app message templates</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {messageTemplates.map((template) => (
-                  <div key={template.id} className="border rounded-lg p-3 space-y-2">
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-2 mb-1">
-                          <h4 className="font-medium text-sm">{template.name}</h4>
-                          {getStatusBadge(template.status)}
-                        </div>
-                        <p className="text-xs text-muted-foreground">{template.description}</p>
-                      </div>
-                      <Button size="sm" variant="ghost">
-                        <Edit className="h-3 w-3" />
-                      </Button>
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      Modified: {new Date(template.lastModified).toLocaleDateString()}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Template Variables */}
-          <Card className="dashboard-card">
-            <CardHeader>
-              <CardTitle>Template Variables</CardTitle>
-              <CardDescription>Available variables for personalization</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3 text-sm">
-                <div className="space-y-1">
-                  <h4 className="font-medium">User Variables:</h4>
-                  <div className="grid grid-cols-1 gap-1 text-xs">
-                    <code className="bg-muted/50 px-2 py-1 rounded">{"{{learner_name}}"}</code>
-                    <code className="bg-muted/50 px-2 py-1 rounded">{"{{learner_email}}"}</code>
-                    <code className="bg-muted/50 px-2 py-1 rounded">{"{{manager_name}}"}</code>
+              
+              {previewTemplate.type === 'email' && previewTemplate.subject && (
+                <div>
+                  <Label>Subject Line:</Label>
+                  <div className="p-3 bg-muted rounded-md font-medium">
+                    {previewTemplate.subject}
                   </div>
                 </div>
-                
-                <div className="space-y-1">
-                  <h4 className="font-medium">Course Variables:</h4>
-                  <div className="grid grid-cols-1 gap-1 text-xs">
-                    <code className="bg-muted/50 px-2 py-1 rounded">{"{{course_name}}"}</code>
-                    <code className="bg-muted/50 px-2 py-1 rounded">{"{{due_date}}"}</code>
-                    <code className="bg-muted/50 px-2 py-1 rounded">{"{{days_remaining}}"}</code>
-                  </div>
-                </div>
+              )}
 
-                <div className="space-y-1">
-                  <h4 className="font-medium">System Variables:</h4>
-                  <div className="grid grid-cols-1 gap-1 text-xs">
-                    <code className="bg-muted/50 px-2 py-1 rounded">{"{{platform_name}}"}</code>
-                    <code className="bg-muted/50 px-2 py-1 rounded">{"{{current_date}}"}</code>
-                    <code className="bg-muted/50 px-2 py-1 rounded">{"{{support_email}}"}</code>
-                  </div>
+              <div>
+                <Label>Content:</Label>
+                <div className="p-4 bg-muted rounded-md whitespace-pre-wrap font-mono text-sm">
+                  {previewTemplate.content}
                 </div>
               </div>
-            </CardContent>
-          </Card>
 
-          {/* Quick Actions */}
-          <Card className="dashboard-card">
-            <CardHeader>
-              <CardTitle>Quick Actions</CardTitle>
-              <CardDescription>Common template operations</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <Button variant="outline" className="w-full justify-start">
-                <Copy className="h-4 w-4 mr-2" />
-                Duplicate Template
-              </Button>
-              <Button variant="outline" className="w-full justify-start">
-                <FileText className="h-4 w-4 mr-2" />
-                Preview Template
-              </Button>
-              <Button variant="outline" className="w-full justify-start">
-                <Mail className="h-4 w-4 mr-2" />
-                Send Test Email
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+              <div className="text-sm text-muted-foreground">
+                Created: {new Date(previewTemplate.created_at).toLocaleString()}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

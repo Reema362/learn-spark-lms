@@ -154,6 +154,50 @@ export type Database = {
           },
         ]
       }
+      audit_logs: {
+        Row: {
+          action: string
+          created_at: string | null
+          details: Json | null
+          id: string
+          ip_address: unknown | null
+          resource_id: string | null
+          resource_type: string
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          ip_address?: unknown | null
+          resource_id?: string | null
+          resource_type: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          ip_address?: unknown | null
+          resource_id?: string | null
+          resource_type?: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       badges: {
         Row: {
           created_at: string | null
@@ -180,6 +224,97 @@ export type Database = {
           name?: string
         }
         Relationships: []
+      }
+      campaign_assets: {
+        Row: {
+          campaign_id: string | null
+          file_name: string
+          file_size: number | null
+          file_type: string | null
+          file_url: string
+          id: string
+          uploaded_at: string | null
+        }
+        Insert: {
+          campaign_id?: string | null
+          file_name: string
+          file_size?: number | null
+          file_type?: string | null
+          file_url: string
+          id?: string
+          uploaded_at?: string | null
+        }
+        Update: {
+          campaign_id?: string | null
+          file_name?: string
+          file_size?: number | null
+          file_type?: string | null
+          file_url?: string
+          id?: string
+          uploaded_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_assets_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      campaigns: {
+        Row: {
+          assets_folder: string | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          end_date: string | null
+          id: string
+          name: string
+          start_date: string | null
+          status: Database["public"]["Enums"]["campaign_status"] | null
+          tags: string[] | null
+          target_audience: string[] | null
+          updated_at: string | null
+        }
+        Insert: {
+          assets_folder?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          name: string
+          start_date?: string | null
+          status?: Database["public"]["Enums"]["campaign_status"] | null
+          tags?: string[] | null
+          target_audience?: string[] | null
+          updated_at?: string | null
+        }
+        Update: {
+          assets_folder?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          name?: string
+          start_date?: string | null
+          status?: Database["public"]["Enums"]["campaign_status"] | null
+          tags?: string[] | null
+          target_audience?: string[] | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaigns_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       certificates: {
         Row: {
@@ -492,6 +627,230 @@ export type Database = {
           },
         ]
       }
+      escalation_comments: {
+        Row: {
+          comment: string
+          created_at: string | null
+          created_by: string | null
+          escalation_id: string | null
+          id: string
+        }
+        Insert: {
+          comment: string
+          created_at?: string | null
+          created_by?: string | null
+          escalation_id?: string | null
+          id?: string
+        }
+        Update: {
+          comment?: string
+          created_at?: string | null
+          created_by?: string | null
+          escalation_id?: string | null
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "escalation_comments_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "escalation_comments_escalation_id_fkey"
+            columns: ["escalation_id"]
+            isOneToOne: false
+            referencedRelation: "escalations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      escalations: {
+        Row: {
+          assigned_to: string | null
+          created_at: string | null
+          created_by: string | null
+          description: string
+          id: string
+          priority: Database["public"]["Enums"]["escalation_priority"] | null
+          resolved_at: string | null
+          status: Database["public"]["Enums"]["escalation_status"] | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          assigned_to?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description: string
+          id?: string
+          priority?: Database["public"]["Enums"]["escalation_priority"] | null
+          resolved_at?: string | null
+          status?: Database["public"]["Enums"]["escalation_status"] | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          assigned_to?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string
+          id?: string
+          priority?: Database["public"]["Enums"]["escalation_priority"] | null
+          resolved_at?: string | null
+          status?: Database["public"]["Enums"]["escalation_status"] | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "escalations_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "escalations_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      game_badges: {
+        Row: {
+          created_at: string | null
+          criteria: Json | null
+          description: string | null
+          icon_url: string | null
+          id: string
+          name: string
+          tier: Database["public"]["Enums"]["badge_tier"]
+          topic: string
+        }
+        Insert: {
+          created_at?: string | null
+          criteria?: Json | null
+          description?: string | null
+          icon_url?: string | null
+          id?: string
+          name: string
+          tier: Database["public"]["Enums"]["badge_tier"]
+          topic: string
+        }
+        Update: {
+          created_at?: string | null
+          criteria?: Json | null
+          description?: string | null
+          icon_url?: string | null
+          id?: string
+          name?: string
+          tier?: Database["public"]["Enums"]["badge_tier"]
+          topic?: string
+        }
+        Relationships: []
+      }
+      game_sessions: {
+        Row: {
+          answers: Json | null
+          completed_at: string | null
+          game_id: string | null
+          id: string
+          score: number
+          time_taken_seconds: number
+          user_id: string | null
+        }
+        Insert: {
+          answers?: Json | null
+          completed_at?: string | null
+          game_id?: string | null
+          id?: string
+          score: number
+          time_taken_seconds: number
+          user_id?: string | null
+        }
+        Update: {
+          answers?: Json | null
+          completed_at?: string | null
+          game_id?: string | null
+          id?: string
+          score?: number
+          time_taken_seconds?: number
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_sessions_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "game_sessions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      games: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          difficulty: Database["public"]["Enums"]["game_difficulty"] | null
+          game_type: string
+          id: string
+          is_active: boolean | null
+          passing_score: number | null
+          questions: Json
+          time_limit_seconds: number | null
+          title: string
+          topic: string
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          difficulty?: Database["public"]["Enums"]["game_difficulty"] | null
+          game_type: string
+          id?: string
+          is_active?: boolean | null
+          passing_score?: number | null
+          questions: Json
+          time_limit_seconds?: number | null
+          title: string
+          topic: string
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          difficulty?: Database["public"]["Enums"]["game_difficulty"] | null
+          game_type?: string
+          id?: string
+          is_active?: boolean | null
+          passing_score?: number | null
+          questions?: Json
+          time_limit_seconds?: number | null
+          title?: string
+          topic?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "games_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       learning_path_courses: {
         Row: {
           course_id: string
@@ -690,6 +1049,7 @@ export type Database = {
       profiles: {
         Row: {
           created_at: string | null
+          created_by: string | null
           department: string | null
           email: string
           first_name: string | null
@@ -701,6 +1061,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          created_by?: string | null
           department?: string | null
           email: string
           first_name?: string | null
@@ -712,6 +1073,7 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          created_by?: string | null
           department?: string | null
           email?: string
           first_name?: string | null
@@ -725,6 +1087,199 @@ export type Database = {
           {
             foreignKeyName: "profiles_manager_id_fkey"
             columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      queries: {
+        Row: {
+          assigned_to: string | null
+          category: string
+          created_at: string | null
+          description: string
+          id: string
+          status: Database["public"]["Enums"]["query_status"] | null
+          submitted_by: string | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          assigned_to?: string | null
+          category: string
+          created_at?: string | null
+          description: string
+          id?: string
+          status?: Database["public"]["Enums"]["query_status"] | null
+          submitted_by?: string | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          assigned_to?: string | null
+          category?: string
+          created_at?: string | null
+          description?: string
+          id?: string
+          status?: Database["public"]["Enums"]["query_status"] | null
+          submitted_by?: string | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "queries_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "queries_submitted_by_fkey"
+            columns: ["submitted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      query_attachments: {
+        Row: {
+          file_name: string
+          file_url: string
+          id: string
+          query_id: string | null
+          uploaded_at: string | null
+        }
+        Insert: {
+          file_name: string
+          file_url: string
+          id?: string
+          query_id?: string | null
+          uploaded_at?: string | null
+        }
+        Update: {
+          file_name?: string
+          file_url?: string
+          id?: string
+          query_id?: string | null
+          uploaded_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "query_attachments_query_id_fkey"
+            columns: ["query_id"]
+            isOneToOne: false
+            referencedRelation: "queries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      query_responses: {
+        Row: {
+          created_at: string | null
+          id: string
+          query_id: string | null
+          responded_by: string | null
+          response: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          query_id?: string | null
+          responded_by?: string | null
+          response: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          query_id?: string | null
+          responded_by?: string | null
+          response?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "query_responses_query_id_fkey"
+            columns: ["query_id"]
+            isOneToOne: false
+            referencedRelation: "queries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "query_responses_responded_by_fkey"
+            columns: ["responded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      roles: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          name: string
+          permissions: Json | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          permissions?: Json | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          permissions?: Json | null
+        }
+        Relationships: []
+      }
+      templates: {
+        Row: {
+          content: string
+          created_at: string | null
+          created_by: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          subject: string | null
+          type: Database["public"]["Enums"]["template_type"]
+          updated_at: string | null
+          variables: Json | null
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          subject?: string | null
+          type: Database["public"]["Enums"]["template_type"]
+          updated_at?: string | null
+          variables?: Json | null
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          subject?: string | null
+          type?: Database["public"]["Enums"]["template_type"]
+          updated_at?: string | null
+          variables?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "templates_created_by_fkey"
+            columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -760,27 +1315,127 @@ export type Database = {
           },
         ]
       }
-      Users: {
+      user_game_badges: {
         Row: {
-          DESIGNATION: string
-          GRADE: string
-          ID: number
-          NAME: string
-          ROLE: string
+          badge_id: string | null
+          earned_at: string | null
+          id: string
+          user_id: string | null
         }
         Insert: {
-          DESIGNATION: string
-          GRADE: string
-          ID: number
-          NAME: string
-          ROLE: string
+          badge_id?: string | null
+          earned_at?: string | null
+          id?: string
+          user_id?: string | null
         }
         Update: {
-          DESIGNATION?: string
-          GRADE?: string
+          badge_id?: string | null
+          earned_at?: string | null
+          id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_game_badges_badge_id_fkey"
+            columns: ["badge_id"]
+            isOneToOne: false
+            referencedRelation: "game_badges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_game_badges_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          assigned_at: string | null
+          assigned_by: string | null
+          id: string
+          role_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          assigned_at?: string | null
+          assigned_by?: string | null
+          id?: string
+          role_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          assigned_at?: string | null
+          assigned_by?: string | null
+          id?: string
+          role_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_roles_assigned_by_fkey"
+            columns: ["assigned_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_roles_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "roles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_roles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      Users: {
+        Row: {
+          CUSTOMER: string | null
+          DESIGNATION: string | null
+          EMAIL: string | null
+          GRADE: string | null
+          ID: number
+          MANAGER: string | null
+          MANAGERID: number | null
+          MOD: string | null
+          NAME: string | null
+          ROLE: string | null
+          VERTICAL: string | null
+        }
+        Insert: {
+          CUSTOMER?: string | null
+          DESIGNATION?: string | null
+          EMAIL?: string | null
+          GRADE?: string | null
+          ID: number
+          MANAGER?: string | null
+          MANAGERID?: number | null
+          MOD?: string | null
+          NAME?: string | null
+          ROLE?: string | null
+          VERTICAL?: string | null
+        }
+        Update: {
+          CUSTOMER?: string | null
+          DESIGNATION?: string | null
+          EMAIL?: string | null
+          GRADE?: string | null
           ID?: number
-          NAME?: string
-          ROLE?: string
+          MANAGER?: string | null
+          MANAGERID?: number | null
+          MOD?: string | null
+          NAME?: string | null
+          ROLE?: string | null
+          VERTICAL?: string | null
         }
         Relationships: []
       }
@@ -789,6 +1444,17 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_auth_user: {
+        Args: {
+          user_email: string
+          user_password: string
+          user_first_name?: string
+          user_last_name?: string
+          user_role?: string
+          user_department?: string
+        }
+        Returns: Json
+      }
       get_current_user_role: {
         Args: Record<PropertyKey, never>
         Returns: string
@@ -800,11 +1466,18 @@ export type Database = {
     }
     Enums: {
       assessment_type: "quiz" | "assignment" | "exam"
+      badge_tier: "bronze" | "silver" | "gold"
+      campaign_status: "draft" | "active" | "paused" | "completed" | "cancelled"
       course_status: "draft" | "published" | "archived"
       discussion_type: "general" | "help" | "announcement"
       enrollment_status: "not_started" | "in_progress" | "completed" | "overdue"
+      escalation_priority: "low" | "medium" | "high" | "critical"
+      escalation_status: "open" | "in_progress" | "resolved" | "closed"
+      game_difficulty: "easy" | "medium" | "hard"
       grade_status: "pending" | "graded" | "late"
       lesson_type: "video" | "text" | "quiz" | "assignment" | "document"
+      query_status: "open" | "responded" | "closed"
+      template_type: "email" | "sms" | "alert" | "notification"
       user_role: "admin" | "user" | "manager"
     }
     CompositeTypes: {
@@ -922,11 +1595,18 @@ export const Constants = {
   public: {
     Enums: {
       assessment_type: ["quiz", "assignment", "exam"],
+      badge_tier: ["bronze", "silver", "gold"],
+      campaign_status: ["draft", "active", "paused", "completed", "cancelled"],
       course_status: ["draft", "published", "archived"],
       discussion_type: ["general", "help", "announcement"],
       enrollment_status: ["not_started", "in_progress", "completed", "overdue"],
+      escalation_priority: ["low", "medium", "high", "critical"],
+      escalation_status: ["open", "in_progress", "resolved", "closed"],
+      game_difficulty: ["easy", "medium", "hard"],
       grade_status: ["pending", "graded", "late"],
       lesson_type: ["video", "text", "quiz", "assignment", "document"],
+      query_status: ["open", "responded", "closed"],
+      template_type: ["email", "sms", "alert", "notification"],
       user_role: ["admin", "user", "manager"],
     },
   },

@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { DatabaseService } from '@/services/database';
 import { useToast } from '@/hooks/use-toast';
@@ -160,5 +159,277 @@ export const useUploadFile = () => {
         variant: "destructive",
       });
     },
+  });
+};
+
+// Campaign Management Hooks
+export const useCampaigns = () => {
+  return useQuery({
+    queryKey: ['campaigns'],
+    queryFn: DatabaseService.getCampaigns,
+    staleTime: 30000,
+    retry: 3,
+  });
+};
+
+export const useCreateCampaign = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: DatabaseService.createCampaign,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+      toast({
+        title: "Success",
+        description: "Campaign created successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+};
+
+export const useUpdateCampaign = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ id, updates }: { id: string; updates: any }) =>
+      DatabaseService.updateCampaign(id, updates),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+      toast({
+        title: "Success",
+        description: "Campaign updated successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+};
+
+// Escalation Management Hooks
+export const useEscalations = () => {
+  return useQuery({
+    queryKey: ['escalations'],
+    queryFn: DatabaseService.getEscalations,
+    staleTime: 30000,
+    retry: 3,
+  });
+};
+
+export const useCreateEscalation = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: DatabaseService.createEscalation,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['escalations'] });
+      toast({
+        title: "Success",
+        description: "Escalation created successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+};
+
+// Query Management Hooks
+export const useQueries = () => {
+  return useQuery({
+    queryKey: ['queries'],
+    queryFn: DatabaseService.getQueries,
+    staleTime: 30000,
+    retry: 3,
+  });
+};
+
+export const useCreateQuery = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: DatabaseService.createQuery,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['queries'] });
+      toast({
+        title: "Success",
+        description: "Query submitted successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+};
+
+// Template Management Hooks
+export const useTemplates = () => {
+  return useQuery({
+    queryKey: ['templates'],
+    queryFn: DatabaseService.getTemplates,
+    staleTime: 30000,
+    retry: 3,
+  });
+};
+
+export const useCreateTemplate = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: DatabaseService.createTemplate,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['templates'] });
+      toast({
+        title: "Success",
+        description: "Template created successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+};
+
+// IAM Management Hooks
+export const useRoles = () => {
+  return useQuery({
+    queryKey: ['roles'],
+    queryFn: DatabaseService.getRoles,
+    staleTime: 300000,
+    retry: 3,
+  });
+};
+
+export const useUserRoles = () => {
+  return useQuery({
+    queryKey: ['user-roles'],
+    queryFn: DatabaseService.getUserRoles,
+    staleTime: 60000,
+    retry: 3,
+  });
+};
+
+export const useAuditLogs = () => {
+  return useQuery({
+    queryKey: ['audit-logs'],
+    queryFn: DatabaseService.getAuditLogs,
+    staleTime: 30000,
+    retry: 3,
+  });
+};
+
+// Gamification Hooks
+export const useGames = () => {
+  return useQuery({
+    queryKey: ['games'],
+    queryFn: DatabaseService.getGames,
+    staleTime: 300000,
+    retry: 3,
+  });
+};
+
+export const useGameBadges = () => {
+  return useQuery({
+    queryKey: ['game-badges'],
+    queryFn: DatabaseService.getGameBadges,
+    staleTime: 300000,
+    retry: 3,
+  });
+};
+
+export const useCreateGame = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: DatabaseService.createGame,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['games'] });
+      toast({
+        title: "Success",
+        description: "Game created successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+};
+
+export const useSubmitGameSession = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ gameId, score, timeTaken, answers }: { 
+      gameId: string; 
+      score: number; 
+      timeTaken: number; 
+      answers: any; 
+    }) => DatabaseService.submitGameSession(gameId, score, timeTaken, answers),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['user-game-stats'] });
+      toast({
+        title: "Success",
+        description: "Game completed successfully!",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+};
+
+export const useUserGameStats = (userId?: string) => {
+  return useQuery({
+    queryKey: ['user-game-stats', userId],
+    queryFn: () => DatabaseService.getUserGameStats(userId),
+    staleTime: 60000,
+    retry: 3,
+  });
+};
+
+export const useLeaderboard = () => {
+  return useQuery({
+    queryKey: ['leaderboard'],
+    queryFn: DatabaseService.getLeaderboard,
+    staleTime: 60000,
+    retry: 3,
   });
 };
