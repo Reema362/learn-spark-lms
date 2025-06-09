@@ -8,7 +8,6 @@ interface AuthContextType {
   login: (email: string, password?: string, userType?: 'admin' | 'learner') => Promise<boolean>;
   logout: () => void;
   loading: boolean;
-  isDemoMode: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -24,7 +23,6 @@ export const useAuth = () => {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const isDemoMode = process.env.NODE_ENV === 'development' || window.location.hostname === 'localhost';
 
   useEffect(() => {
     // Check for existing session with validation
@@ -63,7 +61,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading, isDemoMode }}>
+    <AuthContext.Provider value={{ user, login, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );

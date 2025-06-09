@@ -39,6 +39,10 @@ const AdminLayout = ({ children }: { children: React.ReactNode }) => {
 
   const isActive = (path: string) => location.pathname === path;
 
+  const handleSignOut = () => {
+    logout();
+  };
+
   return (
     <div className="min-h-screen bg-background flex">
       {/* Mobile sidebar overlay */}
@@ -113,7 +117,7 @@ const AdminLayout = ({ children }: { children: React.ReactNode }) => {
             </div>
           </div>
           <Button
-            onClick={logout}
+            onClick={handleSignOut}
             variant="outline"
             size="sm"
             className="w-full justify-start hover:bg-destructive hover:text-destructive-foreground transition-colors"
@@ -144,6 +148,15 @@ const AdminLayout = ({ children }: { children: React.ReactNode }) => {
               <div className="hidden sm:block text-sm text-muted-foreground">
                 Welcome back, {user?.name}
               </div>
+              <Button
+                onClick={handleSignOut}
+                variant="outline"
+                size="sm"
+                className="hidden sm:flex items-center space-x-2 hover:bg-destructive hover:text-destructive-foreground transition-colors"
+              >
+                <LogOut className="h-4 w-4" />
+                <span>Sign Out</span>
+              </Button>
             </div>
           </div>
         </header>
