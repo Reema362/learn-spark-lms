@@ -134,7 +134,7 @@ export class DatabaseService {
     if (error) throw error;
   }
 
-  // User Management - Fixed version for bulk upload
+  // User Management - Fixed version with proper Supabase Auth integration
   static async getUsers() {
     const { data, error } = await supabase
       .from('profiles')
@@ -156,41 +156,76 @@ export class DatabaseService {
     try {
       console.log('Creating user with data:', userData);
       
-      // Check if user already exists
-      const { data: existingUser } = await supabase
-        .from('profiles')
-        .select('email')
-        .eq('email', userData.email)
-        .maybeSingle();
+      // First create user in Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: userData.email,
+        password: userData.password,
+        options: {
+          data: {
+            first_name: userData.first_name || '',
+            last_name: userData.last_name || '',
+            role: userData.role || 'user',
+            department: userData.department || ''
+          }
+        }
+      });
 
-      if (existingUser) {
-        throw new Error(`User with email ${userData.email} already exists`);
+      if (authError) {
+        console.error('Auth error creating user:', authError);
+        throw authError;
       }
 
-      // Create user profile directly in the profiles table with a generated UUID
-      const userId = crypto.randomUUID();
+      if (!authData.user) {
+        throw new Error('Failed to create user in auth');
+      }
+
+      // The trigger should automatically create the profile, but let's ensure it exists
+      let retries = 3;
+      let profile = null;
       
-      // Use admin bypass by temporarily setting auth context
-      const { data, error } = await supabase
-        .from('profiles')
-        .insert({
-          id: userId,
-          email: userData.email,
-          first_name: userData.first_name || '',
-          last_name: userData.last_name || '',
-          role: userData.role || 'user',
-          department: userData.department || ''
-        })
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Database error creating user:', error);
-        throw error;
+      while (retries > 0 && !profile) {
+        await new Promise(resolve => setTimeout(resolve, 500)); // Wait 500ms
+        
+        const { data: existingProfile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', authData.user.id)
+          .single();
+          
+        if (existingProfile) {
+          profile = existingProfile;
+          break;
+        }
+        
+        retries--;
       }
 
-      console.log('User created successfully:', data);
-      return data;
+      // If profile doesn't exist after retries, create it manually
+      if (!profile) {
+        const { data: newProfile, error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: authData.user.id,
+            email: userData.email,
+            first_name: userData.first_name || '',
+            last_name: userData.last_name || '',
+            role: userData.role || 'user',
+            department: userData.department || ''
+          })
+          .select()
+          .single();
+
+        if (profileError) {
+          console.error('Profile creation error:', profileError);
+          // Try to clean up the auth user if profile creation fails
+          await supabase.auth.admin.deleteUser(authData.user.id);
+          throw profileError;
+        }
+        profile = newProfile;
+      }
+
+      console.log('User created successfully:', profile);
+      return profile;
     } catch (error) {
       console.error('Error in createUser:', error);
       throw new Error(`Failed to create user: ${error.message}`);
@@ -210,7 +245,7 @@ export class DatabaseService {
     console.log(`Starting bulk creation of ${users.length} users`);
     
     // Process users in smaller batches to avoid timeout
-    const batchSize = 10;
+    const batchSize = 5; // Reduced batch size for more reliable processing
     for (let i = 0; i < users.length; i += batchSize) {
       const batch = users.slice(i, i + batchSize);
       
@@ -249,9 +284,9 @@ export class DatabaseService {
         }
       }
       
-      // Small delay between batches
+      // Delay between batches
       if (i + batchSize < users.length) {
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise(resolve => setTimeout(resolve, 1000));
       }
     }
     
@@ -533,7 +568,7 @@ export class DatabaseService {
   static async createCampaign(campaign: {
     name: string;
     description?: string;
-    status?: string;
+    status?: 'draft' | 'active' | 'paused' | 'completed' | 'cancelled';
     start_date?: string;
     end_date?: string;
     target_audience?: string[];
@@ -545,7 +580,13 @@ export class DatabaseService {
     const { data, error } = await supabase
       .from('campaigns')
       .insert({
-        ...campaign,
+        name: campaign.name,
+        description: campaign.description,
+        status: campaign.status as any || 'draft',
+        start_date: campaign.start_date,
+        end_date: campaign.end_date,
+        target_audience: campaign.target_audience,
+        tags: campaign.tags,
         created_by: user.id
       })
       .select()
@@ -585,7 +626,7 @@ export class DatabaseService {
   static async createEscalation(escalation: {
     title: string;
     description: string;
-    priority?: string;
+    priority?: 'low' | 'medium' | 'high' | 'critical';
     assigned_to?: string;
   }) {
     const { data: { user } } = await supabase.auth.getUser();
@@ -594,7 +635,10 @@ export class DatabaseService {
     const { data, error } = await supabase
       .from('escalations')
       .insert({
-        ...escalation,
+        title: escalation.title,
+        description: escalation.description,
+        priority: escalation.priority as any || 'medium',
+        assigned_to: escalation.assigned_to,
         created_by: user.id
       })
       .select()
@@ -653,7 +697,7 @@ export class DatabaseService {
 
   static async createTemplate(template: {
     name: string;
-    type: string;
+    type: 'email' | 'sms' | 'alert' | 'notification';
     subject?: string;
     content: string;
     variables?: any[];
@@ -665,7 +709,12 @@ export class DatabaseService {
     const { data, error } = await supabase
       .from('templates')
       .insert({
-        ...template,
+        name: template.name,
+        type: template.type as any,
+        subject: template.subject,
+        content: template.content,
+        variables: template.variables,
+        is_active: template.is_active,
         created_by: user.id
       })
       .select()
@@ -685,6 +734,15 @@ export class DatabaseService {
 
     if (error) throw error;
     return data;
+  }
+
+  static async deleteTemplate(id: string) {
+    const { error } = await supabase
+      .from('templates')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
   }
 
   // IAM Management
@@ -751,7 +809,7 @@ export class DatabaseService {
     title: string;
     description?: string;
     game_type: string;
-    difficulty?: string;
+    difficulty?: 'easy' | 'medium' | 'hard';
     topic: string;
     time_limit_seconds?: number;
     questions: any[];
@@ -763,7 +821,14 @@ export class DatabaseService {
     const { data, error } = await supabase
       .from('games')
       .insert({
-        ...game,
+        title: game.title,
+        description: game.description,
+        game_type: game.game_type,
+        difficulty: game.difficulty as any || 'easy',
+        topic: game.topic,
+        time_limit_seconds: game.time_limit_seconds,
+        questions: game.questions,
+        passing_score: game.passing_score,
         created_by: user.id
       })
       .select()
