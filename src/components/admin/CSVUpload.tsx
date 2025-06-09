@@ -83,6 +83,8 @@ const CSVUpload = () => {
     if (!file) return;
 
     setUploading(true);
+    setResults([]);
+    
     try {
       console.log('Starting CSV upload process...');
       const text = await file.text();
@@ -101,6 +103,13 @@ const CSVUpload = () => {
       }
 
       console.log(`Processing ${users.length} users...`);
+      
+      // Show progress toast
+      toast({
+        title: "Processing Users",
+        description: `Starting upload of ${users.length} users...`,
+      });
+      
       const uploadResults = await DatabaseService.bulkCreateUsers(users);
       console.log('Upload results:', uploadResults);
       
@@ -176,6 +185,10 @@ const CSVUpload = () => {
         {results.length > 0 && (
           <div className="space-y-2 max-h-64 overflow-y-auto">
             <h4 className="font-medium">Upload Results:</h4>
+            <div className="text-sm text-muted-foreground mb-2">
+              Success: {results.filter(r => r.success).length} | 
+              Failed: {results.filter(r => !r.success).length}
+            </div>
             {results.map((result, index) => (
               <div key={index} className="flex items-center gap-2 text-sm p-2 rounded border">
                 {result.success ? (

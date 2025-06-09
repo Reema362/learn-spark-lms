@@ -761,9 +761,27 @@ export type Database = {
         ]
       }
       Users: {
-        Row: {}
-        Insert: {}
-        Update: {}
+        Row: {
+          DESIGNATION: string
+          GRADE: string
+          ID: number
+          NAME: string
+          ROLE: string
+        }
+        Insert: {
+          DESIGNATION: string
+          GRADE: string
+          ID: number
+          NAME: string
+          ROLE: string
+        }
+        Update: {
+          DESIGNATION?: string
+          GRADE?: string
+          ID?: number
+          NAME?: string
+          ROLE?: string
+        }
         Relationships: []
       }
     }

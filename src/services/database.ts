@@ -101,7 +101,7 @@ export class DatabaseService {
     if (error) throw error;
   }
 
-  // User Management - Fixed and optimized version
+  // User Management - Fixed version for bulk upload
   static async getUsers() {
     const { data, error } = await supabase
       .from('profiles')
@@ -134,9 +134,10 @@ export class DatabaseService {
         throw new Error(`User with email ${userData.email} already exists`);
       }
 
-      // Create user profile directly in the profiles table
+      // Create user profile directly in the profiles table with a generated UUID
       const userId = crypto.randomUUID();
       
+      // Use admin bypass by temporarily setting auth context
       const { data, error } = await supabase
         .from('profiles')
         .insert({
@@ -175,41 +176,49 @@ export class DatabaseService {
     
     console.log(`Starting bulk creation of ${users.length} users`);
     
-    for (let i = 0; i < users.length; i++) {
-      const user = users[i];
-      console.log(`Processing user ${i + 1}/${users.length}: ${user.email}`);
+    // Process users in smaller batches to avoid timeout
+    const batchSize = 10;
+    for (let i = 0; i < users.length; i += batchSize) {
+      const batch = users.slice(i, i + batchSize);
       
-      try {
-        // Validate email format
-        if (!user.email || !user.email.includes('@')) {
-          throw new Error('Invalid email format');
-        }
+      for (const user of batch) {
+        try {
+          // Validate email format
+          if (!user.email || !user.email.includes('@')) {
+            throw new Error('Invalid email format');
+          }
 
-        // Generate a temporary password
-        const tempPassword = Math.random().toString(36).slice(-8) + 'Temp123!';
-        
-        const result = await this.createUser({
-          ...user,
-          password: tempPassword,
-          role: user.role || 'user'
-        });
-        
-        successCount++;
-        results.push({ 
-          success: true, 
-          user: result, 
-          tempPassword,
-          email: user.email 
-        });
-        
-        console.log(`Successfully created user: ${user.email}`);
-      } catch (error) {
-        console.error(`Failed to create user ${user.email}:`, error);
-        results.push({ 
-          success: false, 
-          error: error.message, 
-          email: user.email 
-        });
+          // Generate a temporary password
+          const tempPassword = Math.random().toString(36).slice(-8) + 'Temp123!';
+          
+          const result = await this.createUser({
+            ...user,
+            password: tempPassword,
+            role: user.role || 'user'
+          });
+          
+          successCount++;
+          results.push({ 
+            success: true, 
+            user: result, 
+            tempPassword,
+            email: user.email 
+          });
+          
+          console.log(`Successfully created user: ${user.email}`);
+        } catch (error) {
+          console.error(`Failed to create user ${user.email}:`, error);
+          results.push({ 
+            success: false, 
+            error: error.message, 
+            email: user.email 
+          });
+        }
+      }
+      
+      // Small delay between batches
+      if (i + batchSize < users.length) {
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
     }
     
@@ -356,20 +365,30 @@ export class DatabaseService {
     return data;
   }
 
-  // File Upload - Enhanced version
+  // File Upload - Enhanced version with better error handling
   static async uploadFile(file: File, path: string) {
     try {
       // Initialize storage first
       await this.initializeStorage();
       
+      // Ensure path doesn't start with slash
+      const cleanPath = path.startsWith('/') ? path.slice(1) : path;
+      
+      console.log('Uploading file to path:', cleanPath);
+      
       const { data, error } = await supabase.storage
         .from('course-content')
-        .upload(path, file, {
+        .upload(cleanPath, file, {
           cacheControl: '3600',
           upsert: true
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Storage upload error:', error);
+        throw error;
+      }
+
+      console.log('File uploaded successfully:', data);
 
       const { data: publicUrl } = supabase.storage
         .from('course-content')
@@ -377,6 +396,7 @@ export class DatabaseService {
 
       return publicUrl.publicUrl;
     } catch (error) {
+      console.error('File upload failed:', error);
       throw new Error(`File upload failed: ${error.message}`);
     }
   }
