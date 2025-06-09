@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -240,27 +239,27 @@ const TemplatesManagement = () => {
                 <div className="space-y-1">
                   <h4 className="font-medium">User Variables:</h4>
                   <div className="grid grid-cols-1 gap-1 text-xs">
-                    <code className="bg-muted/50 px-2 py-1 rounded">{{learner_name}}</code>
-                    <code className="bg-muted/50 px-2 py-1 rounded">{{learner_email}}</code>
-                    <code className="bg-muted/50 px-2 py-1 rounded">{{manager_name}}</code>
+                    <code className="bg-muted/50 px-2 py-1 rounded">{"{{learner_name}}"}</code>
+                    <code className="bg-muted/50 px-2 py-1 rounded">{"{{learner_email}}"}</code>
+                    <code className="bg-muted/50 px-2 py-1 rounded">{"{{manager_name}}"}</code>
                   </div>
                 </div>
                 
                 <div className="space-y-1">
                   <h4 className="font-medium">Course Variables:</h4>
                   <div className="grid grid-cols-1 gap-1 text-xs">
-                    <code className="bg-muted/50 px-2 py-1 rounded">{{course_name}}</code>
-                    <code className="bg-muted/50 px-2 py-1 rounded">{{due_date}}</code>
-                    <code className="bg-muted/50 px-2 py-1 rounded">{{days_remaining}}</code>
+                    <code className="bg-muted/50 px-2 py-1 rounded">{"{{course_name}}"}</code>
+                    <code className="bg-muted/50 px-2 py-1 rounded">{"{{due_date}}"}</code>
+                    <code className="bg-muted/50 px-2 py-1 rounded">{"{{days_remaining}}"}</code>
                   </div>
                 </div>
 
                 <div className="space-y-1">
                   <h4 className="font-medium">System Variables:</h4>
                   <div className="grid grid-cols-1 gap-1 text-xs">
-                    <code className="bg-muted/50 px-2 py-1 rounded">{{platform_name}}</code>
-                    <code className="bg-muted/50 px-2 py-1 rounded">{{current_date}}</code>
-                    <code className="bg-muted/50 px-2 py-1 rounded">{{support_email}}</code>
+                    <code className="bg-muted/50 px-2 py-1 rounded">{"{{platform_name}}"}</code>
+                    <code className="bg-muted/50 px-2 py-1 rounded">{"{{current_date}}"}</code>
+                    <code className="bg-muted/50 px-2 py-1 rounded">{"{{support_email}}"}</code>
                   </div>
                 </div>
               </div>
