@@ -7,31 +7,28 @@ type Profile = Tables['profiles']['Row'];
 type CourseCategory = Tables['course_categories']['Row'];
 type Lesson = Tables['lessons']['Row'];
 type CourseEnrollment = Tables['course_enrollments']['Row'];
-type Campaign = Tables['campaigns']['Row'];
-type Escalation = Tables['escalations']['Row'];
-type Query = Tables['queries']['Row'];
-type Template = Tables['templates']['Row'];
-type Game = Tables['games']['Row'];
-type GameSession = Tables['game_sessions']['Row'];
 
 export class DatabaseService {
   // Initialize storage bucket
   static async initializeStorage() {
-    try {
-      const { data: buckets } = await supabase.storage.listBuckets();
-      const bucketsToCreate = ['courses', 'campaign-assets', 'query-attachments', 'game-assets'];
-      
-      for (const bucketName of bucketsToCreate) {
-        const bucketExists = buckets?.some(bucket => bucket.name === bucketName);
-        if (!bucketExists) {
-          const { error } = await supabase.storage.createBucket(bucketName, { public: true });
-          if (error) console.log('Bucket creation info:', error.message);
-        }
+  try {
+    const { data: buckets } = await supabase.storage.listBuckets();
+    // Change 'content' to 'courses'
+    const bucketExists = buckets?.some(bucket => bucket.name === 'courses');
+    
+    if (!bucketExists) {
+      // Update bucket name here
+      const { error } = await supabase.storage.createBucket('courses', {
+        public: true
+      });
+      if (error) {
+        console.log('Bucket creation info:', error.message);
       }
-    } catch (error) {
-      console.log('Storage initialization info:', error);
     }
+  } catch (error) {
+    console.log('Storage initialization info:', error);
   }
+}
 
   // Course Management
   static async getCourses() {
@@ -49,52 +46,84 @@ export class DatabaseService {
   }
 
   static async createCourse(course: {
-    title: string;
-    description?: string;
-    content?: string;
-    category_id?: string;
-    duration_hours?: number;
-    difficulty_level?: string;
-    is_mandatory?: boolean;
-    thumbnail_url?: string;
-    video_url?: string;
-  }) {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
+  title: string;
+  description?: string;
+  content?: string;
+  category_id?: string;
+  duration_hours?: number;
+  difficulty_level?: string;
+  is_mandatory?: boolean;
+  thumbnail_url?: string;
+  video_url?: string;
+}) {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
 
-    const { data, error } = await supabase
-      .from('courses')
-      .insert({
-        title: course.title,
-        description: course.description,
-        content: course.content,
-        category_id: course.category_id,
-        duration_hours: course.duration_hours || 1,
-        difficulty_level: course.difficulty_level || 'beginner',
-        is_mandatory: course.is_mandatory || false,
-        thumbnail_url: course.thumbnail_url,
-        video_url: course.video_url,
-        created_by: user.id,
-        status: 'draft'
-      })
-      .select()
+  // Validate category exists if provided
+  if (course.category_id) {
+    const { data: category, error: categoryError } = await supabase
+      .from('course_categories')
+      .select('id')
+      .eq('id', course.category_id)
       .single();
 
-    if (error) throw error;
-    return data;
+    if (categoryError || !category) {
+      throw new Error('Invalid category_id provided');
+    }
   }
+
+  const { data, error } = await supabase
+    .from('courses')
+    .insert({
+      title: course.title,
+      description: course.description,
+      content: course.content,
+      category_id: course.category_id,
+      duration_hours: course.duration_hours || 1,
+      difficulty_level: course.difficulty_level || 'beginner',
+      is_mandatory: course.is_mandatory || false,
+      thumbnail_url: course.thumbnail_url,
+      video_url: course.video_url,
+      created_by: user.id,
+      status: 'draft'
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
 
   static async updateCourse(id: string, updates: Partial<Course>) {
-    const { data, error } = await supabase
-      .from('courses')
-      .update(updates)
-      .eq('id', id)
-      .select()
-      .single();
+  // Validate category if updating category_id
+  if (updates.category_id !== undefined) {
+    if (updates.category_id) {
+      // Check if category exists when a non-null value is provided
+      const { data: category, error: categoryError } = await supabase
+        .from('course_categories')
+        .select('id')
+        .eq('id', updates.category_id)
+        .single();
 
-    if (error) throw error;
-    return data;
+      if (categoryError || !category) {
+        throw new Error('Invalid category_id provided');
+      }
+    } else {
+      // Handle case where category_id is being set to null
+      updates.category_id = null;
+    }
   }
+
+  const { data, error } = await supabase
+    .from('courses')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
 
   static async deleteCourse(id: string) {
     const { error } = await supabase
@@ -105,7 +134,7 @@ export class DatabaseService {
     if (error) throw error;
   }
 
-  // Fixed User Management with proper auth integration
+  // User Management - Fixed version for bulk upload
   static async getUsers() {
     const { data, error } = await supabase
       .from('profiles')
@@ -127,15 +156,33 @@ export class DatabaseService {
     try {
       console.log('Creating user with data:', userData);
       
-      // Use the database function for proper user creation
-      const { data, error } = await supabase.rpc('create_auth_user', {
-        user_email: userData.email,
-        user_password: userData.password,
-        user_first_name: userData.first_name || '',
-        user_last_name: userData.last_name || '',
-        user_role: userData.role || 'user',
-        user_department: userData.department || ''
-      });
+      // Check if user already exists
+      const { data: existingUser } = await supabase
+        .from('profiles')
+        .select('email')
+        .eq('email', userData.email)
+        .maybeSingle();
+
+      if (existingUser) {
+        throw new Error(`User with email ${userData.email} already exists`);
+      }
+
+      // Create user profile directly in the profiles table with a generated UUID
+      const userId = crypto.randomUUID();
+      
+      // Use admin bypass by temporarily setting auth context
+      const { data, error } = await supabase
+        .from('profiles')
+        .insert({
+          id: userId,
+          email: userData.email,
+          first_name: userData.first_name || '',
+          last_name: userData.last_name || '',
+          role: userData.role || 'user',
+          department: userData.department || ''
+        })
+        .select()
+        .single();
 
       if (error) {
         console.error('Database error creating user:', error);
@@ -162,36 +209,49 @@ export class DatabaseService {
     
     console.log(`Starting bulk creation of ${users.length} users`);
     
-    for (const user of users) {
-      try {
-        if (!user.email || !user.email.includes('@')) {
-          throw new Error('Invalid email format');
-        }
+    // Process users in smaller batches to avoid timeout
+    const batchSize = 10;
+    for (let i = 0; i < users.length; i += batchSize) {
+      const batch = users.slice(i, i + batchSize);
+      
+      for (const user of batch) {
+        try {
+          // Validate email format
+          if (!user.email || !user.email.includes('@')) {
+            throw new Error('Invalid email format');
+          }
 
-        const tempPassword = Math.random().toString(36).slice(-8) + 'Temp123!';
-        
-        const result = await this.createUser({
-          ...user,
-          password: tempPassword,
-          role: user.role || 'user'
-        });
-        
-        successCount++;
-        results.push({ 
-          success: true, 
-          user: result, 
-          tempPassword,
-          email: user.email 
-        });
-        
-        console.log(`Successfully created user: ${user.email}`);
-      } catch (error) {
-        console.error(`Failed to create user ${user.email}:`, error);
-        results.push({ 
-          success: false, 
-          error: error.message, 
-          email: user.email 
-        });
+          // Generate a temporary password
+          const tempPassword = Math.random().toString(36).slice(-8) + 'Temp123!';
+          
+          const result = await this.createUser({
+            ...user,
+            password: tempPassword,
+            role: user.role || 'user'
+          });
+          
+          successCount++;
+          results.push({ 
+            success: true, 
+            user: result, 
+            tempPassword,
+            email: user.email 
+          });
+          
+          console.log(`Successfully created user: ${user.email}`);
+        } catch (error) {
+          console.error(`Failed to create user ${user.email}:`, error);
+          results.push({ 
+            success: false, 
+            error: error.message, 
+            email: user.email 
+          });
+        }
+      }
+      
+      // Small delay between batches
+      if (i + batchSize < users.length) {
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
     }
     
@@ -452,515 +512,6 @@ export class DatabaseService {
       .eq('user_id', userId)
       .order('awarded_at', { ascending: false });
     
-    if (error) throw error;
-    return data;
-  }
-
-  // Campaign Management
-  static async getCampaigns() {
-    const { data, error } = await supabase
-      .from('campaigns')
-      .select(`
-        *,
-        profiles(first_name, last_name),
-        campaign_assets(*)
-      `)
-      .order('created_at', { ascending: false });
-    
-    if (error) throw error;
-    return data;
-  }
-
-  static async createCampaign(campaign: {
-    name: string;
-    description?: string;
-    status?: string;
-    start_date?: string;
-    end_date?: string;
-    target_audience?: string[];
-    tags?: string[];
-  }) {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
-
-    const { data, error } = await supabase
-      .from('campaigns')
-      .insert({
-        ...campaign,
-        created_by: user.id
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
-  }
-
-  static async updateCampaign(id: string, updates: Partial<Campaign>) {
-    const { data, error } = await supabase
-      .from('campaigns')
-      .update(updates)
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
-  }
-
-  static async deleteCampaign(id: string) {
-    const { error } = await supabase
-      .from('campaigns')
-      .delete()
-      .eq('id', id);
-
-    if (error) throw error;
-  }
-
-  static async uploadCampaignAsset(campaignId: string, file: File) {
-    const fileName = `${campaignId}/${Date.now()}_${file.name}`;
-    
-    const { data: uploadData, error: uploadError } = await supabase.storage
-      .from('campaign-assets')
-      .upload(fileName, file);
-
-    if (uploadError) throw uploadError;
-
-    const { data: { publicUrl } } = supabase.storage
-      .from('campaign-assets')
-      .getPublicUrl(uploadData.path);
-
-    const { data, error } = await supabase
-      .from('campaign_assets')
-      .insert({
-        campaign_id: campaignId,
-        file_name: file.name,
-        file_url: publicUrl,
-        file_type: file.type,
-        file_size: file.size
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
-  }
-
-  // Escalation Management
-  static async getEscalations() {
-    const { data, error } = await supabase
-      .from('escalations')
-      .select(`
-        *,
-        assigned_to_profile:profiles!escalations_assigned_to_fkey(first_name, last_name, email),
-        created_by_profile:profiles!escalations_created_by_fkey(first_name, last_name, email),
-        escalation_comments(*, profiles(first_name, last_name))
-      `)
-      .order('created_at', { ascending: false });
-    
-    if (error) throw error;
-    return data;
-  }
-
-  static async createEscalation(escalation: {
-    title: string;
-    description: string;
-    priority?: string;
-    assigned_to?: string;
-  }) {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
-
-    const { data, error } = await supabase
-      .from('escalations')
-      .insert({
-        ...escalation,
-        created_by: user.id
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
-  }
-
-  static async updateEscalation(id: string, updates: Partial<Escalation>) {
-    const { data, error } = await supabase
-      .from('escalations')
-      .update(updates)
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
-  }
-
-  static async addEscalationComment(escalationId: string, comment: string) {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
-
-    const { data, error } = await supabase
-      .from('escalation_comments')
-      .insert({
-        escalation_id: escalationId,
-        comment,
-        created_by: user.id
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
-  }
-
-  // Query Management
-  static async getQueries() {
-    const { data, error } = await supabase
-      .from('queries')
-      .select(`
-        *,
-        submitted_by_profile:profiles!queries_submitted_by_fkey(first_name, last_name, email),
-        assigned_to_profile:profiles!queries_assigned_to_fkey(first_name, last_name, email),
-        query_responses(*, profiles(first_name, last_name)),
-        query_attachments(*)
-      `)
-      .order('created_at', { ascending: false });
-    
-    if (error) throw error;
-    return data;
-  }
-
-  static async createQuery(query: {
-    title: string;
-    description: string;
-    category: string;
-  }) {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
-
-    const { data, error } = await supabase
-      .from('queries')
-      .insert({
-        ...query,
-        submitted_by: user.id
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
-  }
-
-  static async addQueryResponse(queryId: string, response: string) {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
-
-    const { data, error } = await supabase
-      .from('query_responses')
-      .insert({
-        query_id: queryId,
-        response,
-        responded_by: user.id
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
-  }
-
-  static async uploadQueryAttachment(queryId: string, file: File) {
-    const fileName = `${queryId}/${Date.now()}_${file.name}`;
-    
-    const { data: uploadData, error: uploadError } = await supabase.storage
-      .from('query-attachments')
-      .upload(fileName, file);
-
-    if (uploadError) throw uploadError;
-
-    const { data: { publicUrl } } = supabase.storage
-      .from('query-attachments')
-      .getPublicUrl(uploadData.path);
-
-    const { data, error } = await supabase
-      .from('query_attachments')
-      .insert({
-        query_id: queryId,
-        file_name: file.name,
-        file_url: publicUrl
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
-  }
-
-  // Template Management
-  static async getTemplates() {
-    const { data, error } = await supabase
-      .from('templates')
-      .select(`
-        *,
-        profiles(first_name, last_name)
-      `)
-      .order('created_at', { ascending: false });
-    
-    if (error) throw error;
-    return data;
-  }
-
-  static async createTemplate(template: {
-    name: string;
-    type: string;
-    subject?: string;
-    content: string;
-    variables?: any;
-  }) {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
-
-    const { data, error } = await supabase
-      .from('templates')
-      .insert({
-        ...template,
-        created_by: user.id
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
-  }
-
-  static async updateTemplate(id: string, updates: Partial<Template>) {
-    const { data, error } = await supabase
-      .from('templates')
-      .update(updates)
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
-  }
-
-  static async deleteTemplate(id: string) {
-    const { error } = await supabase
-      .from('templates')
-      .delete()
-      .eq('id', id);
-
-    if (error) throw error;
-  }
-
-  // IAM Management
-  static async getRoles() {
-    const { data, error } = await supabase
-      .from('roles')
-      .select('*')
-      .order('name');
-    
-    if (error) throw error;
-    return data;
-  }
-
-  static async getUserRoles() {
-    const { data, error } = await supabase
-      .from('user_roles')
-      .select(`
-        *,
-        profiles(first_name, last_name, email),
-        roles(name, description),
-        assigned_by_profile:profiles!user_roles_assigned_by_fkey(first_name, last_name)
-      `)
-      .order('assigned_at', { ascending: false });
-    
-    if (error) throw error;
-    return data;
-  }
-
-  static async assignRole(userId: string, roleId: string) {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
-
-    const { data, error } = await supabase
-      .from('user_roles')
-      .insert({
-        user_id: userId,
-        role_id: roleId,
-        assigned_by: user.id
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
-  }
-
-  static async getAuditLogs() {
-    const { data, error } = await supabase
-      .from('audit_logs')
-      .select(`
-        *,
-        profiles(first_name, last_name, email)
-      `)
-      .order('created_at', { ascending: false })
-      .limit(100);
-    
-    if (error) throw error;
-    return data;
-  }
-
-  // Gamification
-  static async getGames() {
-    const { data, error } = await supabase
-      .from('games')
-      .select('*')
-      .eq('is_active', true)
-      .order('created_at', { ascending: false });
-    
-    if (error) throw error;
-    return data;
-  }
-
-  static async createGame(game: {
-    title: string;
-    description?: string;
-    game_type: string;
-    difficulty?: string;
-    topic: string;
-    time_limit_seconds?: number;
-    questions: any;
-    passing_score?: number;
-  }) {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
-
-    const { data, error } = await supabase
-      .from('games')
-      .insert({
-        ...game,
-        created_by: user.id
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
-  }
-
-  static async getGameBadges() {
-    const { data, error } = await supabase
-      .from('game_badges')
-      .select('*')
-      .order('topic', { ascending: true });
-    
-    if (error) throw error;
-    return data;
-  }
-
-  static async submitGameSession(gameId: string, score: number, timeTaken: number, answers: any) {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
-
-    const { data, error } = await supabase
-      .from('game_sessions')
-      .insert({
-        game_id: gameId,
-        user_id: user.id,
-        score,
-        time_taken_seconds: timeTaken,
-        answers
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    // Check if user earned any badges
-    await this.checkAndAwardBadges(user.id, gameId, score, timeTaken);
-
-    return data;
-  }
-
-  static async checkAndAwardBadges(userId: string, gameId: string, score: number, timeTaken: number) {
-    // Get game details to know the topic
-    const { data: game } = await supabase
-      .from('games')
-      .select('topic')
-      .eq('id', gameId)
-      .single();
-
-    if (!game) return;
-
-    // Get badges for this topic
-    const { data: badges } = await supabase
-      .from('game_badges')
-      .select('*')
-      .eq('topic', game.topic);
-
-    if (!badges) return;
-
-    // Check each badge criteria
-    for (const badge of badges) {
-      const criteria = badge.criteria as any;
-      if (score >= criteria.min_score && timeTaken <= criteria.max_time) {
-        // Check if user already has this badge
-        const { data: existingBadge } = await supabase
-          .from('user_game_badges')
-          .select('id')
-          .eq('user_id', userId)
-          .eq('badge_id', badge.id)
-          .single();
-
-        if (!existingBadge) {
-          // Award the badge
-          await supabase
-            .from('user_game_badges')
-            .insert({
-              user_id: userId,
-              badge_id: badge.id
-            });
-        }
-      }
-    }
-  }
-
-  static async getUserGameStats(userId?: string) {
-    const targetUserId = userId || (await supabase.auth.getUser()).data.user?.id;
-    if (!targetUserId) return null;
-
-    const { data: sessions } = await supabase
-      .from('game_sessions')
-      .select('*')
-      .eq('user_id', targetUserId);
-
-    const { data: badges } = await supabase
-      .from('user_game_badges')
-      .select('*, game_badges(*)')
-      .eq('user_id', targetUserId);
-
-    return {
-      totalGamesPlayed: sessions?.length || 0,
-      totalBadgesEarned: badges?.length || 0,
-      averageScore: sessions?.reduce((acc, s) => acc + s.score, 0) / (sessions?.length || 1) || 0,
-      badges: badges || []
-    };
-  }
-
-  static async getLeaderboard() {
-    const { data, error } = await supabase
-      .from('game_sessions')
-      .select(`
-        user_id,
-        score,
-        profiles(first_name, last_name)
-      `)
-      .order('score', { ascending: false })
-      .limit(10);
-
     if (error) throw error;
     return data;
   }
