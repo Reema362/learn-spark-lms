@@ -16,7 +16,7 @@ const AvoAssistant: React.FC<AvoAssistantProps> = ({ isOpen, onClose, userRole }
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [transcript, setTranscript] = useState('');
   const [response, setResponse] = useState('');
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const recognitionRef = useRef<any>(null);
   const synthesisRef = useRef<SpeechSynthesisUtterance | null>(null);
   const { toast } = useToast();
 
@@ -132,8 +132,7 @@ const AvoAssistant: React.FC<AvoAssistantProps> = ({ isOpen, onClose, userRole }
         voice.name.toLowerCase().includes('female') || 
         voice.name.toLowerCase().includes('samantha') ||
         voice.name.toLowerCase().includes('karen') ||
-        voice.name.toLowerCase().includes('victoria') ||
-        voice.gender === 'female'
+        voice.name.toLowerCase().includes('victoria')
       ) || voices.find(voice => voice.lang.startsWith('en'));
       
       if (femaleVoice) {

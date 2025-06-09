@@ -152,26 +152,6 @@ const Login = () => {
             Empowering organizations with comprehensive information security training, 
             AI-powered assistance, and certification management.
           </p>
-          
-          {/* Feature highlights */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
-              <h3 className="font-semibold mb-2">🤖 AI Assistant</h3>
-              <p className="text-sm opacity-80">Voice-powered learning companion</p>
-            </div>
-            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
-              <h3 className="font-semibold mb-2">💬 Smart Chatbot</h3>
-              <p className="text-sm opacity-80">24/7 intelligent support</p>
-            </div>
-            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
-              <h3 className="font-semibold mb-2">🎯 Personalized Learning</h3>
-              <p className="text-sm opacity-80">Adaptive course recommendations</p>
-            </div>
-            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
-              <h3 className="font-semibold mb-2">📊 Advanced Analytics</h3>
-              <p className="text-sm opacity-80">Real-time progress tracking</p>
-            </div>
-          </div>
         </div>
 
         {/* Right side - Enhanced Login Form */}
