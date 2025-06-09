@@ -14,10 +14,10 @@ export class DatabaseService {
     try {
       // Try to create the bucket if it doesn't exist
       const { data: buckets } = await supabase.storage.listBuckets();
-      const bucketExists = buckets?.some(bucket => bucket.name === 'content');
+      const bucketExists = buckets?.some(bucket => bucket.name === 'courses');
       
       if (!bucketExists) {
-        const { error } = await supabase.storage.createBucket('content', {
+        const { error } = await supabase.storage.createBucket('courses', {
           public: true
         });
         if (error) {
