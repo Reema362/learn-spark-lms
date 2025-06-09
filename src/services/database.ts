@@ -25,14 +25,34 @@ export class DatabaseService {
     return data;
   }
 
-  static async createCourse(course: Partial<Course>) {
+  static async createCourse(course: {
+    title: string;
+    description?: string;
+    content?: string;
+    category_id?: string;
+    duration_hours?: number;
+    difficulty_level?: string;
+    prerequisites?: string[];
+    is_mandatory?: boolean;
+    status?: 'draft' | 'published' | 'archived';
+    thumbnail_url?: string;
+  }) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
     const { data, error } = await supabase
       .from('courses')
       .insert({
-        ...course,
+        title: course.title,
+        description: course.description,
+        content: course.content,
+        category_id: course.category_id,
+        duration_hours: course.duration_hours,
+        difficulty_level: course.difficulty_level,
+        prerequisites: course.prerequisites,
+        is_mandatory: course.is_mandatory,
+        status: course.status,
+        thumbnail_url: course.thumbnail_url,
         created_by: user.id
       })
       .select()
@@ -99,7 +119,7 @@ export class DatabaseService {
       const { error: profileError } = await supabase
         .from('profiles')
         .update({
-          role: userData.role || 'learner',
+          role: userData.role === 'learner' ? 'user' : userData.role === 'instructor' ? 'manager' : 'admin',
           department: userData.department
         })
         .eq('id', authData.user.id);
@@ -138,10 +158,18 @@ export class DatabaseService {
     return data;
   }
 
-  static async createCourseCategory(category: Partial<CourseCategory>) {
+  static async createCourseCategory(category: {
+    name: string;
+    description?: string;
+    color?: string;
+  }) {
     const { data, error } = await supabase
       .from('course_categories')
-      .insert(category)
+      .insert({
+        name: category.name,
+        description: category.description,
+        color: category.color
+      })
       .select()
       .single();
 
@@ -161,10 +189,30 @@ export class DatabaseService {
     return data;
   }
 
-  static async createLesson(lesson: Partial<Lesson>) {
+  static async createLesson(lesson: {
+    course_id: string;
+    title: string;
+    content?: string;
+    video_url?: string;
+    document_url?: string;
+    type?: 'text' | 'video' | 'quiz' | 'assignment';
+    duration_minutes?: number;
+    order_index?: number;
+    is_required?: boolean;
+  }) {
     const { data, error } = await supabase
       .from('lessons')
-      .insert(lesson)
+      .insert({
+        course_id: lesson.course_id,
+        title: lesson.title,
+        content: lesson.content,
+        video_url: lesson.video_url,
+        document_url: lesson.document_url,
+        type: lesson.type,
+        duration_minutes: lesson.duration_minutes,
+        order_index: lesson.order_index || 0,
+        is_required: lesson.is_required
+      })
       .select()
       .single();
 
@@ -264,5 +312,42 @@ export class DatabaseService {
       completedEnrollments: enrollmentsResult.data?.filter(e => e.status === 'completed').length || 0,
       averageProgress: enrollmentsResult.data?.reduce((acc, e) => acc + (e.progress_percentage || 0), 0) / (enrollmentsResult.data?.length || 1) || 0
     };
+  }
+
+  // Create admin users
+  static async createAdminUser(email: string, password: string, firstName: string, lastName: string) {
+    try {
+      // Create user in auth
+      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+        email,
+        password,
+        user_metadata: {
+          first_name: firstName,
+          last_name: lastName
+        },
+        email_confirm: true
+      });
+
+      if (authError) throw authError;
+
+      // Update profile to set admin role
+      if (authData.user) {
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .update({
+            role: 'admin',
+            first_name: firstName,
+            last_name: lastName
+          })
+          .eq('id', authData.user.id);
+
+        if (profileError) throw profileError;
+      }
+
+      return authData.user;
+    } catch (error) {
+      console.error('Error creating admin user:', error);
+      throw error;
+    }
   }
 }
