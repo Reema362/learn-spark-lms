@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,13 +10,12 @@ import { useNavigate } from "react-router-dom";
 import { Shield, Sun, Moon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "@/context/ThemeContext";
-import SecurityAlert from "../components/SecurityAlert";
 
 const Login = () => {
   const [learnerEmail, setLearnerEmail] = useState('');
   const [adminEmail, setAdminEmail] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
-  const { login, loading, isDemoMode } = useAuth();
+  const { login, loading } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -107,7 +107,7 @@ const Login = () => {
     } else {
       toast({
         title: "Login Failed",
-        description: "Invalid credentials or too many failed attempts. Please try again later.",
+        description: "Invalid credentials. Please check your email and password.",
         variant: "destructive"
       });
     }
@@ -156,8 +156,6 @@ const Login = () => {
 
         {/* Right side - Enhanced Login Form */}
         <div className="w-full max-w-md mx-auto animate-fade-in">
-          <SecurityAlert variant="demo" className="mb-4" />
-          
           <Card className="shadow-2xl bg-card/95 backdrop-blur-sm border-0">
             <CardHeader className="text-center pb-2">
               <CardTitle className="text-3xl font-normal bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
@@ -234,16 +232,14 @@ const Login = () => {
                       {loading ? "Signing in..." : "🔑 Admin Sign in"}
                     </Button>
                   </form>
-                  {isDemoMode && (
-                    <div className="text-sm text-center p-4 bg-gradient-to-r from-warning/20 to-warning/10 rounded-lg border border-warning/20">
-                      <p className="text-muted-foreground mb-2">
-                        <strong>Demo credentials:</strong> admin@avocop.com / admin123
-                      </p>
-                      <p className="text-xs text-warning">
-                        ⚠️ Remove hardcoded credentials before production deployment
-                      </p>
-                    </div>
-                  )}
+                  <div className="text-sm text-center p-4 bg-gradient-to-r from-muted/50 to-muted/30 rounded-lg border border-muted">
+                    <p className="text-muted-foreground mb-1">
+                      <strong>Demo credentials:</strong>
+                    </p>
+                    <p className="text-muted-foreground text-xs">
+                      Email: admin@avocop.com | Password: admin123
+                    </p>
+                  </div>
                 </TabsContent>
               </Tabs>
             </CardContent>

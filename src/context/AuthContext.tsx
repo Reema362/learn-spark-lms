@@ -131,8 +131,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       let authSuccess = false;
       
       if (userType === 'admin' && password) {
-        // Demo admin credentials - REMOVE IN PRODUCTION
-        if (isDemoMode && sanitizedEmail === 'admin@avocop.com' && password === 'admin123') {
+        // Demo admin credentials
+        if (sanitizedEmail === 'admin@avocop.com' && password === 'admin123') {
           mockUser = {
             id: '1',
             email: sanitizedEmail,
@@ -140,7 +140,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             role: 'admin'
           };
           authSuccess = true;
-          console.warn('🚨 DEMO MODE: Using hardcoded credentials. Remove for production!');
         } else {
           recordLoginAttempt(sanitizedEmail, false);
           setLoading(false);
