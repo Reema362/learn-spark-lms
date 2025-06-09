@@ -3,14 +3,12 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, saveUserSession, loadUserSession, clearUserSession, logAuditEvent } from '../utils/sessionManager';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { DatabaseService } from '@/services/database';
 
 interface AuthContextType {
   user: User | null;
   login: (email: string, password?: string, userType?: 'admin' | 'learner') => Promise<boolean>;
   logout: () => void;
   loading: boolean;
-  createAdminUsers: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -84,106 +82,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => subscription.unsubscribe();
   }, []);
 
-  const createAdminUsers = async () => {
-    try {
-      // Create admin users
-      await DatabaseService.createAdminUser(
-        'naveen.v1@slksoftware.com',
-        'SecurePass123!',
-        'Naveen',
-        'V'
-      );
-
-      await DatabaseService.createAdminUser(
-        'reema.jain@slksoftware.com',
-        'SecurePass123!',
-        'Reema',
-        'Jain'
-      );
-
-      toast({
-        title: "Admin users created",
-        description: "Both admin users have been created successfully",
-      });
-    } catch (error: any) {
-      console.error('Error creating admin users:', error);
-      if (error.message?.includes('User already registered')) {
-        toast({
-          title: "Users already exist",
-          description: "Admin users are already created",
-        });
-      } else {
-        toast({
-          title: "Error",
-          description: error.message || "Failed to create admin users",
-          variant: "destructive",
-        });
-      }
-    }
-  };
-
   const login = async (email: string, password?: string, userType?: 'admin' | 'learner'): Promise<boolean> => {
     setLoading(true);
     
     try {
       if (!password) {
-        // For learner SSO, create a demo login
-        if (userType === 'learner') {
-          // Check if user exists in profiles
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('email', email)
-            .single();
-
-          if (!profile) {
-            // Create a new learner user
-            const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-              email,
-              password: 'TempPass123!',
-              user_metadata: {
-                first_name: email.split('@')[0],
-                last_name: ''
-              },
-              email_confirm: true
-            });
-
-            if (authError) throw authError;
-
-            if (authData.user) {
-              const { error: profileError } = await supabase
-                .from('profiles')
-                .update({
-                  role: 'user'
-                })
-                .eq('id', authData.user.id);
-
-              if (profileError) throw profileError;
-            }
-          }
-
-          // Sign in the user
-          const { data, error } = await supabase.auth.signInWithPassword({
-            email,
-            password: 'TempPass123!',
-          });
-
-          if (error) throw error;
-
-          toast({
-            title: "Welcome!",
-            description: "Successfully signed in via SSO",
-          });
-          
-          return true;
-        } else {
-          toast({
-            title: "Error",
-            description: "Password is required for admin login",
-            variant: "destructive",
-          });
-          return false;
-        }
+        toast({
+          title: "Error",
+          description: "Password is required",
+          variant: "destructive",
+        });
+        return false;
       }
 
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -268,7 +177,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading, createAdminUsers }}>
+    <AuthContext.Provider value={{ user, login, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );
