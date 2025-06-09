@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Upload, Video, CheckCircle } from 'lucide-react';
+import { Upload, Video, CheckCircle, Plus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { DatabaseService } from '@/services/database';
 import { useCourseCategories } from '@/hooks/useDatabase';
@@ -19,12 +19,14 @@ const VideoUpload = () => {
     title: '',
     description: '',
     category_id: '',
-    duration_hours: 1,
+    duration_minutes: 30,
     difficulty_level: 'beginner',
     is_mandatory: false
   });
+  const [newCategory, setNewCategory] = useState({ name: '', color: '#3B82F6' });
+  const [showNewCategory, setShowNewCategory] = useState(false);
   const { toast } = useToast();
-  const { data: categories = [] } = useCourseCategories();
+  const { data: categories = [], refetch: refetchCategories } = useCourseCategories();
 
   const handleVideoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -47,6 +49,34 @@ const VideoUpload = () => {
       toast({
         title: "Invalid File",
         description: "Please select a valid image file",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleCreateCategory = async () => {
+    if (!newCategory.name.trim()) {
+      toast({
+        title: "Category Name Required",
+        description: "Please enter a category name",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      await DatabaseService.createCourseCategory(newCategory);
+      await refetchCategories();
+      setNewCategory({ name: '', color: '#3B82F6' });
+      setShowNewCategory(false);
+      toast({
+        title: "Success",
+        description: "Category created successfully",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
         variant: "destructive"
       });
     }
@@ -75,9 +105,10 @@ const VideoUpload = () => {
         thumbnailUrl = await DatabaseService.uploadFile(thumbnailFile, thumbnailPath);
       }
 
-      // Create course
+      // Create course with duration in hours (converted from minutes)
       const course = await DatabaseService.createCourse({
         ...courseData,
+        duration_hours: Math.ceil(courseData.duration_minutes / 60), // Convert minutes to hours
         video_url: videoUrl,
         thumbnail_url: thumbnailUrl
       });
@@ -88,7 +119,7 @@ const VideoUpload = () => {
         course_id: course.id,
         video_url: videoUrl,
         type: 'video',
-        duration_minutes: courseData.duration_hours * 60,
+        duration_minutes: courseData.duration_minutes,
         order_index: 1
       });
 
@@ -104,7 +135,7 @@ const VideoUpload = () => {
         title: '',
         description: '',
         category_id: '',
-        duration_hours: 1,
+        duration_minutes: 30,
         difficulty_level: 'beginner',
         is_mandatory: false
       });
@@ -155,7 +186,39 @@ const VideoUpload = () => {
 
           <div className="grid grid-cols-2 gap-4">
             <div className="grid gap-2">
-              <Label htmlFor="category">Category</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="category">Category</Label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowNewCategory(!showNewCategory)}
+                >
+                  <Plus className="h-3 w-3 mr-1" />
+                  Add New
+                </Button>
+              </div>
+              
+              {showNewCategory && (
+                <div className="p-3 border rounded-lg space-y-2">
+                  <Input
+                    placeholder="Category name"
+                    value={newCategory.name}
+                    onChange={(e) => setNewCategory(prev => ({ ...prev, name: e.target.value }))}
+                  />
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="color"
+                      value={newCategory.color}
+                      onChange={(e) => setNewCategory(prev => ({ ...prev, color: e.target.value }))}
+                      className="w-12 h-8"
+                    />
+                    <Button size="sm" onClick={handleCreateCategory}>Create</Button>
+                    <Button size="sm" variant="outline" onClick={() => setShowNewCategory(false)}>Cancel</Button>
+                  </div>
+                </div>
+              )}
+              
               <Select value={courseData.category_id} onValueChange={(value) => setCourseData(prev => ({ ...prev, category_id: value }))}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select category" />
@@ -163,7 +226,13 @@ const VideoUpload = () => {
                 <SelectContent>
                   {categories.map((category: any) => (
                     <SelectItem key={category.id} value={category.id}>
-                      {category.name}
+                      <div className="flex items-center gap-2">
+                        <div 
+                          className="w-3 h-3 rounded-full" 
+                          style={{ backgroundColor: category.color }}
+                        ></div>
+                        {category.name}
+                      </div>
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -171,13 +240,14 @@ const VideoUpload = () => {
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="duration">Duration (hours)</Label>
+              <Label htmlFor="duration">Duration (minutes)</Label>
               <Input
                 id="duration"
                 type="number"
-                value={courseData.duration_hours}
-                onChange={(e) => setCourseData(prev => ({ ...prev, duration_hours: parseInt(e.target.value) }))}
+                value={courseData.duration_minutes}
+                onChange={(e) => setCourseData(prev => ({ ...prev, duration_minutes: parseInt(e.target.value) }))}
                 min="1"
+                placeholder="30"
               />
             </div>
           </div>

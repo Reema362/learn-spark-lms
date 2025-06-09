@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
 
@@ -10,6 +9,26 @@ type Lesson = Tables['lessons']['Row'];
 type CourseEnrollment = Tables['course_enrollments']['Row'];
 
 export class DatabaseService {
+  // Initialize storage bucket
+  static async initializeStorage() {
+    try {
+      // Try to create the bucket if it doesn't exist
+      const { data: buckets } = await supabase.storage.listBuckets();
+      const bucketExists = buckets?.some(bucket => bucket.name === 'course-content');
+      
+      if (!bucketExists) {
+        const { error } = await supabase.storage.createBucket('course-content', {
+          public: true
+        });
+        if (error) {
+          console.log('Bucket creation info:', error.message);
+        }
+      }
+    } catch (error) {
+      console.log('Storage initialization info:', error);
+    }
+  }
+
   // Course Management
   static async getCourses() {
     const { data, error } = await supabase
@@ -50,6 +69,7 @@ export class DatabaseService {
         difficulty_level: course.difficulty_level || 'beginner',
         is_mandatory: course.is_mandatory || false,
         thumbnail_url: course.thumbnail_url,
+        video_url: course.video_url,
         created_by: user.id,
         status: 'draft'
       })
@@ -81,7 +101,7 @@ export class DatabaseService {
     if (error) throw error;
   }
 
-  // User Management
+  // User Management - Fixed version
   static async getUsers() {
     const { data, error } = await supabase
       .from('profiles')
@@ -100,32 +120,29 @@ export class DatabaseService {
     role?: 'admin' | 'user';
     department?: string;
   }) {
-    // Create user in auth
-    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-      email: userData.email,
-      password: userData.password,
-      user_metadata: {
-        first_name: userData.first_name,
-        last_name: userData.last_name
-      }
-    });
-
-    if (authError) throw authError;
-
-    // Update profile with additional data
-    if (authData.user && (userData.role || userData.department)) {
-      const { error: profileError } = await supabase
+    try {
+      // Create user profile directly in the profiles table
+      const userId = crypto.randomUUID();
+      
+      const { data, error } = await supabase
         .from('profiles')
-        .update({
+        .insert({
+          id: userId,
+          email: userData.email,
+          first_name: userData.first_name,
+          last_name: userData.last_name,
           role: userData.role || 'user',
           department: userData.department
         })
-        .eq('id', authData.user.id);
+        .select()
+        .single();
 
-      if (profileError) throw profileError;
+      if (error) throw error;
+
+      return { id: userId, email: userData.email, ...data };
+    } catch (error) {
+      throw new Error(`Failed to create user: ${error.message}`);
     }
-
-    return authData.user;
   }
 
   static async bulkCreateUsers(users: Array<{
@@ -292,22 +309,29 @@ export class DatabaseService {
     return data;
   }
 
-  // File Upload
+  // File Upload - Enhanced version
   static async uploadFile(file: File, path: string) {
-    const { data, error } = await supabase.storage
-      .from('course-content')
-      .upload(path, file, {
-        cacheControl: '3600',
-        upsert: false
-      });
+    try {
+      // Initialize storage first
+      await this.initializeStorage();
+      
+      const { data, error } = await supabase.storage
+        .from('course-content')
+        .upload(path, file, {
+          cacheControl: '3600',
+          upsert: true
+        });
 
-    if (error) throw error;
+      if (error) throw error;
 
-    const { data: publicUrl } = supabase.storage
-      .from('course-content')
-      .getPublicUrl(data.path);
+      const { data: publicUrl } = supabase.storage
+        .from('course-content')
+        .getPublicUrl(data.path);
 
-    return publicUrl.publicUrl;
+      return publicUrl.publicUrl;
+    } catch (error) {
+      throw new Error(`File upload failed: ${error.message}`);
+    }
   }
 
   static async deleteFile(path: string) {

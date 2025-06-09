@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Upload, Search, Edit, Trash2, Play, Users, Clock, Eye, Video } from 'lucide-react';
 import { useCourses, useCourseCategories, useCreateCourse, useUpdateCourse, useDeleteCourse, useUploadFile } from '@/hooks/useDatabase';
+import { createSampleCategories } from '@/utils/createSampleCategories';
 import VideoUpload from './VideoUpload';
 
 const CourseManagement = () => {
@@ -29,12 +29,28 @@ const CourseManagement = () => {
     is_mandatory: false
   });
 
-  const { data: courses = [], isLoading: coursesLoading } = useCourses();
+  const { data: courses = [], isLoading: coursesLoading, refetch: refetchCourses } = useCourses();
   const { data: categories = [] } = useCourseCategories();
   const createCourse = useCreateCourse();
   const updateCourse = useUpdateCourse();
   const deleteCourse = useDeleteCourse();
   const uploadFile = useUploadFile();
+
+  // Initialize sample categories on component mount
+  useEffect(() => {
+    if (categories.length === 0) {
+      createSampleCategories();
+    }
+  }, []);
+
+  // Auto-refresh courses every 10 seconds to show newly uploaded content
+  useEffect(() => {
+    const interval = setInterval(() => {
+      refetchCourses();
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, [refetchCourses]);
 
   const filteredCourses = courses.filter((course: any) => {
     const matchesSearch = course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -114,6 +130,17 @@ const CourseManagement = () => {
     }
   };
 
+  const formatDuration = (durationHours: number) => {
+    const totalMinutes = durationHours * 60;
+    if (totalMinutes < 60) {
+      return `${totalMinutes} min`;
+    } else {
+      const hours = Math.floor(totalMinutes / 60);
+      const minutes = totalMinutes % 60;
+      return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
+    }
+  };
+
   if (coursesLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -130,99 +157,136 @@ const CourseManagement = () => {
           <h2 className="text-3xl font-bold">Course Management</h2>
           <p className="text-muted-foreground">Create and manage learning content</p>
         </div>
-        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Create Course
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Create New Course</DialogTitle>
-              <DialogDescription>
-                Add a new course to your learning platform
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="title">Course Title</Label>
-                <Input
-                  id="title"
-                  value={newCourse.title}
-                  onChange={(e) => setNewCourse(prev => ({ ...prev, title: e.target.value }))}
-                  placeholder="Enter course title"
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
-                  value={newCourse.description}
-                  onChange={(e) => setNewCourse(prev => ({ ...prev, description: e.target.value }))}
-                  placeholder="Enter course description"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => refetchCourses()}>
+            Refresh Courses
+          </Button>
+          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                Create Course
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Create New Course</DialogTitle>
+                <DialogDescription>
+                  Add a new course to your learning platform
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
                 <div className="grid gap-2">
-                  <Label htmlFor="category">Category</Label>
-                  <Select value={newCourse.category_id} onValueChange={(value) => setNewCourse(prev => ({ ...prev, category_id: value }))}>
+                  <Label htmlFor="title">Course Title</Label>
+                  <Input
+                    id="title"
+                    value={newCourse.title}
+                    onChange={(e) => setNewCourse(prev => ({ ...prev, title: e.target.value }))}
+                    placeholder="Enter course title"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="description">Description</Label>
+                  <Textarea
+                    id="description"
+                    value={newCourse.description}
+                    onChange={(e) => setNewCourse(prev => ({ ...prev, description: e.target.value }))}
+                    placeholder="Enter course description"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="category">Category</Label>
+                    <Select value={newCourse.category_id} onValueChange={(value) => setNewCourse(prev => ({ ...prev, category_id: value }))}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {categories.map((category: any) => (
+                          <SelectItem key={category.id} value={category.id}>
+                            {category.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="duration">Duration (hours)</Label>
+                    <Input
+                      id="duration"
+                      type="number"
+                      value={newCourse.duration_hours}
+                      onChange={(e) => setNewCourse(prev => ({ ...prev, duration_hours: parseInt(e.target.value) }))}
+                      min="1"
+                    />
+                  </div>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="difficulty">Difficulty Level</Label>
+                  <Select value={newCourse.difficulty_level} onValueChange={(value) => setNewCourse(prev => ({ ...prev, difficulty_level: value }))}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select category" />
+                      <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {categories.map((category: any) => (
-                        <SelectItem key={category.id} value={category.id}>
-                          {category.name}
-                        </SelectItem>
-                      ))}
+                      <SelectItem value="beginner">Beginner</SelectItem>
+                      <SelectItem value="intermediate">Intermediate</SelectItem>
+                      <SelectItem value="advanced">Advanced</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="duration">Duration (hours)</Label>
+                  <Label htmlFor="thumbnail">Course Thumbnail</Label>
                   <Input
-                    id="duration"
-                    type="number"
-                    value={newCourse.duration_hours}
-                    onChange={(e) => setNewCourse(prev => ({ ...prev, duration_hours: parseInt(e.target.value) }))}
-                    min="1"
+                    id="thumbnail"
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => handleFileUpload(e, 'thumbnail')}
                   />
                 </div>
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="difficulty">Difficulty Level</Label>
-                <Select value={newCourse.difficulty_level} onValueChange={(value) => setNewCourse(prev => ({ ...prev, difficulty_level: value }))}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="beginner">Beginner</SelectItem>
-                    <SelectItem value="intermediate">Intermediate</SelectItem>
-                    <SelectItem value="advanced">Advanced</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="thumbnail">Course Thumbnail</Label>
-                <Input
-                  id="thumbnail"
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => handleFileUpload(e, 'thumbnail')}
-                />
-              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={handleCreateCourse} disabled={createCourse.isPending}>
+                  {createCourse.isPending ? 'Creating...' : 'Create Course'}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
+      </div>
+
+      {/* Statistics */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="p-4 text-center">
+            <div className="text-2xl font-bold text-primary">{courses.length}</div>
+            <div className="text-sm text-muted-foreground">Total Courses</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <div className="text-2xl font-bold text-success">
+              {courses.filter((c: any) => c.status === 'published').length}
             </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
-                Cancel
-              </Button>
-              <Button onClick={handleCreateCourse} disabled={createCourse.isPending}>
-                {createCourse.isPending ? 'Creating...' : 'Create Course'}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+            <div className="text-sm text-muted-foreground">Published</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <div className="text-2xl font-bold text-warning">
+              {courses.filter((c: any) => c.status === 'draft').length}
+            </div>
+            <div className="text-sm text-muted-foreground">Drafts</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <div className="text-2xl font-bold text-info">{categories.length}</div>
+            <div className="text-sm text-muted-foreground">Categories</div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Tabs for different course management sections */}
@@ -252,7 +316,13 @@ const CourseManagement = () => {
                 <SelectItem value="all">All Categories</SelectItem>
                 {categories.map((category: any) => (
                   <SelectItem key={category.id} value={category.id}>
-                    {category.name}
+                    <div className="flex items-center gap-2">
+                      <div 
+                        className="w-3 h-3 rounded-full" 
+                        style={{ backgroundColor: category.color }}
+                      ></div>
+                      {category.name}
+                    </div>
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -262,11 +332,11 @@ const CourseManagement = () => {
           {/* Courses Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredCourses.map((course: any) => (
-              <Card key={course.id} className="dashboard-card">
+              <Card key={course.id} className="dashboard-card hover:shadow-lg transition-shadow">
                 <CardHeader className="pb-3">
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
-                      <CardTitle className="text-lg mb-2">{course.title}</CardTitle>
+                      <CardTitle className="text-lg mb-2 line-clamp-2">{course.title}</CardTitle>
                       {getStatusBadge(course.status)}
                     </div>
                     <div className="flex space-x-1">
@@ -292,16 +362,16 @@ const CourseManagement = () => {
                 </CardHeader>
                 <CardContent>
                   <CardDescription className="mb-4 line-clamp-2">
-                    {course.description}
+                    {course.description || 'No description available'}
                   </CardDescription>
                   <div className="space-y-2 text-sm text-muted-foreground">
                     <div className="flex items-center">
                       <Clock className="h-4 w-4 mr-2" />
-                      {course.duration_hours} hours
+                      {formatDuration(course.duration_hours || 1)}
                     </div>
                     <div className="flex items-center">
                       <Users className="h-4 w-4 mr-2" />
-                      {course.difficulty_level}
+                      {course.difficulty_level || 'Beginner'}
                     </div>
                     {course.course_categories && (
                       <div className="flex items-center">
@@ -310,6 +380,12 @@ const CourseManagement = () => {
                           style={{ backgroundColor: course.course_categories.color }}
                         ></span>
                         {course.course_categories.name}
+                      </div>
+                    )}
+                    {course.video_url && (
+                      <div className="flex items-center text-green-600">
+                        <Video className="h-4 w-4 mr-2" />
+                        Video Available
                       </div>
                     )}
                   </div>
@@ -330,7 +406,12 @@ const CourseManagement = () => {
 
           {filteredCourses.length === 0 && (
             <div className="text-center py-12">
-              <p className="text-muted-foreground">No courses found matching your criteria.</p>
+              <Video className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <p className="text-muted-foreground mb-4">No courses found matching your criteria.</p>
+              <Button onClick={() => setIsCreateDialogOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Create Your First Course
+              </Button>
             </div>
           )}
         </TabsContent>
