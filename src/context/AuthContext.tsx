@@ -1,7 +1,8 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, saveUserSession, loadUserSession, clearUserSession, logAuditEvent } from '../utils/sessionManager';
-import { authenticateUser } from '../services/authService';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 interface AuthContextType {
   user: User | null;
@@ -23,41 +24,156 @@ export const useAuth = () => {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
 
   useEffect(() => {
-    // Check for existing session with validation
-    const existingUser = loadUserSession();
-    if (existingUser) {
-      setUser(existingUser);
-    }
-    setLoading(false);
+    // Check for existing session
+    const getSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        // Get user profile
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+
+        if (profile) {
+          const userData: User = {
+            id: session.user.id,
+            email: profile.email,
+            name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.email,
+            role: profile.role === 'admin' ? 'admin' : 'learner'
+          };
+          setUser(userData);
+          saveUserSession(userData);
+        }
+      }
+      setLoading(false);
+    };
+
+    getSession();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session?.user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+
+        if (profile) {
+          const userData: User = {
+            id: session.user.id,
+            email: profile.email,
+            name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.email,
+            role: profile.role === 'admin' ? 'admin' : 'learner'
+          };
+          setUser(userData);
+          saveUserSession(userData);
+        }
+      } else if (event === 'SIGNED_OUT') {
+        setUser(null);
+        clearUserSession();
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const login = async (email: string, password?: string, userType?: 'admin' | 'learner'): Promise<boolean> => {
     setLoading(true);
     
-    const result = await authenticateUser(email, password, userType);
-    
-    if (result.success && result.user) {
-      setUser(result.user);
-      saveUserSession(result.user);
-      
-      // Audit logging (in production, send to secure logging service)
-      logAuditEvent(`User ${result.user.email} (${result.user.role}) logged in`);
+    try {
+      if (!password) {
+        toast({
+          title: "Error",
+          description: "Password is required",
+          variant: "destructive",
+        });
+        return false;
+      }
+
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        toast({
+          title: "Login Failed",
+          description: error.message,
+          variant: "destructive",
+        });
+        return false;
+      }
+
+      if (data.user) {
+        // Get user profile
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', data.user.id)
+          .single();
+
+        if (profile) {
+          // Check if user type matches if specified
+          if (userType && userType === 'admin' && profile.role !== 'admin') {
+            await supabase.auth.signOut();
+            toast({
+              title: "Access Denied",
+              description: "Admin access required",
+              variant: "destructive",
+            });
+            return false;
+          }
+
+          const userData: User = {
+            id: data.user.id,
+            email: profile.email,
+            name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.email,
+            role: profile.role === 'admin' ? 'admin' : 'learner'
+          };
+
+          setUser(userData);
+          saveUserSession(userData);
+          logAuditEvent(`User ${userData.email} (${userData.role}) logged in`);
+          
+          toast({
+            title: "Welcome back!",
+            description: `Successfully logged in as ${userData.name}`,
+          });
+          
+          return true;
+        }
+      }
+    } catch (error: any) {
+      toast({
+        title: "Login Error",
+        description: error.message || "An unexpected error occurred",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
     }
     
-    setLoading(false);
-    return result.success;
+    return false;
   };
 
-  const logout = () => {
+  const logout = async () => {
     if (user) {
-      // Audit logging
       logAuditEvent(`User ${user.email} (${user.role}) logged out`);
     }
     
+    await supabase.auth.signOut();
     setUser(null);
     clearUserSession();
+    
+    toast({
+      title: "Logged out",
+      description: "You have been successfully logged out",
+    });
   };
 
   return (

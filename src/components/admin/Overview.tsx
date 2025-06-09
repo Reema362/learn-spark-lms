@@ -3,33 +3,38 @@ import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, BookOpen, Target, TrendingUp, AlertTriangle, CheckCircle } from 'lucide-react';
 import { Progress } from "@/components/ui/progress";
+import { useAnalytics, useCourses, useUsers } from '@/hooks/useDatabase';
 
 const Overview = () => {
+  const { data: analytics } = useAnalytics();
+  const { data: courses = [] } = useCourses();
+  const { data: users = [] } = useUsers();
+
   const stats = [
     {
       title: "Total Users",
-      value: "1,284",
+      value: analytics?.totalUsers || 0,
       change: "+12%",
       icon: Users,
       color: "text-primary"
     },
     {
       title: "Active Courses",
-      value: "47",
+      value: analytics?.activeCourses || 0,
       change: "+3",
       icon: BookOpen,
       color: "text-accent"
     },
     {
-      title: "Running Campaigns",
-      value: "8",
+      title: "Total Enrollments",
+      value: analytics?.totalEnrollments || 0,
       change: "+2",
       icon: Target,
       color: "text-info"
     },
     {
-      title: "Completion Rate",
-      value: "89%",
+      title: "Avg Progress",
+      value: `${Math.round(analytics?.averageProgress || 0)}%`,
       change: "+5%",
       icon: TrendingUp,
       color: "text-success"
@@ -37,17 +42,20 @@ const Overview = () => {
   ];
 
   const recentActivity = [
-    { action: "New course 'Phishing Awareness' created", time: "2 hours ago", type: "course" },
-    { action: "Campaign 'Q4 Security Training' launched", time: "4 hours ago", type: "campaign" },
-    { action: "15 users completed 'Data Protection Basics'", time: "6 hours ago", type: "completion" },
-    { action: "Support ticket #127 resolved", time: "1 day ago", type: "support" },
+    { action: "New user registered", time: "2 hours ago", type: "user" },
+    { action: "Course 'Security Basics' published", time: "4 hours ago", type: "course" },
+    { action: "15 users enrolled in courses", time: "6 hours ago", type: "enrollment" },
+    { action: "Assessment completed", time: "1 day ago", type: "assessment" },
   ];
 
   const pendingTasks = [
-    { task: "Review escalated tickets", count: 3, priority: "high" },
-    { task: "Approve new course content", count: 2, priority: "medium" },
-    { task: "Update campaign assignments", count: 5, priority: "low" },
+    { task: "Review new course submissions", count: 3, priority: "high" },
+    { task: "Update user permissions", count: 2, priority: "medium" },
+    { task: "Process course completions", count: 5, priority: "low" },
   ];
+
+  // Get top courses by status
+  const publishedCourses = courses.filter((course: any) => course.status === 'published').slice(0, 4);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -70,41 +78,31 @@ const Overview = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Course Completion Overview */}
+        {/* Course Overview */}
         <Card className="dashboard-card">
           <CardHeader>
-            <CardTitle>Course Completion Overview</CardTitle>
-            <CardDescription>Progress across all active courses</CardDescription>
+            <CardTitle>Published Courses</CardTitle>
+            <CardDescription>Active courses on the platform</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-medium">Cybersecurity Fundamentals</span>
-                <span className="text-sm text-muted-foreground">92%</span>
-              </div>
-              <Progress value={92} className="h-2" />
-            </div>
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-medium">Phishing Awareness</span>
-                <span className="text-sm text-muted-foreground">87%</span>
-              </div>
-              <Progress value={87} className="h-2" />
-            </div>
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-medium">Data Protection</span>
-                <span className="text-sm text-muted-foreground">74%</span>
-              </div>
-              <Progress value={74} className="h-2" />
-            </div>
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-medium">Incident Response</span>
-                <span className="text-sm text-muted-foreground">65%</span>
-              </div>
-              <Progress value={65} className="h-2" />
-            </div>
+            {publishedCourses.length > 0 ? (
+              publishedCourses.map((course: any) => (
+                <div key={course.id} className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium">{course.title}</span>
+                    <span className="text-sm text-muted-foreground">
+                      {course.duration_hours}h
+                    </span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Progress value={75} className="h-2 flex-1" />
+                    <span className="text-xs text-muted-foreground">75%</span>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-muted-foreground">No published courses yet</p>
+            )}
           </CardContent>
         </Card>
 
@@ -174,7 +172,7 @@ const Overview = () => {
             <button className="w-full text-left p-3 rounded-lg bg-info/5 hover:bg-info/10 transition-colors">
               <div className="flex items-center space-x-3">
                 <Target className="h-5 w-5 text-info" />
-                <span className="font-medium">Launch Campaign</span>
+                <span className="font-medium">Manage Enrollments</span>
               </div>
             </button>
           </CardContent>
