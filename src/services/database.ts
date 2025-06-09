@@ -11,23 +11,24 @@ type CourseEnrollment = Tables['course_enrollments']['Row'];
 export class DatabaseService {
   // Initialize storage bucket
   static async initializeStorage() {
-    try {
-      // Try to create the bucket if it doesn't exist
-      const { data: buckets } = await supabase.storage.listBuckets();
-      const bucketExists = buckets?.some(bucket => bucket.name === 'courses');
-      
-      if (!bucketExists) {
-        const { error } = await supabase.storage.createBucket('courses', {
-          public: true
-        });
-        if (error) {
-          console.log('Bucket creation info:', error.message);
-        }
+  try {
+    const { data: buckets } = await supabase.storage.listBuckets();
+    // Change 'content' to 'courses'
+    const bucketExists = buckets?.some(bucket => bucket.name === 'courses');
+    
+    if (!bucketExists) {
+      // Update bucket name here
+      const { error } = await supabase.storage.createBucket('courses', {
+        public: true
+      });
+      if (error) {
+        console.log('Bucket creation info:', error.message);
       }
-    } catch (error) {
-      console.log('Storage initialization info:', error);
     }
+  } catch (error) {
+    console.log('Storage initialization info:', error);
   }
+}
 
   // Course Management
   static async getCourses() {
@@ -377,7 +378,7 @@ export class DatabaseService {
       console.log('Uploading file to path:', cleanPath);
       
       const { data, error } = await supabase.storage
-        .from('content')
+        .from('courses')
         .upload(cleanPath, file, {
           cacheControl: '3600',
           upsert: true
@@ -403,7 +404,7 @@ export class DatabaseService {
 
   static async deleteFile(path: string) {
     const { error } = await supabase.storage
-      .from('content')
+      .from('courses')
       .remove([path]);
 
     if (error) throw error;
