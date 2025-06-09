@@ -14,10 +14,10 @@ export class DatabaseService {
     try {
       // Try to create the bucket if it doesn't exist
       const { data: buckets } = await supabase.storage.listBuckets();
-      const bucketExists = buckets?.some(bucket => bucket.name === 'course-content');
+      const bucketExists = buckets?.some(bucket => bucket.name === 'content');
       
       if (!bucketExists) {
-        const { error } = await supabase.storage.createBucket('course-content', {
+        const { error } = await supabase.storage.createBucket('content', {
           public: true
         });
         if (error) {
@@ -377,7 +377,7 @@ export class DatabaseService {
       console.log('Uploading file to path:', cleanPath);
       
       const { data, error } = await supabase.storage
-        .from('course-content')
+        .from('content')
         .upload(cleanPath, file, {
           cacheControl: '3600',
           upsert: true
@@ -391,7 +391,7 @@ export class DatabaseService {
       console.log('File uploaded successfully:', data);
 
       const { data: publicUrl } = supabase.storage
-        .from('course-content')
+        .from('content')
         .getPublicUrl(data.path);
 
       return publicUrl.publicUrl;
@@ -403,7 +403,7 @@ export class DatabaseService {
 
   static async deleteFile(path: string) {
     const { error } = await supabase.storage
-      .from('course-content')
+      .from('content')
       .remove([path]);
 
     if (error) throw error;
