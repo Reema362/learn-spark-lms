@@ -86,10 +86,49 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLoading(true);
     
     try {
+      // For learner SSO-style login (no password required)
+      if (userType === 'learner' && !password) {
+        // Check if user exists in profiles
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('email', email)
+          .single();
+
+        if (profile) {
+          // Simulate SSO login
+          const userData: User = {
+            id: profile.id,
+            email: profile.email,
+            name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.email,
+            role: 'learner'
+          };
+
+          setUser(userData);
+          saveUserSession(userData);
+          logAuditEvent(`User ${userData.email} (learner) logged in via SSO`);
+          
+          toast({
+            title: "Welcome back!",
+            description: `Successfully logged in as ${userData.name}`,
+          });
+          
+          return true;
+        } else {
+          toast({
+            title: "User Not Found",
+            description: "Please contact your administrator to get access.",
+            variant: "destructive",
+          });
+          return false;
+        }
+      }
+
+      // For admin login with password
       if (!password) {
         toast({
           title: "Error",
-          description: "Password is required",
+          description: "Password is required for admin login",
           variant: "destructive",
         });
         return false;

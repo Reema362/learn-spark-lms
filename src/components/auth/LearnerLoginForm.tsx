@@ -42,16 +42,6 @@ const LearnerLoginForm: React.FC = () => {
     const success = await login(learnerEmail, undefined, 'learner');
     if (success) {
       navigate('/learner');
-      toast({
-        title: "Welcome!",
-        description: "Successfully signed in via SSO"
-      });
-    } else {
-      toast({
-        title: "Login Failed",
-        description: "Unable to authenticate. Please check your email or try again later.",
-        variant: "destructive"
-      });
     }
   };
 

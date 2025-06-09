@@ -7,8 +7,10 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Plus, Search, Edit, Trash2, Users, UserCheck, Mail } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Plus, Search, Edit, Trash2, Users, UserCheck, Mail, Upload } from 'lucide-react';
 import { useUsers, useCreateUser } from '@/hooks/useDatabase';
+import CSVUpload from './CSVUpload';
 
 const UserManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -19,7 +21,7 @@ const UserManagement = () => {
     password: '',
     first_name: '',
     last_name: '',
-    role: 'learner' as 'admin' | 'learner' | 'instructor',
+    role: 'user' as 'admin' | 'user',
     department: ''
   });
 
@@ -44,7 +46,7 @@ const UserManagement = () => {
         password: '',
         first_name: '',
         last_name: '',
-        role: 'learner',
+        role: 'user',
         department: ''
       });
     } catch (error) {
@@ -56,10 +58,8 @@ const UserManagement = () => {
     switch (role) {
       case 'admin':
         return <Badge variant="destructive">Admin</Badge>;
-      case 'instructor':
-        return <Badge variant="default" className="bg-blue-500">Instructor</Badge>;
-      case 'learner':
-        return <Badge variant="secondary">Learner</Badge>;
+      case 'user':
+        return <Badge variant="secondary">User</Badge>;
       default:
         return <Badge variant="secondary">Unknown</Badge>;
     }
@@ -68,8 +68,7 @@ const UserManagement = () => {
   const userStats = {
     total: users.length,
     admins: users.filter((u: any) => u.role === 'admin').length,
-    instructors: users.filter((u: any) => u.role === 'instructor').length,
-    learners: users.filter((u: any) => u.role === 'learner').length
+    users: users.filter((u: any) => u.role === 'user').length
   };
 
   if (usersLoading) {
@@ -151,8 +150,7 @@ const UserManagement = () => {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="learner">Learner</SelectItem>
-                      <SelectItem value="instructor">Instructor</SelectItem>
+                      <SelectItem value="user">User</SelectItem>
                       <SelectItem value="admin">Admin</SelectItem>
                     </SelectContent>
                   </Select>
@@ -181,7 +179,7 @@ const UserManagement = () => {
       </div>
 
       {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card className="stats-card">
           <CardContent className="p-6 text-center">
             <div className="text-2xl font-bold text-primary">{userStats.total}</div>
@@ -196,111 +194,138 @@ const UserManagement = () => {
         </Card>
         <Card className="stats-card">
           <CardContent className="p-6 text-center">
-            <div className="text-2xl font-bold text-blue-500">{userStats.instructors}</div>
-            <div className="text-sm text-muted-foreground">Instructors</div>
-          </CardContent>
-        </Card>
-        <Card className="stats-card">
-          <CardContent className="p-6 text-center">
-            <div className="text-2xl font-bold text-success">{userStats.learners}</div>
-            <div className="text-sm text-muted-foreground">Learners</div>
+            <div className="text-2xl font-bold text-success">{userStats.users}</div>
+            <div className="text-sm text-muted-foreground">Users</div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Filters */}
-      <div className="flex gap-4 items-center">
-        <div className="flex items-center space-x-2 flex-1">
-          <Search className="h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search users..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="max-w-sm"
-          />
-        </div>
-        <Select value={selectedRole} onValueChange={setSelectedRole}>
-          <SelectTrigger className="w-48">
-            <SelectValue placeholder="All Roles" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Roles</SelectItem>
-            <SelectItem value="admin">Admin</SelectItem>
-            <SelectItem value="instructor">Instructor</SelectItem>
-            <SelectItem value="learner">Learner</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Users List */}
-      <Card className="dashboard-card">
-        <CardHeader>
-          <CardTitle>All Users</CardTitle>
-          <CardDescription>Manage individual user accounts</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {filteredUsers.map((user: any) => (
-              <div key={user.id} className="border rounded-lg p-4 space-y-3">
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-2 mb-1">
-                      <h3 className="font-semibold">
-                        {user.first_name} {user.last_name}
-                      </h3>
-                      {getStatusBadge(user.role)}
-                    </div>
-                    <div className="flex items-center text-sm text-muted-foreground mb-1">
-                      <Mail className="h-4 w-4 mr-2" />
-                      {user.email}
-                    </div>
-                    {user.department && (
-                      <p className="text-xs text-muted-foreground">
-                        Department: {user.department}
-                      </p>
-                    )}
-                  </div>
-                  <div className="flex space-x-2">
-                    <Button size="sm" variant="outline">
-                      <Edit className="h-4 w-4 mr-2" />
-                      Edit
-                    </Button>
-                    <Button size="sm" variant="outline">
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Remove
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
-                  <div>
-                    <span className="text-muted-foreground">Created:</span>
-                    <span className="ml-1">
-                      {new Date(user.created_at).toLocaleDateString()}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Updated:</span>
-                    <span className="ml-1">
-                      {new Date(user.updated_at).toLocaleDateString()}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Status:</span>
-                    <span className="ml-1 text-success">Active</span>
-                  </div>
-                </div>
-              </div>
-            ))}
+      {/* Tabs for different user management sections */}
+      <Tabs defaultValue="users" className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="users">User List</TabsTrigger>
+          <TabsTrigger value="bulk-upload">Bulk Upload</TabsTrigger>
+          <TabsTrigger value="games">Security Games</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="users" className="space-y-4">
+          {/* Filters */}
+          <div className="flex gap-4 items-center">
+            <div className="flex items-center space-x-2 flex-1">
+              <Search className="h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search users..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="max-w-sm"
+              />
+            </div>
+            <Select value={selectedRole} onValueChange={setSelectedRole}>
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="All Roles" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Roles</SelectItem>
+                <SelectItem value="admin">Admin</SelectItem>
+                <SelectItem value="user">User</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-        </CardContent>
-      </Card>
 
-      {filteredUsers.length === 0 && (
-        <div className="text-center py-12">
-          <p className="text-muted-foreground">No users found matching your criteria.</p>
-        </div>
-      )}
+          {/* Users List */}
+          <Card className="dashboard-card">
+            <CardHeader>
+              <CardTitle>All Users</CardTitle>
+              <CardDescription>Manage individual user accounts</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {filteredUsers.map((user: any) => (
+                  <div key={user.id} className="border rounded-lg p-4 space-y-3">
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-2 mb-1">
+                          <h3 className="font-semibold">
+                            {user.first_name} {user.last_name}
+                          </h3>
+                          {getStatusBadge(user.role)}
+                        </div>
+                        <div className="flex items-center text-sm text-muted-foreground mb-1">
+                          <Mail className="h-4 w-4 mr-2" />
+                          {user.email}
+                        </div>
+                        {user.department && (
+                          <p className="text-xs text-muted-foreground">
+                            Department: {user.department}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex space-x-2">
+                        <Button size="sm" variant="outline">
+                          <Edit className="h-4 w-4 mr-2" />
+                          Edit
+                        </Button>
+                        <Button size="sm" variant="outline">
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Remove
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                      <div>
+                        <span className="text-muted-foreground">Created:</span>
+                        <span className="ml-1">
+                          {new Date(user.created_at).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Updated:</span>
+                        <span className="ml-1">
+                          {new Date(user.updated_at).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Status:</span>
+                        <span className="ml-1 text-success">Active</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {filteredUsers.length === 0 && (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground">No users found matching your criteria.</p>
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="bulk-upload">
+          <CSVUpload />
+        </TabsContent>
+
+        <TabsContent value="games">
+          <Card>
+            <CardHeader>
+              <CardTitle>Security Games Access</CardTitle>
+              <CardDescription>
+                Games and gamification features will be available in the dedicated Security Games section
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground mb-4">
+                Security games and badge systems are managed separately to provide focused learning experiences.
+              </p>
+              <Button variant="outline">
+                Go to Security Games
+              </Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
