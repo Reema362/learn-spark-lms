@@ -431,7 +431,7 @@ const AdminDashboard = () => {
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm">Response Time</span>
-                <span className="text-sm font-medium text-success">< 200ms</span>
+                <span className="text-sm font-medium text-success">&lt; 200ms</span>
               </div>
             </div>
           </CardContent>
