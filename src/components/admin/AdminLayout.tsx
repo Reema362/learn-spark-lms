@@ -26,7 +26,7 @@ const AdminLayout = ({ children }: { children: React.ReactNode }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const menuItems = [
-    { path: '/admin/overview', icon: LayoutDashboard, label: 'Overview' },
+    { path: '/admin', icon: LayoutDashboard, label: 'Admin Dashboard' },
     { path: '/admin/courses', icon: BookOpen, label: 'Course Management' },
     { path: '/admin/users', icon: Users, label: 'User Management' },
     { path: '/admin/campaigns', icon: Target, label: 'Campaign Management' },
