@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Search, Edit, Trash2, Users, UserCheck, Mail, Upload } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Users, UserCheck, Mail, Upload, RefreshCw } from 'lucide-react';
 import { useUsers, useCreateUser } from '@/hooks/useDatabase';
 import CSVUpload from './CSVUpload';
 
@@ -25,9 +25,10 @@ const UserManagement = () => {
     department: ''
   });
 
-  const { data: users = [], isLoading: usersLoading } = useUsers();
+  const { data: users = [], isLoading: usersLoading, refetch: refetchUsers } = useUsers();
   const createUser = useCreateUser();
 
+  // Filter users based on search and role, but don't exclude any users by status
   const filteredUsers = users.filter((user: any) => {
     const fullName = `${user.first_name || ''} ${user.last_name || ''}`.toLowerCase();
     const matchesSearch = fullName.includes(searchTerm.toLowerCase()) ||
@@ -52,6 +53,11 @@ const UserManagement = () => {
     } catch (error) {
       console.error('Error creating user:', error);
     }
+  };
+
+  const handleRefresh = async () => {
+    console.log('Refreshing user list...');
+    await refetchUsers();
   };
 
   const getStatusBadge = (role: string) => {
@@ -194,7 +200,7 @@ const UserManagement = () => {
         </Card>
         <Card className="stats-card">
           <CardContent className="p-6 text-center">
-            <div className="text-2xl font-bold text-success">{userStats.users}</div>
+            <div className="text-2xl font-bold text-green-600">{userStats.users}</div>
             <div className="text-sm text-muted-foreground">Users</div>
           </CardContent>
         </Card>
@@ -209,7 +215,7 @@ const UserManagement = () => {
         </TabsList>
         
         <TabsContent value="users" className="space-y-4">
-          {/* Filters */}
+          {/* Filters and Refresh Button */}
           <div className="flex gap-4 items-center">
             <div className="flex items-center space-x-2 flex-1">
               <Search className="h-4 w-4 text-muted-foreground" />
@@ -230,13 +236,22 @@ const UserManagement = () => {
                 <SelectItem value="user">User</SelectItem>
               </SelectContent>
             </Select>
+            <Button 
+              variant="outline" 
+              onClick={handleRefresh}
+              disabled={usersLoading}
+              className="flex items-center gap-2"
+            >
+              <RefreshCw className={`h-4 w-4 ${usersLoading ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
           </div>
 
           {/* Users List */}
           <Card className="dashboard-card">
             <CardHeader>
-              <CardTitle>All Users</CardTitle>
-              <CardDescription>Manage individual user accounts</CardDescription>
+              <CardTitle>All Users ({filteredUsers.length})</CardTitle>
+              <CardDescription>Manage individual user accounts - showing all users including recently added</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -287,7 +302,7 @@ const UserManagement = () => {
                       </div>
                       <div>
                         <span className="text-muted-foreground">Status:</span>
-                        <span className="ml-1 text-success">Active</span>
+                        <span className="ml-1 text-green-600">Active</span>
                       </div>
                     </div>
                   </div>
@@ -298,7 +313,11 @@ const UserManagement = () => {
 
           {filteredUsers.length === 0 && (
             <div className="text-center py-12">
-              <p className="text-muted-foreground">No users found matching your criteria.</p>
+              <p className="text-muted-foreground">
+                {searchTerm || selectedRole !== 'all' 
+                  ? 'No users found matching your criteria.' 
+                  : 'No users found. Try uploading users or creating them manually.'}
+              </p>
             </div>
           )}
         </TabsContent>
