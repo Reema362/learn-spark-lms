@@ -3,12 +3,18 @@ import { supabase } from '@/integrations/supabase/client';
 
 export class UserService {
   static async getUsers() {
+    console.log('Fetching all users from profiles table...');
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
       .order('created_at', { ascending: false });
     
-    if (error) throw error;
+    if (error) {
+      console.error('Error fetching users:', error);
+      throw error;
+    }
+    
+    console.log(`Successfully fetched ${data?.length || 0} users`);
     return data || [];
   }
 
@@ -46,6 +52,8 @@ export class UserService {
         throw new Error('Failed to create user in auth');
       }
 
+      console.log('Auth user created successfully:', authData.user.id);
+
       // Wait for the trigger to create the profile, or create it manually if needed
       let retries = 5;
       let profile = null;
@@ -61,14 +69,25 @@ export class UserService {
           
         if (existingProfile) {
           profile = existingProfile;
+          console.log('Profile found via trigger:', profile);
           break;
         }
         
         retries--;
+        console.log(`Profile not found, retrying... (${retries} attempts left)`);
       }
 
       // If profile wasn't created by trigger, create it manually
       if (!profile) {
+        console.log('Creating profile manually for user:', authData.user.id);
+        
+        // Double-check that the auth user exists before creating profile
+        const { data: authUser } = await supabase.auth.admin.getUserById(authData.user.id);
+        
+        if (!authUser.user) {
+          throw new Error('Auth user not found, cannot create profile');
+        }
+
         const { data: newProfile, error: profileError } = await supabase
           .from('profiles')
           .insert({
@@ -85,7 +104,11 @@ export class UserService {
         if (profileError) {
           console.error('Profile creation error:', profileError);
           // Clean up auth user if profile creation fails
-          await supabase.auth.admin.deleteUser(authData.user.id);
+          try {
+            await supabase.auth.admin.deleteUser(authData.user.id);
+          } catch (cleanupError) {
+            console.error('Failed to cleanup auth user:', cleanupError);
+          }
           throw profileError;
         }
         profile = newProfile;

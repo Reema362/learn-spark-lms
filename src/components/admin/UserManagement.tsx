@@ -46,6 +46,7 @@ const UserManagement = () => {
 
   const handleCreateUser = async () => {
     try {
+      console.log('Creating user from UI:', newUser);
       await createUser.mutateAsync(newUser);
       setIsCreateDialogOpen(false);
       setNewUser({
@@ -64,7 +65,7 @@ const UserManagement = () => {
   };
 
   const handleRefresh = async () => {
-    console.log('Refreshing user list...');
+    console.log('Manually refreshing user list...');
     await refetchUsers();
   };
 
@@ -261,7 +262,7 @@ const UserManagement = () => {
             <CardHeader>
               <CardTitle>All Users ({filteredUsers.length} of {users.length})</CardTitle>
               <CardDescription>
-                Manage individual user accounts - showing all users from the database
+                Displaying all users from the profiles table
                 {searchTerm || selectedRole !== 'all' ? ' (filtered)' : ''}
               </CardDescription>
             </CardHeader>
@@ -273,13 +274,13 @@ const UserManagement = () => {
                       <div className="flex-1">
                         <div className="flex items-center space-x-2 mb-1">
                           <h3 className="font-semibold">
-                            {user.first_name} {user.last_name}
+                            {user.first_name || 'N/A'} {user.last_name || 'N/A'}
                           </h3>
                           {getStatusBadge(user.role)}
                         </div>
                         <div className="flex items-center text-sm text-muted-foreground mb-1">
                           <Mail className="h-4 w-4 mr-2" />
-                          {user.email}
+                          {user.email || 'No email'}
                         </div>
                         {user.department && (
                           <p className="text-xs text-muted-foreground">
@@ -299,17 +300,21 @@ const UserManagement = () => {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                      <div>
+                        <span className="text-muted-foreground">User ID:</span>
+                        <span className="ml-1 font-mono text-xs">
+                          {user.id ? user.id.substring(0, 8) + '...' : 'N/A'}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Role:</span>
+                        <span className="ml-1">{user.role || 'N/A'}</span>
+                      </div>
                       <div>
                         <span className="text-muted-foreground">Created:</span>
                         <span className="ml-1">
                           {user.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Updated:</span>
-                        <span className="ml-1">
-                          {user.updated_at ? new Date(user.updated_at).toLocaleDateString() : 'N/A'}
                         </span>
                       </div>
                       <div>
