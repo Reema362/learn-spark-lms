@@ -12,7 +12,7 @@ interface Course {
   is_mandatory?: boolean;
   thumbnail_url?: string;
   video_url?: string;
-  status?: string;
+  status?: 'draft' | 'published' | 'archived';
 }
 
 export class CourseService {
@@ -98,9 +98,15 @@ export class CourseService {
       }
     }
 
+    // Ensure status is properly typed if provided
+    const updateData: any = { ...updates };
+    if (updates.status) {
+      updateData.status = updates.status as 'draft' | 'published' | 'archived';
+    }
+
     const { data, error } = await supabase
       .from('courses')
-      .update(updates)
+      .update(updateData)
       .eq('id', id)
       .select()
       .single();

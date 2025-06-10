@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,7 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Trophy, Target, Clock, Users, Star, Award } from 'lucide-react';
+import { Plus, Trophy, Target, Clock, Users, Star, Award, Edit, Trash2 } from 'lucide-react';
 import { useGames, useGameBadges, useCreateGame, useUserGameStats, useLeaderboard } from '@/hooks/useDatabase';
 
 const GamificationManagement = () => {

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -68,9 +69,9 @@ const CampaignManagement = () => {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'active':
-        return <Badge variant="success">Active</Badge>;
+        return <Badge className="bg-green-500 text-white">Active</Badge>;
       case 'paused':
-        return <Badge variant="warning">Paused</Badge>;
+        return <Badge className="bg-yellow-500 text-white">Paused</Badge>;
       case 'completed':
         return <Badge variant="default">Completed</Badge>;
       case 'cancelled':
