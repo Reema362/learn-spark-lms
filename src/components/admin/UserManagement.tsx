@@ -28,13 +28,19 @@ const UserManagement = () => {
   const { data: users = [], isLoading: usersLoading, refetch: refetchUsers } = useUsers();
   const createUser = useCreateUser();
 
-  // Filter users based on search and role, but don't exclude any users by status
+  // Filter users based on search and role - show ALL users by default
   const filteredUsers = users.filter((user: any) => {
     const fullName = `${user.first_name || ''} ${user.last_name || ''}`.toLowerCase();
-    const matchesSearch = fullName.includes(searchTerm.toLowerCase()) ||
-                         user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (user.department && user.department.toLowerCase().includes(searchTerm.toLowerCase()));
+    const email = (user.email || '').toLowerCase();
+    const department = (user.department || '').toLowerCase();
+    
+    const matchesSearch = searchTerm === '' || 
+                         fullName.includes(searchTerm.toLowerCase()) ||
+                         email.includes(searchTerm.toLowerCase()) ||
+                         department.includes(searchTerm.toLowerCase());
+    
     const matchesRole = selectedRole === 'all' || user.role === selectedRole;
+    
     return matchesSearch && matchesRole;
   });
 
@@ -50,6 +56,8 @@ const UserManagement = () => {
         role: 'user',
         department: ''
       });
+      // Automatically refresh the user list after creating a new user
+      await refetchUsers();
     } catch (error) {
       console.error('Error creating user:', error);
     }
@@ -71,6 +79,7 @@ const UserManagement = () => {
     }
   };
 
+  // Calculate statistics from all users (not filtered)
   const userStats = {
     total: users.length,
     admins: users.filter((u: any) => u.role === 'admin').length,
@@ -220,7 +229,7 @@ const UserManagement = () => {
             <div className="flex items-center space-x-2 flex-1">
               <Search className="h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search users..."
+                placeholder="Search users by name, email, or department..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="max-w-sm"
@@ -250,8 +259,11 @@ const UserManagement = () => {
           {/* Users List */}
           <Card className="dashboard-card">
             <CardHeader>
-              <CardTitle>All Users ({filteredUsers.length})</CardTitle>
-              <CardDescription>Manage individual user accounts - showing all users including recently added</CardDescription>
+              <CardTitle>All Users ({filteredUsers.length} of {users.length})</CardTitle>
+              <CardDescription>
+                Manage individual user accounts - showing all users from the database
+                {searchTerm || selectedRole !== 'all' ? ' (filtered)' : ''}
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -291,13 +303,13 @@ const UserManagement = () => {
                       <div>
                         <span className="text-muted-foreground">Created:</span>
                         <span className="ml-1">
-                          {new Date(user.created_at).toLocaleDateString()}
+                          {user.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'}
                         </span>
                       </div>
                       <div>
                         <span className="text-muted-foreground">Updated:</span>
                         <span className="ml-1">
-                          {new Date(user.updated_at).toLocaleDateString()}
+                          {user.updated_at ? new Date(user.updated_at).toLocaleDateString() : 'N/A'}
                         </span>
                       </div>
                       <div>
@@ -315,9 +327,23 @@ const UserManagement = () => {
             <div className="text-center py-12">
               <p className="text-muted-foreground">
                 {searchTerm || selectedRole !== 'all' 
-                  ? 'No users found matching your criteria.' 
-                  : 'No users found. Try uploading users or creating them manually.'}
+                  ? 'No users found matching your search criteria.' 
+                  : users.length === 0 
+                    ? 'No users found. Try uploading users or creating them manually.'
+                    : 'No users match the current filters.'}
               </p>
+              {(searchTerm || selectedRole !== 'all') && (
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setSearchTerm('');
+                    setSelectedRole('all');
+                  }}
+                  className="mt-2"
+                >
+                  Clear Filters
+                </Button>
+              )}
             </div>
           )}
         </TabsContent>
