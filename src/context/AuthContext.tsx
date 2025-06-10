@@ -91,46 +91,90 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => subscription.unsubscribe();
   }, []);
 
+  const createLearnerProfile = async (userId: string, email: string) => {
+    try {
+      console.log('Creating learner profile for:', email);
+      
+      const { data: newProfile, error: insertError } = await supabase
+        .from('profiles')
+        .insert({
+          id: userId,
+          email: email,
+          first_name: email.split('@')[0],
+          last_name: '',
+          role: 'user'
+        })
+        .select()
+        .single();
+
+      if (insertError) {
+        console.error('Error creating learner profile:', insertError);
+        
+        // Handle specific constraint violations
+        if (insertError.code === '23505') {
+          throw new Error('A profile with this email already exists');
+        } else if (insertError.code === '23503') {
+          throw new Error('Invalid user reference. Please try logging in again.');
+        } else {
+          throw new Error(`Failed to create profile: ${insertError.message}`);
+        }
+      }
+
+      console.log('Learner profile created successfully:', newProfile);
+      return newProfile;
+    } catch (error) {
+      console.error('Error in createLearnerProfile:', error);
+      throw error;
+    }
+  };
+
   const login = async (email: string, password?: string, userType?: 'admin' | 'learner'): Promise<boolean> => {
     setLoading(true);
     
     try {
       // For learner SSO-style login (no password required)
       if (userType === 'learner' && !password) {
-        // Create or find learner profile
-        let { data: profile } = await supabase
+        console.log('Starting learner SSO login for:', email);
+        
+        // First, check if learner profile already exists
+        const { data: existingProfile, error: searchError } = await supabase
           .from('profiles')
           .select('*')
           .eq('email', email)
           .single();
 
-        if (!profile) {
-          // Create new learner profile
-          const { data: newProfile, error: insertError } = await supabase
-            .from('profiles')
-            .insert({
-              id: crypto.randomUUID(),
-              email: email,
-              first_name: email.split('@')[0],
-              last_name: '',
-              role: 'user'
-            })
-            .select()
-            .single();
+        let profile = existingProfile;
 
-          if (insertError) {
-            console.error('Error creating learner profile:', insertError);
+        // If profile doesn't exist, create one
+        if (!existingProfile && searchError?.code === 'PGRST116') {
+          console.log('No existing profile found, creating new learner profile');
+          
+          try {
+            // Generate a unique user ID for the profile
+            const userId = crypto.randomUUID();
+            profile = await createLearnerProfile(userId, email);
+          } catch (createError: any) {
+            console.error('Failed to create learner profile:', createError);
             toast({
-              title: "Error",
-              description: "Failed to create learner profile. Please try again.",
+              title: "Profile Creation Failed",
+              description: createError.message || "Failed to create learner profile. Please try again.",
               variant: "destructive",
             });
             return false;
           }
-          profile = newProfile;
+        } else if (searchError && searchError.code !== 'PGRST116') {
+          console.error('Error searching for profile:', searchError);
+          toast({
+            title: "Database Error",
+            description: "Failed to check existing profile. Please try again.",
+            variant: "destructive",
+          });
+          return false;
         }
 
         if (profile) {
+          console.log('Profile found/created, creating session for:', profile.email);
+          
           // Create a session for the learner (simulated SSO)
           const userData: User = {
             id: profile.id,
@@ -144,11 +188,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           logAuditEvent(`User ${userData.email} (learner) logged in via SSO`);
           
           toast({
-            title: "Welcome back!",
+            title: "Welcome!",
             description: `Successfully logged in as ${userData.name}`,
           });
           
           return true;
+        } else {
+          toast({
+            title: "Login Failed",
+            description: "Failed to create or retrieve learner profile.",
+            variant: "destructive",
+          });
+          return false;
         }
       }
 
@@ -269,7 +320,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error('Login error:', error);
       toast({
         title: "Login Error",
-        description: "An unexpected error occurred. Please try again.",
+        description: error.message || "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
     } finally {
