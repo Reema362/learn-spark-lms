@@ -1,81 +1,118 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Search, Edit, Trash2, Mail, MessageSquare, Bell, FileText } from 'lucide-react';
-import { useTemplates, useCreateTemplate, useUpdateTemplate } from '@/hooks/useDatabase';
+import { Plus, Search } from 'lucide-react';
+import { useTemplates, useCreateTemplate, useUpdateTemplate, useDeleteTemplate } from '@/hooks/useDatabase';
+import TemplateCreationForm from './TemplateCreationForm';
+import TemplatesList from './TemplatesList';
 
 const TemplatesManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedType, setSelectedType] = useState('all');
+  const [selectedCategory, setSelectedCategory] = useState('all');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [newTemplate, setNewTemplate] = useState({
-    name: '',
-    type: 'email' as 'email' | 'sms' | 'alert' | 'notification',
-    subject: '',
-    content: '',
-    variables: [] as any[],
-    is_active: true
-  });
+  const [editingTemplate, setEditingTemplate] = useState<any>(null);
 
   const { data: templates = [], isLoading: templatesLoading } = useTemplates();
   const createTemplate = useCreateTemplate();
   const updateTemplate = useUpdateTemplate();
+  const deleteTemplate = useDeleteTemplate();
+
+  const categories = [
+    { value: 'all', label: 'All Categories' },
+    { value: 'course-assignment', label: 'Course Assignment' },
+    { value: 'course-completion', label: 'Course Completion' },
+    { value: 'course-reminder', label: 'Course Reminder' },
+    { value: 'course-quiz-failure', label: 'Course Quiz Failure' },
+    { value: 'manager-reminder', label: 'Manager Reminder' },
+    { value: 'course-certification', label: 'Course Certification' },
+    { value: 'custom', label: 'Custom' }
+  ];
+
+  const getTemplateCategory = (name: string) => {
+    if (name.toLowerCase().includes('course assignment') || name.toLowerCase().includes('send course')) {
+      return 'course-assignment';
+    }
+    if (name.toLowerCase().includes('course completion')) {
+      return 'course-completion';
+    }
+    if (name.toLowerCase().includes('course reminder')) {
+      return 'course-reminder';
+    }
+    if (name.toLowerCase().includes('quiz failure')) {
+      return 'course-quiz-failure';
+    }
+    if (name.toLowerCase().includes('manager reminder')) {
+      return 'manager-reminder';
+    }
+    if (name.toLowerCase().includes('certification')) {
+      return 'course-certification';
+    }
+    return 'custom';
+  };
 
   const filteredTemplates = templates.filter((template: any) => {
-    const matchesSearch = template.name.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = template.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         template.content.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesType = selectedType === 'all' || template.type === selectedType;
-    return matchesSearch && matchesType;
+    const matchesCategory = selectedCategory === 'all' || getTemplateCategory(template.name) === selectedCategory;
+    return matchesSearch && matchesType && matchesCategory;
   });
 
-  const handleCreateTemplate = async () => {
+  const groupedTemplates = categories.slice(1, -1).reduce((acc, category) => {
+    acc[category.value] = filteredTemplates.filter(template => 
+      getTemplateCategory(template.name) === category.value
+    );
+    return acc;
+  }, {} as Record<string, any[]>);
+
+  const customTemplates = filteredTemplates.filter(template => 
+    getTemplateCategory(template.name) === 'custom'
+  );
+
+  const handleCreateTemplate = async (templateData: any) => {
     try {
-      await createTemplate.mutateAsync(newTemplate);
+      await createTemplate.mutateAsync(templateData);
       setIsCreateDialogOpen(false);
-      setNewTemplate({
-        name: '',
-        type: 'email',
-        subject: '',
-        content: '',
-        variables: [],
-        is_active: true
-      });
     } catch (error) {
       console.error('Error creating template:', error);
     }
   };
 
-  const handleUpdateTemplate = async (id: string, updates: any) => {
+  const handleUpdateTemplate = async (templateData: any) => {
     try {
-      await updateTemplate.mutateAsync({ id, updates });
+      await updateTemplate.mutateAsync({ 
+        id: editingTemplate.id, 
+        updates: templateData 
+      });
+      setEditingTemplate(null);
     } catch (error) {
       console.error('Error updating template:', error);
     }
   };
 
   const handleDeleteTemplate = async (id: string) => {
-    // Implement delete logic here
+    if (confirm('Are you sure you want to delete this template?')) {
+      try {
+        await deleteTemplate.mutateAsync(id);
+      } catch (error) {
+        console.error('Error deleting template:', error);
+      }
+    }
   };
 
-  const getTypeIcon = (type: string) => {
-    switch (type) {
-      case 'email':
-        return <Mail className="h-4 w-4" />;
-      case 'sms':
-        return <MessageSquare className="h-4 w-4" />;
-      case 'alert':
-        return <Bell className="h-4 w-4" />;
-      case 'notification':
-        return <Bell className="h-4 w-4" />;
-      default:
-        return <FileText className="h-4 w-4" />;
-    }
+  const handleDuplicateTemplate = (template: any) => {
+    setEditingTemplate({
+      ...template,
+      id: null,
+      name: `Copy of ${template.name}`,
+      created_at: null
+    });
   };
 
   if (templatesLoading) {
@@ -92,78 +129,12 @@ const TemplatesManagement = () => {
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-3xl font-bold">Templates Management</h2>
-          <p className="text-muted-foreground">Manage and customize templates for various notifications</p>
+          <p className="text-muted-foreground">Manage and customize templates for course notifications</p>
         </div>
-        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Template
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Create New Template</DialogTitle>
-              <DialogDescription>
-                Add a new template to the platform
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="name">Name</Label>
-                <Input
-                  id="name"
-                  value={newTemplate.name}
-                  onChange={(e) => setNewTemplate(prev => ({ ...prev, name: e.target.value }))}
-                  placeholder="Template Name"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="type">Type</Label>
-                  <Select value={newTemplate.type} onValueChange={(value: any) => setNewTemplate(prev => ({ ...prev, type: value }))}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="email">Email</SelectItem>
-                      <SelectItem value="sms">SMS</SelectItem>
-                      <SelectItem value="alert">Alert</SelectItem>
-                      <SelectItem value="notification">Notification</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="subject">Subject</Label>
-                  <Input
-                    id="subject"
-                    value={newTemplate.subject}
-                    onChange={(e) => setNewTemplate(prev => ({ ...prev, subject: e.target.value }))}
-                    placeholder="Subject"
-                    disabled={newTemplate.type !== 'email'}
-                  />
-                </div>
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="content">Content</Label>
-                <Textarea
-                  id="content"
-                  value={newTemplate.content}
-                  onChange={(e) => setNewTemplate(prev => ({ ...prev, content: e.target.value }))}
-                  placeholder="Template Content"
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
-                Cancel
-              </Button>
-              <Button onClick={handleCreateTemplate} disabled={createTemplate.isPending}>
-                {createTemplate.isPending ? 'Creating...' : 'Create Template'}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <Button onClick={() => setIsCreateDialogOpen(true)}>
+          <Plus className="h-4 w-4 mr-2" />
+          Create Template
+        </Button>
       </div>
 
       {/* Filters */}
@@ -177,6 +148,18 @@ const TemplatesManagement = () => {
             className="max-w-sm"
           />
         </div>
+        <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+          <SelectTrigger className="w-48">
+            <SelectValue placeholder="All Categories" />
+          </SelectTrigger>
+          <SelectContent>
+            {categories.map(category => (
+              <SelectItem key={category.value} value={category.value}>
+                {category.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <Select value={selectedType} onValueChange={setSelectedType}>
           <SelectTrigger className="w-48">
             <SelectValue placeholder="All Types" />
@@ -191,69 +174,112 @@ const TemplatesManagement = () => {
         </Select>
       </div>
 
-      {/* Templates List */}
-      <Card className="dashboard-card">
-        <CardHeader>
-          <CardTitle>All Templates</CardTitle>
-          <CardDescription>Manage notification templates</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {filteredTemplates.map((template: any) => (
-              <div key={template.id} className="border rounded-lg p-4 space-y-3">
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-2 mb-1">
-                      <h3 className="font-semibold">
-                        {template.name}
-                      </h3>
-                      <Badge variant="secondary" className="opacity-80">
-                        {getTypeIcon(template.type)}
-                        {template.type}
-                      </Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      {template.subject || 'No Subject'}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {template.content.substring(0, 100)}...
-                    </p>
-                  </div>
-                  <div className="flex space-x-2">
-                    <Button size="sm" variant="outline" onClick={() => handleUpdateTemplate(template.id, { name: 'Updated Name' })}>
-                      <Edit className="h-4 w-4 mr-2" />
-                      Edit
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={() => handleDeleteTemplate(template.id)}>
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Remove
-                    </Button>
-                  </div>
-                </div>
+      {/* Templates organized by category */}
+      <Tabs defaultValue="course-assignment" className="w-full">
+        <TabsList className="grid grid-cols-7 w-full">
+          <TabsTrigger value="course-assignment">Assignment</TabsTrigger>
+          <TabsTrigger value="course-completion">Completion</TabsTrigger>
+          <TabsTrigger value="course-reminder">Reminder</TabsTrigger>
+          <TabsTrigger value="course-quiz-failure">Quiz Failure</TabsTrigger>
+          <TabsTrigger value="manager-reminder">Manager</TabsTrigger>
+          <TabsTrigger value="course-certification">Certification</TabsTrigger>
+          <TabsTrigger value="custom">Custom</TabsTrigger>
+        </TabsList>
 
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
-                  <div>
-                    <span className="text-muted-foreground">Created:</span>
-                    <span className="ml-1">
-                      {new Date(template.created_at).toLocaleDateString()}
-                    </span>
+        {categories.slice(1, -1).map(category => (
+          <TabsContent key={category.value} value={category.value}>
+            <Card className="dashboard-card">
+              <CardHeader>
+                <CardTitle>{category.label} Templates</CardTitle>
+                <CardDescription>
+                  Templates for {category.label.toLowerCase()} notifications
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {groupedTemplates[category.value]?.length > 0 ? (
+                  <TemplatesList
+                    templates={groupedTemplates[category.value]}
+                    onEdit={setEditingTemplate}
+                    onDelete={handleDeleteTemplate}
+                    onDuplicate={handleDuplicateTemplate}
+                  />
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground">No {category.label.toLowerCase()} templates found.</p>
+                    <Button 
+                      variant="outline" 
+                      className="mt-2"
+                      onClick={() => setIsCreateDialogOpen(true)}
+                    >
+                      Create {category.label} Template
+                    </Button>
                   </div>
-                  <div>
-                    <span className="text-muted-foreground">Status:</span>
-                    <span className="ml-1 text-success">{template.is_active ? 'Active' : 'Inactive'}</span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        ))}
 
-      {filteredTemplates.length === 0 && (
-        <div className="text-center py-12">
-          <p className="text-muted-foreground">No templates found matching your criteria.</p>
-        </div>
-      )}
+        <TabsContent value="custom">
+          <Card className="dashboard-card">
+            <CardHeader>
+              <CardTitle>Custom Templates</CardTitle>
+              <CardDescription>
+                User-created custom templates
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {customTemplates.length > 0 ? (
+                <TemplatesList
+                  templates={customTemplates}
+                  onEdit={setEditingTemplate}
+                  onDelete={handleDeleteTemplate}
+                  onDuplicate={handleDuplicateTemplate}
+                />
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">No custom templates found.</p>
+                  <Button 
+                    variant="outline" 
+                    className="mt-2"
+                    onClick={() => setIsCreateDialogOpen(true)}
+                  >
+                    Create Custom Template
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+
+      {/* Create/Edit Dialog */}
+      <Dialog open={isCreateDialogOpen || !!editingTemplate} onOpenChange={(open) => {
+        if (!open) {
+          setIsCreateDialogOpen(false);
+          setEditingTemplate(null);
+        }
+      }}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {editingTemplate ? 'Edit Template' : 'Create New Template'}
+            </DialogTitle>
+            <DialogDescription>
+              {editingTemplate ? 'Modify the template details below' : 'Create a new template for notifications'}
+            </DialogDescription>
+          </DialogHeader>
+          <TemplateCreationForm
+            onSubmit={editingTemplate ? handleUpdateTemplate : handleCreateTemplate}
+            onCancel={() => {
+              setIsCreateDialogOpen(false);
+              setEditingTemplate(null);
+            }}
+            isLoading={createTemplate.isPending || updateTemplate.isPending}
+            initialData={editingTemplate}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
