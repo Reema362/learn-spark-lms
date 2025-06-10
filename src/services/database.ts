@@ -1,10 +1,11 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { UserService } from './userService';
 import { CourseService } from './courseService';
 import { CampaignService } from './campaignService';
 import { TemplateService } from './templateService';
 import { GamificationService } from './gamificationService';
+import { AnalyticsService } from './analyticsService';
+import { StorageService } from './storageService';
 
 export class DatabaseService {
   // User Management
@@ -53,13 +54,38 @@ export class DatabaseService {
   }
 
   static async getCourseCategories() {
+    return CourseService.getCourseCategories();
+  }
+
+  static async createCourseCategory(category: { name: string; description?: string; color?: string }) {
+    return CourseService.createCourseCategory(category);
+  }
+
+  static async createLesson(lessonData: {
+    title: string;
+    course_id: string;
+    video_url?: string;
+    type: string;
+    duration_minutes?: number;
+    order_index: number;
+    content?: string;
+  }) {
     const { data, error } = await supabase
-      .from('course_categories')
-      .select('*')
-      .order('name');
-    
+      .from('lessons')
+      .insert({
+        title: lessonData.title,
+        course_id: lessonData.course_id,
+        video_url: lessonData.video_url,
+        type: lessonData.type as any,
+        duration_minutes: lessonData.duration_minutes || 0,
+        order_index: lessonData.order_index,
+        content: lessonData.content
+      })
+      .select()
+      .single();
+
     if (error) throw error;
-    return data || [];
+    return data;
   }
 
   // Campaign Management
@@ -77,28 +103,12 @@ export class DatabaseService {
 
   // File Upload
   static async uploadFile(file: File, path: string) {
-    const { data, error } = await supabase.storage
-      .from('uploads')
-      .upload(path, file);
-
-    if (error) throw error;
-    return data;
+    return StorageService.uploadFile(file, path);
   }
 
   // Analytics
   static async getAnalytics() {
-    const [courses, users, enrollments] = await Promise.all([
-      this.getCourses(),
-      this.getUsers(),
-      supabase.from('course_enrollments').select('*')
-    ]);
-
-    return {
-      totalCourses: courses.length,
-      totalUsers: users.length,
-      totalEnrollments: enrollments.data?.length || 0,
-      recentActivity: []
-    };
+    return AnalyticsService.getAnalytics();
   }
 
   // Escalation Management
