@@ -28,16 +28,6 @@ const TemplateCreationForm = ({ onSubmit, onCancel, isLoading, initialData }: Te
 
   const [newVariable, setNewVariable] = useState({ name: '', description: '' });
 
-  const templateCategories = {
-    'course-assignment': 'Course Assignment',
-    'course-completion': 'Course Completion', 
-    'course-reminder': 'Course Reminder',
-    'course-quiz-failure': 'Course Quiz Failure',
-    'manager-reminder': 'Manager Reminder',
-    'course-certification': 'Course Certification',
-    'custom': 'Custom'
-  };
-
   const addVariable = () => {
     if (newVariable.name.trim()) {
       setTemplate(prev => ({

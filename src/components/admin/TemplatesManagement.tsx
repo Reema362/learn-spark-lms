@@ -1,15 +1,12 @@
 
 import React, { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Search } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { useTemplates, useCreateTemplate, useUpdateTemplate, useDeleteTemplate } from '@/hooks/useDatabase';
-import TemplateCreationForm from './TemplateCreationForm';
-import TemplatesList from './TemplatesList';
+import { getTemplateCategory } from '@/utils/templateUtils';
+import TemplateFilters from './templates/TemplateFilters';
+import TemplateTabsContent from './templates/TemplateTabsContent';
+import TemplateDialog from './templates/TemplateDialog';
 
 const TemplatesManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -23,39 +20,6 @@ const TemplatesManagement = () => {
   const updateTemplate = useUpdateTemplate();
   const deleteTemplate = useDeleteTemplate();
 
-  const categories = [
-    { value: 'all', label: 'All Categories' },
-    { value: 'course-assignment', label: 'Course Assignment' },
-    { value: 'course-completion', label: 'Course Completion' },
-    { value: 'course-reminder', label: 'Course Reminder' },
-    { value: 'course-quiz-failure', label: 'Course Quiz Failure' },
-    { value: 'manager-reminder', label: 'Manager Reminder' },
-    { value: 'course-certification', label: 'Course Certification' },
-    { value: 'custom', label: 'Custom' }
-  ];
-
-  const getTemplateCategory = (name: string) => {
-    if (name.toLowerCase().includes('course assignment') || name.toLowerCase().includes('send course')) {
-      return 'course-assignment';
-    }
-    if (name.toLowerCase().includes('course completion')) {
-      return 'course-completion';
-    }
-    if (name.toLowerCase().includes('course reminder')) {
-      return 'course-reminder';
-    }
-    if (name.toLowerCase().includes('quiz failure')) {
-      return 'course-quiz-failure';
-    }
-    if (name.toLowerCase().includes('manager reminder')) {
-      return 'manager-reminder';
-    }
-    if (name.toLowerCase().includes('certification')) {
-      return 'course-certification';
-    }
-    return 'custom';
-  };
-
   const filteredTemplates = templates.filter((template: any) => {
     const matchesSearch = template.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          template.content.toLowerCase().includes(searchTerm.toLowerCase());
@@ -64,9 +28,9 @@ const TemplatesManagement = () => {
     return matchesSearch && matchesType && matchesCategory;
   });
 
-  const groupedTemplates = categories.slice(1, -1).reduce((acc, category) => {
-    acc[category.value] = filteredTemplates.filter(template => 
-      getTemplateCategory(template.name) === category.value
+  const groupedTemplates = ['course-assignment', 'course-completion', 'course-reminder', 'course-quiz-failure', 'manager-reminder', 'course-certification'].reduce((acc, category) => {
+    acc[category] = filteredTemplates.filter(template => 
+      getTemplateCategory(template.name) === category
     );
     return acc;
   }, {} as Record<string, any[]>);
@@ -99,7 +63,7 @@ const TemplatesManagement = () => {
   const handleDeleteTemplate = async (id: string) => {
     if (confirm('Are you sure you want to delete this template?')) {
       try {
-        await deleteTemplate.mutateAsync(id);
+        await deleteTemplate.mutateAsync({ id });
       } catch (error) {
         console.error('Error deleting template:', error);
       }
@@ -138,148 +102,36 @@ const TemplatesManagement = () => {
       </div>
 
       {/* Filters */}
-      <div className="flex gap-4 items-center">
-        <div className="flex items-center space-x-2 flex-1">
-          <Search className="h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search templates..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="max-w-sm"
-          />
-        </div>
-        <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-          <SelectTrigger className="w-48">
-            <SelectValue placeholder="All Categories" />
-          </SelectTrigger>
-          <SelectContent>
-            {categories.map(category => (
-              <SelectItem key={category.value} value={category.value}>
-                {category.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={selectedType} onValueChange={setSelectedType}>
-          <SelectTrigger className="w-48">
-            <SelectValue placeholder="All Types" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Types</SelectItem>
-            <SelectItem value="email">Email</SelectItem>
-            <SelectItem value="sms">SMS</SelectItem>
-            <SelectItem value="alert">Alert</SelectItem>
-            <SelectItem value="notification">Notification</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+      <TemplateFilters
+        searchTerm={searchTerm}
+        setSearchTerm={setSearchTerm}
+        selectedCategory={selectedCategory}
+        setSelectedCategory={setSelectedCategory}
+        selectedType={selectedType}
+        setSelectedType={setSelectedType}
+      />
 
       {/* Templates organized by category */}
-      <Tabs defaultValue="course-assignment" className="w-full">
-        <TabsList className="grid grid-cols-7 w-full">
-          <TabsTrigger value="course-assignment">Assignment</TabsTrigger>
-          <TabsTrigger value="course-completion">Completion</TabsTrigger>
-          <TabsTrigger value="course-reminder">Reminder</TabsTrigger>
-          <TabsTrigger value="course-quiz-failure">Quiz Failure</TabsTrigger>
-          <TabsTrigger value="manager-reminder">Manager</TabsTrigger>
-          <TabsTrigger value="course-certification">Certification</TabsTrigger>
-          <TabsTrigger value="custom">Custom</TabsTrigger>
-        </TabsList>
-
-        {categories.slice(1, -1).map(category => (
-          <TabsContent key={category.value} value={category.value}>
-            <Card className="dashboard-card">
-              <CardHeader>
-                <CardTitle>{category.label} Templates</CardTitle>
-                <CardDescription>
-                  Templates for {category.label.toLowerCase()} notifications
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {groupedTemplates[category.value]?.length > 0 ? (
-                  <TemplatesList
-                    templates={groupedTemplates[category.value]}
-                    onEdit={setEditingTemplate}
-                    onDelete={handleDeleteTemplate}
-                    onDuplicate={handleDuplicateTemplate}
-                  />
-                ) : (
-                  <div className="text-center py-8">
-                    <p className="text-muted-foreground">No {category.label.toLowerCase()} templates found.</p>
-                    <Button 
-                      variant="outline" 
-                      className="mt-2"
-                      onClick={() => setIsCreateDialogOpen(true)}
-                    >
-                      Create {category.label} Template
-                    </Button>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-        ))}
-
-        <TabsContent value="custom">
-          <Card className="dashboard-card">
-            <CardHeader>
-              <CardTitle>Custom Templates</CardTitle>
-              <CardDescription>
-                User-created custom templates
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {customTemplates.length > 0 ? (
-                <TemplatesList
-                  templates={customTemplates}
-                  onEdit={setEditingTemplate}
-                  onDelete={handleDeleteTemplate}
-                  onDuplicate={handleDuplicateTemplate}
-                />
-              ) : (
-                <div className="text-center py-8">
-                  <p className="text-muted-foreground">No custom templates found.</p>
-                  <Button 
-                    variant="outline" 
-                    className="mt-2"
-                    onClick={() => setIsCreateDialogOpen(true)}
-                  >
-                    Create Custom Template
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+      <TemplateTabsContent
+        groupedTemplates={groupedTemplates}
+        customTemplates={customTemplates}
+        onEdit={setEditingTemplate}
+        onDelete={handleDeleteTemplate}
+        onDuplicate={handleDuplicateTemplate}
+        onCreateTemplate={() => setIsCreateDialogOpen(true)}
+      />
 
       {/* Create/Edit Dialog */}
-      <Dialog open={isCreateDialogOpen || !!editingTemplate} onOpenChange={(open) => {
-        if (!open) {
+      <TemplateDialog
+        isOpen={isCreateDialogOpen || !!editingTemplate}
+        onClose={() => {
           setIsCreateDialogOpen(false);
           setEditingTemplate(null);
-        }
-      }}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
-              {editingTemplate ? 'Edit Template' : 'Create New Template'}
-            </DialogTitle>
-            <DialogDescription>
-              {editingTemplate ? 'Modify the template details below' : 'Create a new template for notifications'}
-            </DialogDescription>
-          </DialogHeader>
-          <TemplateCreationForm
-            onSubmit={editingTemplate ? handleUpdateTemplate : handleCreateTemplate}
-            onCancel={() => {
-              setIsCreateDialogOpen(false);
-              setEditingTemplate(null);
-            }}
-            isLoading={createTemplate.isPending || updateTemplate.isPending}
-            initialData={editingTemplate}
-          />
-        </DialogContent>
-      </Dialog>
+        }}
+        editingTemplate={editingTemplate}
+        onSubmit={editingTemplate ? handleUpdateTemplate : handleCreateTemplate}
+        isLoading={createTemplate.isPending || updateTemplate.isPending}
+      />
     </div>
   );
 };

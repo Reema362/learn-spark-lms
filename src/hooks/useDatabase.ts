@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { DatabaseService } from '@/services/database';
 import { useToast } from '@/hooks/use-toast';
@@ -331,6 +330,29 @@ export const useUpdateTemplate = () => {
       toast({
         title: "Success",
         description: "Template updated successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+};
+
+export const useDeleteTemplate = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: DatabaseService.deleteTemplate,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['templates'] });
+      toast({
+        title: "Success",
+        description: "Template deleted successfully",
       });
     },
     onError: (error) => {
