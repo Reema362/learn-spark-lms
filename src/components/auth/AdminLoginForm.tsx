@@ -98,10 +98,10 @@ const AdminLoginForm: React.FC = () => {
           <strong>✅ Working Admin Credentials:</strong>
         </p>
         <p className="text-muted-foreground text-xs mb-1">
-          📧 naveen.v1@slksoftware.com | 🔐 SecurePass123!
+          📧 naveen.v1@slksoftware.com | 🔐 AdminPass2024!Strong
         </p>
         <p className="text-muted-foreground text-xs">
-          📧 reema.jain@slksoftware.com | 🔐 SecurePass123!
+          📧 reema.jain@slksoftware.com | 🔐 AdminPass2024!Strong
         </p>
       </div>
     </form>

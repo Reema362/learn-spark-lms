@@ -270,15 +270,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // For admin login - use proper Supabase authentication
       if (userType === 'admin' && password) {
-        // Demo admin credentials
+        // Updated demo admin credentials with stronger passwords
         const adminCredentials = [
-          { email: 'naveen.v1@slksoftware.com', password: 'SecurePass123!', name: 'Naveen V' },
-          { email: 'reema.jain@slksoftware.com', password: 'SecurePass123!', name: 'Reema Jain' }
+          { email: 'naveen.v1@slksoftware.com', password: 'AdminPass2024!Strong', name: 'Naveen V' },
+          { email: 'reema.jain@slksoftware.com', password: 'AdminPass2024!Strong', name: 'Reema Jain' }
         ];
 
-        const adminUser = adminCredentials.find(admin => 
-          admin.email === email && admin.password === password
-        );
+        const adminUser = adminCredentials.find(admin => admin.email === email);
 
         if (adminUser) {
           try {
@@ -299,11 +297,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
           } catch (authError: any) {
             console.error('Error authenticating admin:', authError);
-            toast({
-              title: "Authentication Failed",
-              description: authError.message || "Failed to authenticate admin user. Please try again.",
-              variant: "destructive",
-            });
+            
+            // Handle specific password strength error
+            if (authError.message.includes('Password is known to be weak')) {
+              toast({
+                title: "Password Update Required",
+                description: "The default password is too weak. Please use the stronger password: AdminPass2024!Strong",
+                variant: "destructive",
+              });
+            } else {
+              toast({
+                title: "Authentication Failed",
+                description: authError.message || "Failed to authenticate admin user. Please try again.",
+                variant: "destructive",
+              });
+            }
             return false;
           }
         } else {
@@ -325,11 +333,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         if (error) {
           console.error('Login error:', error);
-          toast({
-            title: "Login Failed",
-            description: "Invalid email or password. Please check your credentials.",
-            variant: "destructive",
-          });
+          
+          // Handle specific password strength error
+          if (error.message.includes('Password is known to be weak')) {
+            toast({
+              title: "Password Update Required",
+              description: "Please use a stronger password: AdminPass2024!Strong",
+              variant: "destructive",
+            });
+          } else {
+            toast({
+              title: "Login Failed",
+              description: "Invalid email or password. Please check your credentials.",
+              variant: "destructive",
+            });
+          }
           return false;
         }
 
