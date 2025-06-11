@@ -128,54 +128,47 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const createAdminProfile = async (userId: string, email: string, name: string) => {
+  const createAdminProfile = async (email: string, name: string) => {
     try {
-      console.log('Creating/updating admin profile for:', email);
+      console.log('Creating admin profile for:', email);
       
-      // First try to create the Supabase auth user if it doesn't exist
-      let authUserId = userId;
+      // Generate a unique ID for the admin profile
+      const adminId = crypto.randomUUID();
       
-      try {
-        const { data: authData, error: signUpError } = await supabase.auth.signUp({
-          email: email,
-          password: 'SecurePass123!', // Use the same password as in demo
-          options: {
-            data: {
-              first_name: name.split(' ')[0],
-              last_name: name.split(' ')[1] || '',
-              role: 'admin'
-            }
-          }
-        });
-        
-        if (authData?.user?.id) {
-          authUserId = authData.user.id;
-          console.log('Created Supabase auth user:', authUserId);
-        }
-      } catch (authError) {
-        console.log('Auth user might already exist, proceeding with profile creation');
-      }
-      
-      const { data: profile, error: upsertError } = await supabase
+      // Create admin profile directly in the profiles table
+      const { data: profile, error: insertError } = await supabase
         .from('profiles')
-        .upsert({
-          id: authUserId,
+        .insert({
+          id: adminId,
           email: email,
-          first_name: name.split(' ')[0],
-          last_name: name.split(' ')[1] || '',
+          first_name: name.split(' ')[0] || '',
+          last_name: name.split(' ').slice(1).join(' ') || '',
           role: 'admin'
-        }, {
-          onConflict: 'id'
         })
         .select()
         .single();
 
-      if (upsertError) {
-        console.error('Error creating/updating admin profile:', upsertError);
-        throw new Error(`Failed to create admin profile: ${upsertError.message}`);
+      if (insertError) {
+        console.error('Error creating admin profile:', insertError);
+        
+        // If profile already exists, try to fetch it
+        if (insertError.code === '23505') {
+          const { data: existingProfile } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('email', email)
+            .single();
+          
+          if (existingProfile) {
+            console.log('Using existing admin profile:', existingProfile);
+            return existingProfile;
+          }
+        }
+        
+        throw new Error(`Failed to create admin profile: ${insertError.message}`);
       }
 
-      console.log('Admin profile created/updated successfully:', profile);
+      console.log('Admin profile created successfully:', profile);
       return profile;
     } catch (error) {
       console.error('Error in createAdminProfile:', error);
@@ -258,7 +251,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
 
-      // For admin login - use hardcoded credentials for demo with proper Supabase auth
+      // For admin login - use hardcoded credentials for demo
       if (userType === 'admin' && password) {
         // Demo admin credentials
         const adminCredentials = [
@@ -272,42 +265,43 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         if (adminUser) {
           try {
-            // First try to sign in with Supabase auth
-            const { data: authData, error: signInError } = await supabase.auth.signInWithPassword({
-              email: adminUser.email,
-              password: adminUser.password,
-            });
+            console.log('Valid admin credentials, setting up profile for:', email);
+            
+            // Check if admin profile already exists
+            const { data: existingProfile } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('email', adminUser.email)
+              .single();
 
-            let userId = authData?.user?.id;
-
-            // If sign in fails, try to sign up or create profile with UUID
-            if (signInError) {
-              console.log('Sign in failed, attempting to create admin profile');
-              userId = crypto.randomUUID();
+            let profile = existingProfile;
+            
+            // If no profile exists, create one
+            if (!existingProfile) {
+              profile = await createAdminProfile(adminUser.email, adminUser.name);
             }
 
-            // Create or update admin profile in database
-            const profile = await createAdminProfile(userId || crypto.randomUUID(), adminUser.email, adminUser.name);
+            if (profile) {
+              const userData: User = {
+                id: profile.id,
+                email: adminUser.email,
+                name: adminUser.name,
+                role: 'admin'
+              };
 
-            const userData: User = {
-              id: profile.id,
-              email: adminUser.email,
-              name: adminUser.name,
-              role: 'admin'
-            };
-
-            setUser(userData);
-            saveUserSession(userData);
-            logAuditEvent(`User ${userData.email} (admin) logged in`);
-            
-            toast({
-              title: "Welcome back!",
-              description: `Successfully logged in as ${userData.name}`,
-            });
-            
-            return true;
+              setUser(userData);
+              saveUserSession(userData);
+              logAuditEvent(`User ${userData.email} (admin) logged in`);
+              
+              toast({
+                title: "Welcome back!",
+                description: `Successfully logged in as ${userData.name}`,
+              });
+              
+              return true;
+            }
           } catch (profileError: any) {
-            console.error('Error creating admin profile:', profileError);
+            console.error('Error setting up admin profile:', profileError);
             toast({
               title: "Profile Setup Failed",
               description: "Failed to set up admin profile. Please try again.",

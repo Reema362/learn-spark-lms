@@ -7,3 +7,13 @@ export const getFilteredTemplates = (templates: any[], searchTerm: string, selec
     return matchesSearch && matchesType;
   });
 };
+
+export const getTemplateCategory = (type: string) => {
+  const categories = {
+    email: 'Email Templates',
+    sms: 'SMS Templates',
+    alert: 'Alert Templates',
+    notification: 'Notification Templates'
+  };
+  return categories[type as keyof typeof categories] || 'Unknown Category';
+};
