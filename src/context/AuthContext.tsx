@@ -91,6 +91,71 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => subscription.unsubscribe();
   }, []);
 
+  const createOrSignInAdmin = async (email: string, password: string, name: string) => {
+    try {
+      console.log('Attempting admin authentication for:', email);
+      
+      // First try to sign in
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (signInData.user) {
+        console.log('Admin signed in successfully');
+        return signInData.user;
+      }
+
+      // If sign in failed, try to sign up
+      if (signInError) {
+        console.log('Sign in failed, attempting sign up:', signInError.message);
+        
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              first_name: name.split(' ')[0] || '',
+              last_name: name.split(' ').slice(1).join(' ') || '',
+              role: 'admin'
+            }
+          }
+        });
+
+        if (signUpError) {
+          console.error('Sign up failed:', signUpError);
+          throw new Error(`Authentication failed: ${signUpError.message}`);
+        }
+
+        if (signUpData.user) {
+          console.log('Admin signed up successfully');
+          
+          // Create admin profile
+          const { error: profileError } = await supabase
+            .from('profiles')
+            .upsert({
+              id: signUpData.user.id,
+              email: email,
+              first_name: name.split(' ')[0] || '',
+              last_name: name.split(' ').slice(1).join(' ') || '',
+              role: 'admin'
+            });
+
+          if (profileError) {
+            console.error('Error creating admin profile:', profileError);
+          }
+
+          return signUpData.user;
+        }
+      }
+
+      throw new Error('Authentication failed');
+    } catch (error: any) {
+      console.error('Error in createOrSignInAdmin:', error);
+      throw error;
+    }
+  };
+
   const createLearnerProfile = async (userId: string, email: string) => {
     try {
       console.log('Creating learner profile for:', email);
@@ -124,54 +189,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return newProfile;
     } catch (error) {
       console.error('Error in createLearnerProfile:', error);
-      throw error;
-    }
-  };
-
-  const createAdminProfile = async (email: string, name: string) => {
-    try {
-      console.log('Creating admin profile for:', email);
-      
-      // Generate a unique ID for the admin profile
-      const adminId = crypto.randomUUID();
-      
-      // Create admin profile directly in the profiles table
-      const { data: profile, error: insertError } = await supabase
-        .from('profiles')
-        .insert({
-          id: adminId,
-          email: email,
-          first_name: name.split(' ')[0] || '',
-          last_name: name.split(' ').slice(1).join(' ') || '',
-          role: 'admin'
-        })
-        .select()
-        .single();
-
-      if (insertError) {
-        console.error('Error creating admin profile:', insertError);
-        
-        // If profile already exists, try to fetch it
-        if (insertError.code === '23505') {
-          const { data: existingProfile } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('email', email)
-            .single();
-          
-          if (existingProfile) {
-            console.log('Using existing admin profile:', existingProfile);
-            return existingProfile;
-          }
-        }
-        
-        throw new Error(`Failed to create admin profile: ${insertError.message}`);
-      }
-
-      console.log('Admin profile created successfully:', profile);
-      return profile;
-    } catch (error) {
-      console.error('Error in createAdminProfile:', error);
       throw error;
     }
   };
@@ -251,7 +268,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
 
-      // For admin login - use hardcoded credentials for demo
+      // For admin login - use proper Supabase authentication
       if (userType === 'admin' && password) {
         // Demo admin credentials
         const adminCredentials = [
@@ -265,46 +282,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         if (adminUser) {
           try {
-            console.log('Valid admin credentials, setting up profile for:', email);
+            console.log('Valid admin credentials, authenticating with Supabase for:', email);
             
-            // Check if admin profile already exists
-            const { data: existingProfile } = await supabase
-              .from('profiles')
-              .select('*')
-              .eq('email', adminUser.email)
-              .single();
+            // Use real Supabase authentication for admin
+            const authenticatedUser = await createOrSignInAdmin(adminUser.email, adminUser.password, adminUser.name);
 
-            let profile = existingProfile;
-            
-            // If no profile exists, create one
-            if (!existingProfile) {
-              profile = await createAdminProfile(adminUser.email, adminUser.name);
-            }
-
-            if (profile) {
-              const userData: User = {
-                id: profile.id,
-                email: adminUser.email,
-                name: adminUser.name,
-                role: 'admin'
-              };
-
-              setUser(userData);
-              saveUserSession(userData);
-              logAuditEvent(`User ${userData.email} (admin) logged in`);
-              
+            if (authenticatedUser) {
+              // The auth state change listener will handle setting the user state
               toast({
                 title: "Welcome back!",
-                description: `Successfully logged in as ${userData.name}`,
+                description: `Successfully logged in as ${adminUser.name}`,
               });
               
+              logAuditEvent(`User ${adminUser.email} (admin) logged in`);
               return true;
             }
-          } catch (profileError: any) {
-            console.error('Error setting up admin profile:', profileError);
+          } catch (authError: any) {
+            console.error('Error authenticating admin:', authError);
             toast({
-              title: "Profile Setup Failed",
-              description: "Failed to set up admin profile. Please try again.",
+              title: "Authentication Failed",
+              description: authError.message || "Failed to authenticate admin user. Please try again.",
               variant: "destructive",
             });
             return false;
@@ -337,32 +334,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
 
         if (data.user) {
-          // Get user profile
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', data.user.id)
-            .single();
-
-          if (profile) {
-            const userData: User = {
-              id: data.user.id,
-              email: profile.email,
-              name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.email,
-              role: profile.role === 'admin' ? 'admin' : 'learner'
-            };
-
-            setUser(userData);
-            saveUserSession(userData);
-            logAuditEvent(`User ${userData.email} (${userData.role}) logged in`);
-            
-            toast({
-              title: "Welcome back!",
-              description: `Successfully logged in as ${userData.name}`,
-            });
-            
-            return true;
-          }
+          // The auth state change listener will handle setting the user state
+          toast({
+            title: "Welcome back!",
+            description: `Successfully logged in`,
+          });
+          
+          return true;
         }
       }
 
