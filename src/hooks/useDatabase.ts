@@ -1,3 +1,4 @@
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { DatabaseService } from '@/services/database';
 import { useToast } from '@/hooks/use-toast';
@@ -43,7 +44,7 @@ export const useCreateCourse = () => {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: DatabaseService.createCourse,
+    mutationFn: (courseData: any) => DatabaseService.createCourse(courseData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['courses'] });
       queryClient.invalidateQueries({ queryKey: ['analytics'] });
@@ -52,7 +53,7 @@ export const useCreateCourse = () => {
         description: "Course created successfully",
       });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       console.error('Create course error:', error);
       toast({
         title: "Error",
@@ -78,7 +79,7 @@ export const useUpdateCourse = () => {
         description: "Course updated successfully",
       });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       console.error('Update course error:', error);
       toast({
         title: "Error",
@@ -94,7 +95,7 @@ export const useDeleteCourse = () => {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: DatabaseService.deleteCourse,
+    mutationFn: (id: string) => DatabaseService.deleteCourse(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['courses'] });
       queryClient.invalidateQueries({ queryKey: ['analytics'] });
@@ -103,7 +104,7 @@ export const useDeleteCourse = () => {
         description: "Course deleted successfully",
       });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       console.error('Delete course error:', error);
       toast({
         title: "Error",
@@ -119,7 +120,7 @@ export const useCreateUser = () => {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: DatabaseService.createUser,
+    mutationFn: (userData: any) => DatabaseService.createUser(userData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       queryClient.invalidateQueries({ queryKey: ['analytics'] });
@@ -128,7 +129,7 @@ export const useCreateUser = () => {
         description: "User created successfully",
       });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       console.error('Create user error:', error);
       toast({
         title: "Error",
@@ -151,7 +152,7 @@ export const useUploadFile = () => {
         description: "File uploaded successfully",
       });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       console.error('File upload error:', error);
       toast({
         title: "Error",
@@ -177,7 +178,7 @@ export const useCreateCampaign = () => {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: DatabaseService.createCampaign,
+    mutationFn: (campaignData: any) => DatabaseService.createCampaign(campaignData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['campaigns'] });
       toast({
@@ -185,7 +186,7 @@ export const useCreateCampaign = () => {
         description: "Campaign created successfully",
       });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast({
         title: "Error",
         description: error.message,
@@ -209,7 +210,7 @@ export const useUpdateCampaign = () => {
         description: "Campaign updated successfully",
       });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast({
         title: "Error",
         description: error.message,
@@ -234,7 +235,7 @@ export const useCreateEscalation = () => {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: DatabaseService.createEscalation,
+    mutationFn: (escalationData: any) => DatabaseService.createEscalation(escalationData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['escalations'] });
       toast({
@@ -242,7 +243,7 @@ export const useCreateEscalation = () => {
         description: "Escalation created successfully",
       });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast({
         title: "Error",
         description: error.message,
@@ -267,7 +268,7 @@ export const useCreateQuery = () => {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: DatabaseService.createQuery,
+    mutationFn: (queryData: any) => DatabaseService.createQuery(queryData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['queries'] });
       toast({
@@ -275,7 +276,7 @@ export const useCreateQuery = () => {
         description: "Query submitted successfully",
       });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast({
         title: "Error",
         description: error.message,
@@ -300,7 +301,7 @@ export const useCreateTemplate = () => {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: DatabaseService.createTemplate,
+    mutationFn: (templateData: any) => DatabaseService.createTemplate(templateData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['templates'] });
       toast({
@@ -308,7 +309,7 @@ export const useCreateTemplate = () => {
         description: "Template created successfully",
       });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast({
         title: "Error",
         description: error.message,
@@ -332,7 +333,7 @@ export const useUpdateTemplate = () => {
         description: "Template updated successfully",
       });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast({
         title: "Error",
         description: error.message,
@@ -347,7 +348,7 @@ export const useDeleteTemplate = () => {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: DatabaseService.deleteTemplate,
+    mutationFn: (id: string) => DatabaseService.deleteTemplate(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['templates'] });
       toast({
@@ -355,7 +356,7 @@ export const useDeleteTemplate = () => {
         description: "Template deleted successfully",
       });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast({
         title: "Error",
         description: error.message,
@@ -417,7 +418,7 @@ export const useCreateGame = () => {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: DatabaseService.createGame,
+    mutationFn: (gameData: any) => DatabaseService.createGame(gameData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['games'] });
       toast({
@@ -425,7 +426,7 @@ export const useCreateGame = () => {
         description: "Game created successfully",
       });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast({
         title: "Error",
         description: error.message,
@@ -453,7 +454,7 @@ export const useSubmitGameSession = () => {
         description: "Game completed successfully!",
       });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast({
         title: "Error",
         description: error.message,
