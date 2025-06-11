@@ -2,49 +2,37 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, FileText } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useTemplates, useCreateTemplate, useUpdateTemplate, useDeleteTemplate } from '@/hooks/useDatabase';
-import TemplateFilters from './templates/TemplateFilters';
-import TemplateTabsContent from './templates/TemplateTabsContent';
-import TemplateDialog from './templates/TemplateDialog';
-import { categories } from '@/utils/templateUtils';
+import { Plus, FileText } from 'lucide-react';
+import { useTemplates, useDeleteTemplate } from '@/hooks/useDatabase';
+import { TemplateFilters } from './templates/TemplateFilters';
+import { TemplateTabsContent } from './templates/TemplateTabsContent';
+import { TemplateDialog } from './templates/TemplateDialog';
+import { getFilteredTemplates } from '@/utils/templateUtils';
 
 const TemplatesManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedType, setSelectedType] = useState('all');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<any>(null);
 
   const { data: templates = [], isLoading } = useTemplates();
-  const createTemplate = useCreateTemplate();
-  const updateTemplate = useUpdateTemplate();
   const deleteTemplate = useDeleteTemplate();
 
-  const handleCreateTemplate = async (templateData: any) => {
-    try {
-      await createTemplate.mutateAsync(templateData);
-      setIsCreateDialogOpen(false);
-    } catch (error) {
-      console.error('Error creating template:', error);
-    }
+  const filteredTemplates = getFilteredTemplates(templates, searchTerm, selectedType);
+
+  const emailTemplates = filteredTemplates.filter(t => t.type === 'email');
+  const smsTemplates = filteredTemplates.filter(t => t.type === 'sms');
+  const alertTemplates = filteredTemplates.filter(t => t.type === 'alert');
+  const notificationTemplates = filteredTemplates.filter(t => t.type === 'notification');
+
+  const handleEdit = (template: any) => {
+    setEditingTemplate(template);
+    setIsEditDialogOpen(true);
   };
 
-  const handleUpdateTemplate = async (templateData: any) => {
-    if (!editingTemplate) return;
-    try {
-      await updateTemplate.mutateAsync({
-        id: editingTemplate.id,
-        updates: templateData
-      });
-      setEditingTemplate(null);
-    } catch (error) {
-      console.error('Error updating template:', error);
-    }
-  };
-
-  const handleDeleteTemplate = async (templateId: string) => {
+  const handleDelete = async (templateId: string) => {
     if (confirm('Are you sure you want to delete this template?')) {
       try {
         await deleteTemplate.mutateAsync(templateId);
@@ -54,30 +42,16 @@ const TemplatesManagement = () => {
     }
   };
 
-  const handleDuplicateTemplate = (template: any) => {
-    const duplicatedTemplate = {
+  const handleDuplicate = (template: any) => {
+    setEditingTemplate({
       ...template,
+      id: '',
       name: `${template.name} (Copy)`,
-      id: undefined
-    };
-    setEditingTemplate(duplicatedTemplate);
+      created_at: '',
+      updated_at: ''
+    });
+    setIsEditDialogOpen(true);
   };
-
-  const filteredTemplates = templates.filter((template: any) => {
-    const matchesSearch = template.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         template.content?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === 'all' || template.category === selectedCategory;
-    const matchesType = selectedType === 'all' || template.type === selectedType;
-    return matchesSearch && matchesCategory && matchesType;
-  });
-
-  const defaultTemplates = filteredTemplates.filter((template: any) => 
-    template.name.startsWith('Default')
-  );
-
-  const customTemplates = filteredTemplates.filter((template: any) => 
-    !template.name.startsWith('Default')
-  );
 
   if (isLoading) {
     return (
@@ -89,10 +63,11 @@ const TemplatesManagement = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
+      {/* Header */}
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-3xl font-bold">Templates Management</h2>
-          <p className="text-muted-foreground">Create and manage notification templates</p>
+          <p className="text-muted-foreground">Create and manage communication templates</p>
         </div>
         <Button onClick={() => setIsCreateDialogOpen(true)}>
           <Plus className="h-4 w-4 mr-2" />
@@ -100,6 +75,7 @@ const TemplatesManagement = () => {
         </Button>
       </div>
 
+      {/* Statistics */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-4 text-center">
@@ -109,75 +85,109 @@ const TemplatesManagement = () => {
         </Card>
         <Card>
           <CardContent className="p-4 text-center">
-            <div className="text-2xl font-bold text-success">{defaultTemplates.length}</div>
-            <div className="text-sm text-muted-foreground">Default Templates</div>
+            <div className="text-2xl font-bold text-blue-600">{emailTemplates.length}</div>
+            <div className="text-sm text-muted-foreground">Email Templates</div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4 text-center">
-            <div className="text-2xl font-bold text-info">{customTemplates.length}</div>
-            <div className="text-sm text-muted-foreground">Custom Templates</div>
+            <div className="text-2xl font-bold text-green-600">{smsTemplates.length}</div>
+            <div className="text-sm text-muted-foreground">SMS Templates</div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4 text-center">
-            <div className="text-2xl font-bold text-warning">{categories.length - 1}</div>
-            <div className="text-sm text-muted-foreground">Categories</div>
+            <div className="text-2xl font-bold text-red-600">{alertTemplates.length}</div>
+            <div className="text-sm text-muted-foreground">Alert Templates</div>
           </CardContent>
         </Card>
       </div>
 
+      {/* Filters */}
       <TemplateFilters
         searchTerm={searchTerm}
-        setSearchTerm={setSearchTerm}
-        selectedCategory={selectedCategory}
-        setSelectedCategory={setSelectedCategory}
+        onSearchChange={setSearchTerm}
         selectedType={selectedType}
-        setSelectedType={setSelectedType}
+        onTypeChange={setSelectedType}
       />
 
-      <Tabs defaultValue="default" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="default" className="flex items-center gap-2">
-            <FileText className="h-4 w-4" />
-            Default Templates ({defaultTemplates.length})
-          </TabsTrigger>
-          <TabsTrigger value="custom" className="flex items-center gap-2">
-            <Plus className="h-4 w-4" />
-            Custom Templates ({customTemplates.length})
-          </TabsTrigger>
+      {/* Templates Tabs */}
+      <Tabs defaultValue="all" className="w-full">
+        <TabsList className="grid w-full grid-cols-5">
+          <TabsTrigger value="all">All ({filteredTemplates.length})</TabsTrigger>
+          <TabsTrigger value="email">Email ({emailTemplates.length})</TabsTrigger>
+          <TabsTrigger value="sms">SMS ({smsTemplates.length})</TabsTrigger>
+          <TabsTrigger value="alert">Alerts ({alertTemplates.length})</TabsTrigger>
+          <TabsTrigger value="notification">Notifications ({notificationTemplates.length})</TabsTrigger>
         </TabsList>
         
-        <TabsContent value="default">
+        <TabsContent value="all" className="mt-6">
           <TemplateTabsContent
-            templates={defaultTemplates}
-            onEdit={setEditingTemplate}
-            onDelete={handleDeleteTemplate}
-            onDuplicate={handleDuplicateTemplate}
-            emptyMessage="No default templates found matching your criteria."
+            templates={filteredTemplates}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            onDuplicate={handleDuplicate}
           />
         </TabsContent>
 
-        <TabsContent value="custom">
+        <TabsContent value="email" className="mt-6">
           <TemplateTabsContent
-            templates={customTemplates}
-            onEdit={setEditingTemplate}
-            onDelete={handleDeleteTemplate}
-            onDuplicate={handleDuplicateTemplate}
-            emptyMessage="No custom templates found. Create your first custom template!"
+            templates={emailTemplates}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            onDuplicate={handleDuplicate}
+          />
+        </TabsContent>
+
+        <TabsContent value="sms" className="mt-6">
+          <TemplateTabsContent
+            templates={smsTemplates}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            onDuplicate={handleDuplicate}
+          />
+        </TabsContent>
+
+        <TabsContent value="alert" className="mt-6">
+          <TemplateTabsContent
+            templates={alertTemplates}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            onDuplicate={handleDuplicate}
+          />
+        </TabsContent>
+
+        <TabsContent value="notification" className="mt-6">
+          <TemplateTabsContent
+            templates={notificationTemplates}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            onDuplicate={handleDuplicate}
           />
         </TabsContent>
       </Tabs>
 
+      {/* Create Dialog */}
       <TemplateDialog
-        isOpen={isCreateDialogOpen || !!editingTemplate}
-        onClose={() => {
-          setIsCreateDialogOpen(false);
+        open={isCreateDialogOpen}
+        onOpenChange={setIsCreateDialogOpen}
+        template={null}
+        onSave={() => setIsCreateDialogOpen(false)}
+        title="Create New Template"
+        description="Create a new communication template"
+      />
+
+      {/* Edit Dialog */}
+      <TemplateDialog
+        open={isEditDialogOpen}
+        onOpenChange={setIsEditDialogOpen}
+        template={editingTemplate}
+        onSave={() => {
+          setIsEditDialogOpen(false);
           setEditingTemplate(null);
         }}
-        editingTemplate={editingTemplate}
-        onSubmit={editingTemplate ? handleUpdateTemplate : handleCreateTemplate}
-        isLoading={createTemplate.isPending || updateTemplate.isPending}
+        title="Edit Template"
+        description="Update template information"
       />
     </div>
   );
