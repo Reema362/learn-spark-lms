@@ -1,9 +1,8 @@
-
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
-import { BookOpen, Award, HelpCircle, LogOut, Shield, Menu, X } from 'lucide-react';
+import { BookOpen, Award, HelpCircle, LogOut, Shield, Menu, X, Trophy } from 'lucide-react';
 import { useState } from 'react';
 import AIFloatingActions from '@/components/shared/AIFloatingActions';
 
@@ -14,6 +13,7 @@ const LearnerLayout = ({ children }: { children: React.ReactNode }) => {
 
   const menuItems = [
     { path: '/learner/courses', icon: BookOpen, label: 'My Courses' },
+    { path: '/learner/games', icon: Trophy, label: 'Security Games' },
     { path: '/learner/certifications', icon: Award, label: 'Certifications' },
     { path: '/learner/help', icon: HelpCircle, label: 'Help & Support' },
   ];
