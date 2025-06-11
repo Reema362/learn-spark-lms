@@ -30,7 +30,7 @@ export class DatabaseService {
 
   static async createUser(userData: any) {
     // Check if user is authenticated via our app's auth system
-    const userSession = localStorage.getItem('user-session');
+    const userSession = localStorage.getItem('avocop_user');
     if (!userSession) {
       throw new Error('Permission denied: You must be logged in to create users.');
     }
@@ -194,7 +194,7 @@ export class DatabaseService {
 
   static async createCampaign(campaignData: any) {
     // Check if user is authenticated via our app's auth system
-    const userSession = localStorage.getItem('user-session');
+    const userSession = localStorage.getItem('avocop_user');
     if (!userSession) {
       throw new Error('Permission denied: You must be logged in to create campaigns.');
     }
@@ -302,7 +302,7 @@ export class DatabaseService {
 
   static async createCourse(courseData: any) {
     // Check if user is authenticated via our app's auth system
-    const userSession = localStorage.getItem('user-session');
+    const userSession = localStorage.getItem('avocop_user');
     if (!userSession) {
       throw new Error('Permission denied: You must be logged in to create courses.');
     }
@@ -383,7 +383,7 @@ export class DatabaseService {
 
   static async createLesson(lessonData: any) {
     // Check if user is authenticated via our app's auth system
-    const userSession = localStorage.getItem('user-session');
+    const userSession = localStorage.getItem('avocop_user');
     if (!userSession) {
       throw new Error('Permission denied: You must be logged in to create lessons.');
     }
@@ -459,7 +459,7 @@ export class DatabaseService {
 
   static async createCourseCategory(categoryData: any) {
     // Check if user is authenticated via our app's auth system
-    const userSession = localStorage.getItem('user-session');
+    const userSession = localStorage.getItem('avocop_user');
     if (!userSession) {
       throw new Error('Permission denied: You must be logged in to create categories.');
     }

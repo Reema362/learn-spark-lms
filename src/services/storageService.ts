@@ -10,7 +10,7 @@ export class StorageService {
       console.log('File details:', { name: file.name, size: file.size, type: file.type });
       
       // Check if user is authenticated via our app's auth system
-      const userSession = localStorage.getItem('user-session');
+      const userSession = localStorage.getItem('avocop_user');
       if (!userSession) {
         throw new Error('Permission denied: You must be logged in to upload files.');
       }
@@ -23,6 +23,11 @@ export class StorageService {
       } catch (parseError) {
         console.log('Error parsing user session:', parseError);
         throw new Error('Permission denied: Invalid session. Please log in again.');
+      }
+
+      // Validate user object has required properties
+      if (!user || !user.id || !user.email || !user.role) {
+        throw new Error('Permission denied: Invalid user session. Please log in again.');
       }
 
       console.log('User authenticated, proceeding with upload');
