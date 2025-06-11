@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,6 +12,9 @@ const Help = () => {
   const [message, setMessage] = useState('');
   const [subject, setSubject] = useState('');
   const [ticketType, setTicketType] = useState('technical');
+  const [chatMessages, setChatMessages] = useState([
+    { id: 1, text: "Hello! How can I help you today?", sender: "support", time: "Just now" }
+  ]);
   const { toast } = useToast();
 
   const handleSubmitTicket = (e: React.FormEvent) => {
@@ -26,13 +28,59 @@ const Help = () => {
       return;
     }
 
-    // Mock ticket submission
     toast({
       title: "Ticket Submitted",
       description: "Your support ticket has been created. We'll respond within 24 hours.",
     });
 
     setSubject('');
+    setMessage('');
+  };
+
+  const handleSendMessage = () => {
+    if (!message.trim()) return;
+
+    // Add user message
+    const userMessage = { 
+      id: chatMessages.length + 1, 
+      text: message, 
+      sender: "user", 
+      time: "Just now" 
+    };
+    setChatMessages(prev => [...prev, userMessage]);
+
+    // Generate AI response based on message content
+    const generateResponse = (userMsg: string) => {
+      const lowerMsg = userMsg.toLowerCase();
+      
+      if (lowerMsg.includes('course') || lowerMsg.includes('video') || lowerMsg.includes('lesson')) {
+        return "I can help you with course-related issues! You can find your assigned courses in the 'My Courses' section. If you're having trouble accessing a video or lesson, try refreshing the page or clearing your browser cache.";
+      } else if (lowerMsg.includes('certificate') || lowerMsg.includes('certification')) {
+        return "Certificates are available in the 'Certifications' tab once you complete a course with a passing grade. It may take up to 24 hours for certificates to appear. Would you like me to check the status of a specific course?";
+      } else if (lowerMsg.includes('password') || lowerMsg.includes('login') || lowerMsg.includes('access')) {
+        return "For password or login issues, please contact your system administrator. If you're a learner, you typically don't need a password - just enter your email address to access the platform.";
+      } else if (lowerMsg.includes('game') || lowerMsg.includes('gamification') || lowerMsg.includes('badge')) {
+        return "Great question about our gamification features! You can access security games in the 'Gamification' section. Complete games to earn badges and points. Your progress is tracked on the leaderboard!";
+      } else if (lowerMsg.includes('mobile') || lowerMsg.includes('phone') || lowerMsg.includes('tablet')) {
+        return "Yes! AvoCop is fully mobile-responsive. You can access all courses, games, and features from your mobile device or tablet through your web browser.";
+      } else if (lowerMsg.includes('hello') || lowerMsg.includes('hi') || lowerMsg.includes('help')) {
+        return "Hello! I'm here to assist you with the AvoCop learning platform. I can help with course access, certificates, gamification features, technical issues, and general platform questions. What specific area would you like help with?";
+      } else {
+        return `I understand you're asking about "${userMsg}". I'm here to help with course access, certificates, gamification, and technical issues. Could you please provide more details about your specific question or problem?`;
+      }
+    };
+
+    // Add AI response after a short delay
+    setTimeout(() => {
+      const aiResponse = {
+        id: chatMessages.length + 2,
+        text: generateResponse(message),
+        sender: "support",
+        time: "Just now"
+      };
+      setChatMessages(prev => [...prev, aiResponse]);
+    }, 1000);
+
     setMessage('');
   };
 
@@ -76,16 +124,16 @@ const Help = () => {
       answer: "Certificates are usually available within 24 hours of course completion. Check the 'Certifications' tab. If it's still not there, please submit a support ticket."
     },
     {
+      question: "How do I play security games and earn badges?",
+      answer: "Visit the 'Gamification' section to access interactive security games. Complete games with passing scores to earn badges and climb the leaderboard!"
+    },
+    {
+      question: "Can I access AvoCop on my mobile device?",
+      answer: "Yes! AvoCop is fully responsive and works on all mobile devices and tablets through your web browser."
+    },
+    {
       question: "How long do I have to complete my courses?",
       answer: "Each course has a due date shown on the course card. You can see all due dates in your course overview. Extensions may be available through your manager."
-    },
-    {
-      question: "Can I retake a course or quiz?",
-      answer: "Yes, you can retake most courses and quizzes. Look for the 'Retake' option on completed courses or contact support for assistance."
-    },
-    {
-      question: "Who can I contact for urgent issues?",
-      answer: "For urgent technical issues, use the live chat feature below or submit a high-priority support ticket. For course content questions, contact your learning administrator."
     }
   ];
 
@@ -139,19 +187,27 @@ const Help = () => {
                 <MessageSquare className="h-5 w-5 mr-2 text-primary" />
                 Live Chat Support
               </CardTitle>
-              <CardDescription>Chat directly with our support team for immediate assistance</CardDescription>
+              <CardDescription>Chat with our AI support assistant for immediate assistance</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 {/* Chat Messages Area */}
                 <div className="border rounded-lg p-4 h-64 overflow-y-auto bg-muted/20">
                   <div className="space-y-3">
-                    <div className="flex justify-start">
-                      <div className="bg-primary text-primary-foreground rounded-lg px-3 py-2 max-w-xs">
-                        <p className="text-sm">Hello! How can I help you today?</p>
-                        <p className="text-xs opacity-70">Support Team • Just now</p>
+                    {chatMessages.map((msg) => (
+                      <div key={msg.id} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
+                        <div className={`rounded-lg px-3 py-2 max-w-xs ${
+                          msg.sender === 'user' 
+                            ? 'bg-primary text-primary-foreground' 
+                            : 'bg-background border'
+                        }`}>
+                          <p className="text-sm">{msg.text}</p>
+                          <p className="text-xs opacity-70 mt-1">
+                            {msg.sender === 'user' ? 'You' : 'Support'} • {msg.time}
+                          </p>
+                        </div>
                       </div>
-                    </div>
+                    ))}
                   </div>
                 </div>
 
@@ -161,15 +217,15 @@ const Help = () => {
                     placeholder="Type your message here..." 
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && setMessage('')}
+                    onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
                   />
-                  <Button size="sm">
+                  <Button size="sm" onClick={handleSendMessage}>
                     <Send className="h-4 w-4" />
                   </Button>
                 </div>
 
                 <div className="text-sm text-muted-foreground">
-                  💡 <strong>Tip:</strong> Our support team is available Monday-Friday, 9 AM - 5 PM EST
+                  💡 <strong>Tip:</strong> Ask about courses, certificates, gamification, or any technical issues!
                 </div>
               </div>
             </CardContent>
@@ -196,6 +252,7 @@ const Help = () => {
                       <option value="technical">Technical Issue</option>
                       <option value="course-content">Course Content</option>
                       <option value="certification">Certification</option>
+                      <option value="gamification">Gamification</option>
                       <option value="account">Account Related</option>
                       <option value="other">Other</option>
                     </select>

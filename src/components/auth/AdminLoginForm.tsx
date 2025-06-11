@@ -3,108 +3,94 @@ import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useAuth } from "../../context/AuthContext";
-import { useNavigate } from "react-router-dom";
-import { useToast } from "@/hooks/use-toast";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useAuth } from '@/context/AuthContext';
+import { useNavigate } from 'react-router-dom';
+import { Eye, EyeOff } from 'lucide-react';
 
-const AdminLoginForm: React.FC = () => {
-  const [adminEmail, setAdminEmail] = useState('');
-  const [adminPassword, setAdminPassword] = useState('');
-  const { login, loading } = useAuth();
+const AdminLoginForm = () => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const { login } = useAuth();
   const navigate = useNavigate();
-  const { toast } = useToast();
 
-  const validateEmail = (email: string): boolean => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  };
-
-  const validatePassword = (password: string): boolean => {
-    return password.length >= 8;
-  };
-
-  const handleAdminLogin = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
     
-    if (!adminEmail || !adminPassword) {
-      toast({
-        title: "Error",
-        description: "Please enter both email and password",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (!validateEmail(adminEmail)) {
-      toast({
-        title: "Invalid Email",
-        description: "Please enter a valid email address",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (!validatePassword(adminPassword)) {
-      toast({
-        title: "Invalid Password",
-        description: "Password must be at least 8 characters long",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    const success = await login(adminEmail, adminPassword, 'admin');
+    const success = await login(email, password, 'admin');
+    
     if (success) {
       navigate('/admin');
     }
+    
+    setLoading(false);
   };
 
   return (
-    <form onSubmit={handleAdminLogin} className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="admin-email" className="text-sm font-medium">Email Address</Label>
-        <Input 
-          id="admin-email" 
-          type="email" 
-          placeholder="admin@company.com" 
-          value={adminEmail} 
-          onChange={(e) => setAdminEmail(e.target.value)} 
-          required 
-          maxLength={254}
-          autoComplete="email"
-          className="h-11"
-        />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="admin-password" className="text-sm font-medium">Password</Label>
-        <Input 
-          id="admin-password" 
-          type="password" 
-          placeholder="Enter your password" 
-          value={adminPassword} 
-          onChange={(e) => setAdminPassword(e.target.value)} 
-          required 
-          minLength={8}
-          maxLength={128}
-          autoComplete="current-password"
-          className="h-11"
-        />
-      </div>
-      <Button type="submit" className="w-full h-11 bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90" disabled={loading}>
-        {loading ? "Signing in..." : "🔑 Admin Sign in"}
-      </Button>
-      <div className="text-sm text-center p-4 bg-gradient-to-r from-muted/50 to-muted/30 rounded-lg border border-muted">
-        <p className="text-muted-foreground mb-1">
-          <strong>✅ Working Admin Credentials:</strong>
-        </p>
-        <p className="text-muted-foreground text-xs mb-1">
-          📧 naveen.v1@slksoftware.com | 🔐 AdminPass2024!Strong
-        </p>
-        <p className="text-muted-foreground text-xs">
-          📧 reema.jain@slksoftware.com | 🔐 AdminPass2024!Strong
-        </p>
-      </div>
-    </form>
+    <Card className="w-full max-w-md mx-auto">
+      <CardHeader className="text-center">
+        <CardTitle>Admin Login</CardTitle>
+        <CardDescription>
+          Sign in with your administrator credentials
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="admin-email">Email</Label>
+            <Input
+              id="admin-email"
+              type="email"
+              placeholder="Enter your email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="admin-password">Password</Label>
+            <div className="relative">
+              <Input
+                id="admin-password"
+                type={showPassword ? "text" : "password"}
+                placeholder="Enter your password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="pr-10"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? (
+                  <EyeOff className="h-4 w-4 text-muted-foreground" />
+                ) : (
+                  <Eye className="h-4 w-4 text-muted-foreground" />
+                )}
+              </Button>
+            </div>
+          </div>
+          <Button type="submit" className="w-full" disabled={loading}>
+            {loading ? 'Signing in...' : 'Sign In'}
+          </Button>
+        </form>
+        
+        <div className="mt-4 p-3 bg-muted rounded-lg">
+          <p className="text-sm font-medium mb-2">Demo Credentials:</p>
+          <div className="space-y-1 text-xs">
+            <p><strong>Email:</strong> naveen.v1@slksoftware.com</p>
+            <p><strong>Password:</strong> AdminPass2024!Strong</p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 };
 

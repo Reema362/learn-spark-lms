@@ -13,7 +13,7 @@ const LearnerLayout = ({ children }: { children: React.ReactNode }) => {
 
   const menuItems = [
     { path: '/learner/courses', icon: BookOpen, label: 'My Courses' },
-    { path: '/learner/games', icon: Trophy, label: 'Security Games' },
+    { path: '/learner/gamification', icon: Trophy, label: 'Gamification' },
     { path: '/learner/certifications', icon: Award, label: 'Certifications' },
     { path: '/learner/help', icon: HelpCircle, label: 'Help & Support' },
   ];
