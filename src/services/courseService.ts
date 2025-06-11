@@ -124,6 +124,30 @@ export class CourseService {
     if (error) throw error;
   }
 
+  static async createLesson(lessonData: any) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
+    const { data, error } = await supabase
+      .from('lessons')
+      .insert({
+        title: lessonData.title,
+        content: lessonData.content,
+        course_id: lessonData.course_id,
+        order_index: lessonData.order_index || 0,
+        duration_minutes: lessonData.duration_minutes || 0,
+        type: lessonData.type || 'text',
+        video_url: lessonData.video_url,
+        document_url: lessonData.document_url,
+        is_required: lessonData.is_required !== false
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
   static async getCourseCategories() {
     const { data, error } = await supabase
       .from('course_categories')
