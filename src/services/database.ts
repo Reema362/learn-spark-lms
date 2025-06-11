@@ -48,9 +48,12 @@ export class DatabaseService {
     }
 
     try {
+      const userId = crypto.randomUUID();
+      
       const { data, error } = await supabase
         .from('profiles')
         .insert({
+          id: userId,
           email: userData.email,
           first_name: userData.first_name,
           last_name: userData.last_name,
@@ -69,7 +72,7 @@ export class DatabaseService {
           console.log('RLS error detected, creating demo user...');
           
           const mockUser = {
-            id: crypto.randomUUID(),
+            id: userId,
             email: userData.email,
             first_name: userData.first_name,
             last_name: userData.last_name,
