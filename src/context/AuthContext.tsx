@@ -91,67 +91,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => subscription.unsubscribe();
   }, []);
 
-  const createOrSignInAdmin = async (email: string, password: string, name: string) => {
+  const signInAdmin = async (email: string, password: string) => {
     try {
-      console.log('Attempting admin authentication for:', email);
+      console.log('Attempting admin sign in for:', email);
       
-      // First try to sign in
-      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
-      if (signInData.user) {
+      if (error) {
+        console.error('Sign in error:', error);
+        throw error;
+      }
+
+      if (data.user) {
         console.log('Admin signed in successfully');
-        return signInData.user;
+        return data.user;
       }
 
-      // If sign in failed, try to sign up
-      if (signInError) {
-        console.log('Sign in failed, attempting sign up:', signInError.message);
-        
-        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: {
-              first_name: name.split(' ')[0] || '',
-              last_name: name.split(' ').slice(1).join(' ') || '',
-              role: 'admin'
-            }
-          }
-        });
-
-        if (signUpError) {
-          console.error('Sign up failed:', signUpError);
-          throw new Error(`Authentication failed: ${signUpError.message}`);
-        }
-
-        if (signUpData.user) {
-          console.log('Admin signed up successfully');
-          
-          // Create admin profile
-          const { error: profileError } = await supabase
-            .from('profiles')
-            .upsert({
-              id: signUpData.user.id,
-              email: email,
-              first_name: name.split(' ')[0] || '',
-              last_name: name.split(' ').slice(1).join(' ') || '',
-              role: 'admin'
-            });
-
-          if (profileError) {
-            console.error('Error creating admin profile:', profileError);
-          }
-
-          return signUpData.user;
-        }
-      }
-
-      throw new Error('Authentication failed');
+      throw new Error('No user returned from sign in');
     } catch (error: any) {
-      console.error('Error in createOrSignInAdmin:', error);
+      console.error('Error in signInAdmin:', error);
       throw error;
     }
   };
@@ -278,12 +239,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         const adminUser = adminCredentials.find(admin => admin.email === email);
 
-        if (adminUser) {
+        if (adminUser && password === adminUser.password) {
           try {
             console.log('Valid admin credentials, authenticating with Supabase for:', email);
             
-            // Use real Supabase authentication for admin
-            const authenticatedUser = await createOrSignInAdmin(adminUser.email, adminUser.password, adminUser.name);
+            // Use real Supabase authentication for admin - only sign in
+            const authenticatedUser = await signInAdmin(adminUser.email, adminUser.password);
 
             if (authenticatedUser) {
               // The auth state change listener will handle setting the user state
@@ -298,8 +259,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           } catch (authError: any) {
             console.error('Error authenticating admin:', authError);
             
-            // Handle specific password strength error
-            if (authError.message.includes('Password is known to be weak')) {
+            // Handle specific authentication errors
+            if (authError.message.includes('Invalid login credentials')) {
+              toast({
+                title: "Authentication Failed",
+                description: "Invalid email or password. Please check your credentials and try again.",
+                variant: "destructive",
+              });
+            } else if (authError.message.includes('Password is known to be weak')) {
               toast({
                 title: "Password Update Required",
                 description: "The default password is too weak. Please use the stronger password: AdminPass2024!Strong",
