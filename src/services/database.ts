@@ -176,6 +176,10 @@ export class DatabaseService {
     return TemplateService.updateTemplate(id, updates);
   }
 
+  static async deleteTemplate(id: string) {
+    return TemplateService.deleteTemplate(id);
+  }
+
   // IAM Management
   static async getRoles() {
     const { data, error } = await supabase

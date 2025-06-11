@@ -27,7 +27,9 @@ export class StorageService {
       const cleanPath = path.startsWith('/') ? path.slice(1) : path;
       
       console.log('Uploading file to path:', cleanPath);
+      console.log('File details:', { name: file.name, size: file.size, type: file.type });
       
+      // First, try to upload the file
       const { data, error } = await supabase.storage
         .from('courses')
         .upload(cleanPath, file, {
@@ -37,6 +39,10 @@ export class StorageService {
 
       if (error) {
         console.error('Storage upload error:', error);
+        // If it's an RLS error, provide more helpful info
+        if (error.message.includes('row-level security')) {
+          throw new Error('Permission denied: Admin access required for file uploads. Please ensure you are logged in as an admin user.');
+        }
         throw error;
       }
 
@@ -49,6 +55,9 @@ export class StorageService {
       return publicUrl.publicUrl;
     } catch (error: any) {
       console.error('File upload failed:', error);
+      if (error.message.includes('Permission denied')) {
+        throw error; // Re-throw our custom permission error
+      }
       throw new Error(`File upload failed: ${error.message}`);
     }
   }

@@ -9,29 +9,17 @@ export class TemplateService {
       .order('created_at', { ascending: false });
     
     if (error) throw error;
-    return data;
+    return data || [];
   }
 
-  static async createTemplate(template: {
-    name: string;
-    type: 'email' | 'sms' | 'alert' | 'notification';
-    subject?: string;
-    content: string;
-    variables?: any[];
-    is_active?: boolean;
-  }) {
+  static async createTemplate(templateData: any) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
     const { data, error } = await supabase
       .from('templates')
       .insert({
-        name: template.name,
-        type: template.type as any,
-        subject: template.subject,
-        content: template.content,
-        variables: template.variables,
-        is_active: template.is_active,
+        ...templateData,
         created_by: user.id
       })
       .select()
