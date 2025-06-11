@@ -91,32 +91,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => subscription.unsubscribe();
   }, []);
 
-  const signInAdmin = async (email: string, password: string) => {
-    try {
-      console.log('Attempting admin sign in for:', email);
-      
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (error) {
-        console.error('Sign in error:', error);
-        throw error;
-      }
-
-      if (data.user) {
-        console.log('Admin signed in successfully');
-        return data.user;
-      }
-
-      throw new Error('No user returned from sign in');
-    } catch (error: any) {
-      console.error('Error in signInAdmin:', error);
-      throw error;
-    }
-  };
-
   const createLearnerProfile = async (userId: string, email: string) => {
     try {
       console.log('Creating learner profile for:', email);
@@ -229,58 +203,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
 
-      // For admin login - use proper Supabase authentication
+      // For admin login - use demo authentication for now
       if (userType === 'admin' && password) {
-        // Updated demo admin credentials with stronger passwords
+        // Demo admin credentials
         const adminCredentials = [
-          { email: 'naveen.v1@slksoftware.com', password: 'AdminPass2024!Strong', name: 'Naveen V' },
-          { email: 'reema.jain@slksoftware.com', password: 'AdminPass2024!Strong', name: 'Reema Jain' }
+          { email: 'naveen.v1@slksoftware.com', password: 'AdminPass2024!Strong', name: 'Naveen V', id: 'admin-1' },
+          { email: 'reema.jain@slksoftware.com', password: 'AdminPass2024!Strong', name: 'Reema Jain', id: 'admin-2' }
         ];
 
-        const adminUser = adminCredentials.find(admin => admin.email === email);
+        const adminUser = adminCredentials.find(admin => admin.email === email && admin.password === password);
 
-        if (adminUser && password === adminUser.password) {
-          try {
-            console.log('Valid admin credentials, authenticating with Supabase for:', email);
-            
-            // Use real Supabase authentication for admin - only sign in
-            const authenticatedUser = await signInAdmin(adminUser.email, adminUser.password);
+        if (adminUser) {
+          console.log('Valid admin credentials, creating session for:', email);
+          
+          // Create admin session without Supabase auth for now
+          const userData: User = {
+            id: adminUser.id,
+            email: adminUser.email,
+            name: adminUser.name,
+            role: 'admin'
+          };
 
-            if (authenticatedUser) {
-              // The auth state change listener will handle setting the user state
-              toast({
-                title: "Welcome back!",
-                description: `Successfully logged in as ${adminUser.name}`,
-              });
-              
-              logAuditEvent(`User ${adminUser.email} (admin) logged in`);
-              return true;
-            }
-          } catch (authError: any) {
-            console.error('Error authenticating admin:', authError);
-            
-            // Handle specific authentication errors
-            if (authError.message.includes('Invalid login credentials')) {
-              toast({
-                title: "Authentication Failed",
-                description: "Invalid email or password. Please check your credentials and try again.",
-                variant: "destructive",
-              });
-            } else if (authError.message.includes('Password is known to be weak')) {
-              toast({
-                title: "Password Update Required",
-                description: "The default password is too weak. Please use the stronger password: AdminPass2024!Strong",
-                variant: "destructive",
-              });
-            } else {
-              toast({
-                title: "Authentication Failed",
-                description: authError.message || "Failed to authenticate admin user. Please try again.",
-                variant: "destructive",
-              });
-            }
-            return false;
-          }
+          setUser(userData);
+          saveUserSession(userData);
+          logAuditEvent(`User ${userData.email} (admin) logged in`);
+          
+          toast({
+            title: "Welcome back!",
+            description: `Successfully logged in as ${adminUser.name}`,
+          });
+          
+          return true;
         } else {
           toast({
             title: "Login Failed",
@@ -300,21 +253,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         if (error) {
           console.error('Login error:', error);
-          
-          // Handle specific password strength error
-          if (error.message.includes('Password is known to be weak')) {
-            toast({
-              title: "Password Update Required",
-              description: "Please use a stronger password: AdminPass2024!Strong",
-              variant: "destructive",
-            });
-          } else {
-            toast({
-              title: "Login Failed",
-              description: "Invalid email or password. Please check your credentials.",
-              variant: "destructive",
-            });
-          }
+          toast({
+            title: "Login Failed",
+            description: "Invalid email or password. Please check your credentials.",
+            variant: "destructive",
+          });
           return false;
         }
 
@@ -355,7 +298,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       logAuditEvent(`User ${user.email} (${user.role}) logged out`);
     }
     
-    await supabase.auth.signOut();
+    // Only try to sign out from Supabase if user is authenticated there
+    try {
+      await supabase.auth.signOut();
+    } catch (error) {
+      console.log('No Supabase session to sign out from');
+    }
+    
     setUser(null);
     clearUserSession();
     
