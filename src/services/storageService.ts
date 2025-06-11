@@ -29,7 +29,31 @@ export class StorageService {
       console.log('Uploading file to path:', cleanPath);
       console.log('File details:', { name: file.name, size: file.size, type: file.type });
       
-      // First, try to upload the file
+      // Check if user is authenticated and get their profile
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('Permission denied: You must be logged in to upload files.');
+      }
+
+      // Get user profile to check admin role
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single();
+
+      if (profileError || !profile) {
+        console.error('Error fetching user profile:', profileError);
+        throw new Error('Permission denied: Unable to verify user permissions. Please try logging out and logging back in.');
+      }
+
+      if (profile.role !== 'admin') {
+        throw new Error('Permission denied: Admin access required for file uploads. Please ensure you are logged in as an admin user.');
+      }
+
+      console.log('User authenticated as admin, proceeding with upload');
+      
+      // Upload the file
       const { data, error } = await supabase.storage
         .from('courses')
         .upload(cleanPath, file, {
@@ -40,8 +64,8 @@ export class StorageService {
       if (error) {
         console.error('Storage upload error:', error);
         // If it's an RLS error, provide more helpful info
-        if (error.message.includes('row-level security')) {
-          throw new Error('Permission denied: Admin access required for file uploads. Please ensure you are logged in as an admin user.');
+        if (error.message.includes('row-level security') || error.message.includes('RLS')) {
+          throw new Error('Permission denied: Database security policy blocked the upload. Please ensure you are logged in as an admin user and try again.');
         }
         throw error;
       }
@@ -55,9 +79,6 @@ export class StorageService {
       return publicUrl.publicUrl;
     } catch (error: any) {
       console.error('File upload failed:', error);
-      if (error.message.includes('Permission denied')) {
-        throw error; // Re-throw our custom permission error
-      }
       throw new Error(`File upload failed: ${error.message}`);
     }
   }

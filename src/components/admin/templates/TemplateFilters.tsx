@@ -6,32 +6,17 @@ import { Search } from 'lucide-react';
 
 interface TemplateFiltersProps {
   searchTerm: string;
-  setSearchTerm: (term: string) => void;
-  selectedCategory: string;
-  setSelectedCategory: (category: string) => void;
+  onSearchChange: (value: string) => void;
   selectedType: string;
-  setSelectedType: (type: string) => void;
+  onTypeChange: (value: string) => void;
 }
 
-const categories = [
-  { value: 'all', label: 'All Categories' },
-  { value: 'course-assignment', label: 'Course Assignment' },
-  { value: 'course-completion', label: 'Course Completion' },
-  { value: 'course-reminder', label: 'Course Reminder' },
-  { value: 'course-quiz-failure', label: 'Course Quiz Failure' },
-  { value: 'manager-reminder', label: 'Manager Reminder' },
-  { value: 'course-certification', label: 'Course Certification' },
-  { value: 'custom', label: 'Custom' }
-];
-
-const TemplateFilters = ({
+const TemplateFilters: React.FC<TemplateFiltersProps> = ({
   searchTerm,
-  setSearchTerm,
-  selectedCategory,
-  setSelectedCategory,
+  onSearchChange,
   selectedType,
-  setSelectedType
-}: TemplateFiltersProps) => {
+  onTypeChange
+}) => {
   return (
     <div className="flex gap-4 items-center">
       <div className="flex items-center space-x-2 flex-1">
@@ -39,23 +24,11 @@ const TemplateFilters = ({
         <Input
           placeholder="Search templates..."
           value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
+          onChange={(e) => onSearchChange(e.target.value)}
           className="max-w-sm"
         />
       </div>
-      <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-        <SelectTrigger className="w-48">
-          <SelectValue placeholder="All Categories" />
-        </SelectTrigger>
-        <SelectContent>
-          {categories.map(category => (
-            <SelectItem key={category.value} value={category.value}>
-              {category.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      <Select value={selectedType} onValueChange={setSelectedType}>
+      <Select value={selectedType} onValueChange={onTypeChange}>
         <SelectTrigger className="w-48">
           <SelectValue placeholder="All Types" />
         </SelectTrigger>

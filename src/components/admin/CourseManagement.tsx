@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,10 +9,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Upload, Search, Edit, Trash2, Play, Users, Clock, Eye, Video } from 'lucide-react';
+import { Plus, Upload, Search, Edit, Trash2, Play, Users, Clock, Eye, Video, RefreshCw } from 'lucide-react';
 import { useCourses, useCourseCategories, useCreateCourse, useUpdateCourse, useDeleteCourse, useUploadFile } from '@/hooks/useDatabase';
 import { createSampleCategories } from '@/utils/createSampleCategories';
 import VideoUpload from './VideoUpload';
+import { useToast } from '@/hooks/use-toast';
 
 const CourseManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -35,6 +37,7 @@ const CourseManagement = () => {
   const updateCourse = useUpdateCourse();
   const deleteCourse = useDeleteCourse();
   const uploadFile = useUploadFile();
+  const { toast } = useToast();
 
   // Initialize sample categories on component mount
   useEffect(() => {
@@ -72,8 +75,17 @@ const CourseManagement = () => {
         difficulty_level: 'beginner',
         is_mandatory: false
       });
-    } catch (error) {
+      toast({
+        title: "Success",
+        description: "Course created successfully",
+      });
+    } catch (error: any) {
       console.error('Error creating course:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create course",
+        variant: "destructive",
+      });
     }
   };
 
@@ -86,17 +98,35 @@ const CourseManagement = () => {
       });
       setIsEditDialogOpen(false);
       setEditingCourse(null);
-    } catch (error) {
+      toast({
+        title: "Success",
+        description: "Course updated successfully",
+      });
+    } catch (error: any) {
       console.error('Error updating course:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update course",
+        variant: "destructive",
+      });
     }
   };
 
   const handleDeleteCourse = async (courseId: string) => {
-    if (confirm('Are you sure you want to delete this course?')) {
+    if (confirm('Are you sure you want to delete this course? This action cannot be undone.')) {
       try {
         await deleteCourse.mutateAsync(courseId);
-      } catch (error) {
+        toast({
+          title: "Success",
+          description: "Course deleted successfully",
+        });
+      } catch (error: any) {
         console.error('Error deleting course:', error);
+        toast({
+          title: "Error",
+          description: error.message || "Failed to delete course",
+          variant: "destructive",
+        });
       }
     }
   };
@@ -112,8 +142,13 @@ const CourseManagement = () => {
       if (type === 'thumbnail') {
         setNewCourse(prev => ({ ...prev, thumbnail_url: url }));
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error uploading file:', error);
+      toast({
+        title: "Upload Failed",
+        description: error.message || "Failed to upload file",
+        variant: "destructive",
+      });
     }
   };
 
@@ -159,6 +194,7 @@ const CourseManagement = () => {
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => refetchCourses()}>
+            <RefreshCw className="h-4 w-4 mr-2" />
             Refresh Courses
           </Button>
           <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
@@ -347,6 +383,7 @@ const CourseManagement = () => {
                           setEditingCourse(course);
                           setIsEditDialogOpen(true);
                         }}
+                        title="Edit course"
                       >
                         <Edit className="h-4 w-4" />
                       </Button>
@@ -354,6 +391,7 @@ const CourseManagement = () => {
                         size="sm"
                         variant="ghost"
                         onClick={() => handleDeleteCourse(course.id)}
+                        title="Delete course"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>

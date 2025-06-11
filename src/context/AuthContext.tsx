@@ -132,16 +132,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       console.log('Creating/updating admin profile for:', email);
       
+      // First try to create the Supabase auth user if it doesn't exist
+      let authUserId = userId;
+      
+      try {
+        const { data: authData, error: signUpError } = await supabase.auth.signUp({
+          email: email,
+          password: 'SecurePass123!', // Use the same password as in demo
+          options: {
+            data: {
+              first_name: name.split(' ')[0],
+              last_name: name.split(' ')[1] || '',
+              role: 'admin'
+            }
+          }
+        });
+        
+        if (authData?.user?.id) {
+          authUserId = authData.user.id;
+          console.log('Created Supabase auth user:', authUserId);
+        }
+      } catch (authError) {
+        console.log('Auth user might already exist, proceeding with profile creation');
+      }
+      
       const { data: profile, error: upsertError } = await supabase
         .from('profiles')
         .upsert({
-          id: userId,
+          id: authUserId,
           email: email,
           first_name: name.split(' ')[0],
           last_name: name.split(' ')[1] || '',
           role: 'admin'
         }, {
-          onConflict: 'email'
+          onConflict: 'id'
         })
         .select()
         .single();
@@ -256,28 +280,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
             let userId = authData?.user?.id;
 
-            // If sign in fails, try to sign up
+            // If sign in fails, try to sign up or create profile with UUID
             if (signInError) {
-              console.log('Sign in failed, attempting to create auth user:', signInError.message);
-              const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-                email: adminUser.email,
-                password: adminUser.password,
-                options: {
-                  data: {
-                    first_name: adminUser.name.split(' ')[0],
-                    last_name: adminUser.name.split(' ')[1] || '',
-                    role: 'admin'
-                  }
-                }
-              });
-              
-              if (signUpError) {
-                console.error('Failed to create auth user:', signUpError);
-                // Fallback to UUID generation
-                userId = crypto.randomUUID();
-              } else {
-                userId = signUpData?.user?.id;
-              }
+              console.log('Sign in failed, attempting to create admin profile');
+              userId = crypto.randomUUID();
             }
 
             // Create or update admin profile in database

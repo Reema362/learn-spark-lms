@@ -5,9 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, FileText } from 'lucide-react';
 import { useTemplates, useDeleteTemplate } from '@/hooks/useDatabase';
-import { TemplateFilters } from './templates/TemplateFilters';
+import TemplateFilters from './templates/TemplateFilters';
 import { TemplateTabsContent } from './templates/TemplateTabsContent';
-import { TemplateDialog } from './templates/TemplateDialog';
+import TemplateDialog from './templates/TemplateDialog';
 import { getFilteredTemplates } from '@/utils/templateUtils';
 
 const TemplatesManagement = () => {
