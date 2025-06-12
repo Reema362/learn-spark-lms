@@ -5,11 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { MessageSquare, Clock, Send, Eye, CheckCircle } from 'lucide-react';
+import { MessageSquare, Clock, Send, Eye, CheckCircle, Search, Filter, ArrowUpDown } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const QueriesSupport = () => {
   const [selectedTicket, setSelectedTicket] = useState<any>(null);
   const [response, setResponse] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterStatus, setFilterStatus] = useState('all');
 
   const tickets = [
     {
@@ -72,8 +75,48 @@ const QueriesSupport = () => {
           timestamp: "2024-01-09 11:30"
         }
       ]
+    },
+    {
+      id: "TKT-004",
+      subject: "Gamification badges not appearing",
+      learnerName: "Emma Wilson",
+      learnerEmail: "emma.wilson@company.com",
+      status: "open",
+      priority: "low",
+      created: "2024-01-11 14:20",
+      lastUpdate: "2024-01-11 14:20",
+      category: "gamification",
+      description: "I completed several security games but my badges are not showing up in my profile. I should have earned the 'Phishing Hunter' badge.",
+      responses: []
+    },
+    {
+      id: "TKT-005",
+      subject: "Password reset not working",
+      learnerName: "David Brown",
+      learnerEmail: "david.brown@company.com",
+      status: "in-progress",
+      priority: "high",
+      created: "2024-01-12 08:15",
+      lastUpdate: "2024-01-12 10:30",
+      category: "account",
+      description: "I'm trying to reset my password but I'm not receiving the reset email. I've checked my spam folder multiple times.",
+      responses: [
+        {
+          from: "support",
+          message: "I've manually reset your password and sent you the temporary credentials via secure email. Please change it upon login.",
+          timestamp: "2024-01-12 10:30"
+        }
+      ]
     }
   ];
+
+  const filteredTickets = tickets.filter(ticket => {
+    const matchesSearch = ticket.subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         ticket.learnerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         ticket.id.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesFilter = filterStatus === 'all' || ticket.status === filterStatus;
+    return matchesSearch && matchesFilter;
+  });
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -104,19 +147,24 @@ const QueriesSupport = () => {
   const handleSendResponse = () => {
     if (!response.trim() || !selectedTicket) return;
 
-    // Mock sending response
     console.log('Sending response:', response);
     setResponse('');
-    // In real app, this would update the ticket and refresh the data
   };
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Header */}
+      {/* Header with Logo */}
       <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-3xl font-bold">Queries & Support</h2>
-          <p className="text-muted-foreground">Manage learner support tickets and queries</p>
+        <div className="flex items-center space-x-4">
+          <img 
+            src="/lovable-uploads/69bbb4e9-b332-463e-8fc2-574961155f4a.png" 
+            alt="AvoCop Logo" 
+            className="h-12 w-auto"
+          />
+          <div>
+            <h2 className="text-3xl font-bold">Queries & Support</h2>
+            <p className="text-muted-foreground">Manage learner support tickets and queries</p>
+          </div>
         </div>
       </div>
 
@@ -124,28 +172,53 @@ const QueriesSupport = () => {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card className="stats-card">
           <CardContent className="p-6 text-center">
-            <div className="text-2xl font-bold text-info">23</div>
+            <div className="text-2xl font-bold text-info">{tickets.filter(t => t.status === 'open').length}</div>
             <div className="text-sm text-muted-foreground">Open Tickets</div>
           </CardContent>
         </Card>
         <Card className="stats-card">
           <CardContent className="p-6 text-center">
-            <div className="text-2xl font-bold text-warning">8</div>
+            <div className="text-2xl font-bold text-warning">{tickets.filter(t => t.status === 'in-progress').length}</div>
             <div className="text-sm text-muted-foreground">In Progress</div>
           </CardContent>
         </Card>
         <Card className="stats-card">
           <CardContent className="p-6 text-center">
-            <div className="text-2xl font-bold text-success">156</div>
-            <div className="text-sm text-muted-foreground">Resolved This Month</div>
+            <div className="text-2xl font-bold text-success">{tickets.filter(t => t.status === 'resolved').length}</div>
+            <div className="text-sm text-muted-foreground">Resolved</div>
           </CardContent>
         </Card>
         <Card className="stats-card">
           <CardContent className="p-6 text-center">
-            <div className="text-2xl font-bold text-accent">4.2h</div>
+            <div className="text-2xl font-bold text-accent">2.4h</div>
             <div className="text-sm text-muted-foreground">Avg. Response Time</div>
           </CardContent>
         </Card>
+      </div>
+
+      {/* Search and Filter Bar */}
+      <div className="flex flex-col sm:flex-row gap-4">
+        <div className="flex-1 relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search tickets by ID, subject, or learner name..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        <Select value={filterStatus} onValueChange={setFilterStatus}>
+          <SelectTrigger className="w-[200px]">
+            <Filter className="h-4 w-4 mr-2" />
+            <SelectValue placeholder="Filter by status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Statuses</SelectItem>
+            <SelectItem value="open">Open</SelectItem>
+            <SelectItem value="in-progress">In Progress</SelectItem>
+            <SelectItem value="resolved">Resolved</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
@@ -153,12 +226,12 @@ const QueriesSupport = () => {
         <div className="lg:col-span-2">
           <Card className="dashboard-card">
             <CardHeader>
-              <CardTitle>Support Tickets</CardTitle>
+              <CardTitle>Support Tickets ({filteredTickets.length})</CardTitle>
               <CardDescription>All learner support requests</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                {tickets.map((ticket) => (
+              <div className="space-y-3 max-h-96 overflow-y-auto">
+                {filteredTickets.map((ticket) => (
                   <div 
                     key={ticket.id} 
                     className={`border rounded-lg p-3 cursor-pointer transition-colors ${
@@ -193,6 +266,12 @@ const QueriesSupport = () => {
                     </div>
                   </div>
                 ))}
+                {filteredTickets.length === 0 && (
+                  <div className="text-center py-8">
+                    <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground">No tickets found</p>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>

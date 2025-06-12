@@ -1,24 +1,30 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Trophy, Shield, Target, Brain, Award, Star, Play, Clock, Users, CheckCircle } from 'lucide-react';
+import { Trophy, Shield, Target, Brain, Award, Star, Play, Clock, Users, CheckCircle, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 const Gamification = () => {
   const [selectedGame, setSelectedGame] = useState<string | null>(null);
   const [gameResults, setGameResults] = useState<any>(null);
+  const [currentQuestion, setCurrentQuestion] = useState(0);
+  const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
+  const [score, setScore] = useState(0);
+  const [timeLeft, setTimeLeft] = useState(0);
+  const [gameStarted, setGameStarted] = useState(false);
+  const [answers, setAnswers] = useState<number[]>([]);
   const [userStats, setUserStats] = useState({
     gamesPlayed: 5,
     gamesPassed: 3,
     averageScore: 78,
-    badges: ['Phishing Hunter', 'Password Guardian']
+    badges: ['Phishing Hunter', 'Password Guardian', 'Security Expert']
   });
   const { toast } = useToast();
 
-  // Sample games data with immediate availability
   const availableGames = [
     {
       id: 'phishing-quiz',
@@ -29,75 +35,165 @@ const Gamification = () => {
       topic: 'phishing',
       gameType: 'quiz',
       passingScore: 70,
-      timeLimit: 5,
+      timeLimit: 2,
       questions: [
         {
-          question: "Which of these emails is likely a phishing attempt?",
-          options: ["Email from your bank asking for account verification", "Internal company newsletter", "Meeting invitation from a colleague", "Password reset from a service you use"],
-          correct: 0
+          question: "Which of these email characteristics is MOST likely to indicate a phishing attempt?",
+          options: [
+            "The email comes from your bank's official domain",
+            "The email asks you to click a link to 'verify your account urgently'", 
+            "The email is addressed to you by name",
+            "The email has proper grammar and spelling"
+          ],
+          correct: 1
         },
         {
-          question: "What should you do if you receive a suspicious email?",
-          options: ["Click links to investigate", "Forward it to friends", "Report it to IT security", "Reply asking for more information"],
+          question: "What should you do if you receive a suspicious email asking for personal information?",
+          options: [
+            "Reply with the requested information",
+            "Click the link to see if it's legitimate",
+            "Delete the email and contact the organization directly through official channels",
+            "Forward it to all your contacts to warn them"
+          ],
           correct: 2
+        },
+        {
+          question: "Which domain is MOST likely to be a phishing attempt?",
+          options: [
+            "bank-official.com",
+            "your-bank.com",
+            "yourbank.com",
+            "yourbankofficial.net"
+          ],
+          correct: 3
         }
       ]
     },
     {
       id: 'password-strength',
       title: 'Password Security Master',
-      description: 'Create and evaluate strong passwords to protect your digital accounts.',
+      description: 'Test your knowledge about creating and managing strong passwords.',
       icon: Target,
       difficulty: 'Intermediate',
       topic: 'password',
-      gameType: 'interactive',
+      gameType: 'quiz',
       passingScore: 75,
-      timeLimit: 7,
+      timeLimit: 3,
       questions: [
         {
-          question: "Which password is strongest?",
-          options: ["password123", "P@ssw0rd!", "MyD0g$N@me2024!", "12345678"],
+          question: "Which password is the STRONGEST?",
+          options: [
+            "Password123!",
+            "p@ssw0rd",
+            "Tr0ub4dor&3",
+            "MyD0g$N@me2024!Random"
+          ],
+          correct: 3
+        },
+        {
+          question: "What is the BEST practice for password management?",
+          options: [
+            "Use the same strong password for all accounts",
+            "Write passwords down on sticky notes",
+            "Use a password manager with unique passwords for each account",
+            "Change passwords every week"
+          ],
           correct: 2
         },
         {
-          question: "How often should you change your password?",
-          options: ["Never", "Every day", "When compromised or every 90 days", "Every year"],
-          correct: 2
+          question: "What makes two-factor authentication (2FA) effective?",
+          options: [
+            "It uses longer passwords",
+            "It requires something you know AND something you have",
+            "It automatically generates passwords",
+            "It encrypts your password"
+          ],
+          correct: 1
         }
       ]
     },
     {
       id: 'social-engineering',
       title: 'Social Engineering Defense',
-      description: 'Recognize and counter social engineering attacks and manipulation tactics.',
+      description: 'Learn to recognize and counter social engineering attacks and manipulation tactics.',
       icon: Brain,
       difficulty: 'Advanced',
       topic: 'social-engineering',
       gameType: 'scenario',
       passingScore: 80,
-      timeLimit: 10,
+      timeLimit: 4,
       questions: [
         {
-          question: "A stranger calls claiming to be from IT support asking for your password. What do you do?",
-          options: ["Give them the password", "Ask for their employee ID and verify", "Hang up and call IT directly", "Ask them to prove they work there"],
+          question: "A caller claims to be from IT support and urgently needs your password to 'fix a security issue'. What should you do?",
+          options: [
+            "Provide the password since it's urgent",
+            "Ask them to verify their identity first, then provide the password",
+            "Hang up and call your IT department directly using a known number",
+            "Give them a fake password to test if they're legitimate"
+          ],
           correct: 2
+        },
+        {
+          question: "You receive a USB drive in the mail with no sender information. What should you do?",
+          options: [
+            "Plug it into your work computer to see what's on it",
+            "Take it to IT security immediately without plugging it in",
+            "Plug it into a personal computer instead",
+            "Share it with colleagues to see if anyone recognizes it"
+          ],
+          correct: 1
+        },
+        {
+          question: "Someone tailgates behind you into a secure building. What should you do?",
+          options: [
+            "Ignore them since they probably work here",
+            "Politely ask them to show their badge or use their own access card",
+            "Hold the door open to be courteous",
+            "Confront them aggressively"
+          ],
+          correct: 1
         }
       ]
     },
     {
       id: 'data-protection',
-      title: 'Data Protection Quiz',
-      description: 'Learn about data classification, handling, and protection best practices.',
+      title: 'Data Protection Challenge',
+      description: 'Master data classification, handling, and protection best practices.',
       icon: Shield,
       difficulty: 'Intermediate',
       topic: 'data-protection',
       gameType: 'quiz',
       passingScore: 70,
-      timeLimit: 6,
+      timeLimit: 3,
       questions: [
         {
-          question: "What is the most secure way to share sensitive documents?",
-          options: ["Email attachment", "USB drive", "Encrypted secure file sharing", "Print and hand deliver"],
+          question: "What is the MOST secure way to share confidential business documents?",
+          options: [
+            "Email with password protection",
+            "Encrypted file sharing platform with access controls",
+            "USB drive hand delivery",
+            "Cloud storage with public link"
+          ],
+          correct: 1
+        },
+        {
+          question: "When working remotely, what should you do with sensitive documents on your desk?",
+          options: [
+            "Leave them out for easy access",
+            "Cover them with other papers",
+            "Lock them away when not actively using them",
+            "Take pictures for backup"
+          ],
+          correct: 2
+        },
+        {
+          question: "What should you do before disposing of old hard drives?",
+          options: [
+            "Just delete the files",
+            "Format the drive",
+            "Use secure data wiping or physical destruction",
+            "Remove the drive labels"
+          ],
           correct: 2
         }
       ]
@@ -105,72 +201,121 @@ const Gamification = () => {
   ];
 
   const leaderboardData = [
-    { name: 'John Smith', score: 95, badge: 'Security Expert' },
-    { name: 'Sarah Johnson', score: 89, badge: 'Phishing Hunter' },
-    { name: 'Mike Davis', score: 85, badge: 'Password Guardian' },
-    { name: 'Emma Wilson', score: 82, badge: 'Data Protector' },
-    { name: 'You', score: userStats.averageScore, badge: 'Learner' }
+    { name: 'Alex Rodriguez', score: 98, badge: 'Security Master' },
+    { name: 'Sarah Johnson', score: 95, badge: 'Phishing Expert' },
+    { name: 'Mike Davis', score: 92, badge: 'Data Guardian' },
+    { name: 'Emma Wilson', score: 89, badge: 'Password Pro' },
+    { name: 'You', score: userStats.averageScore, badge: 'Security Learner' }
   ];
 
-  const handlePlayGame = async (game: any) => {
-    setSelectedGame(game.id);
-    
-    // Simulate game play with random score
-    setTimeout(() => {
-      const score = Math.floor(Math.random() * 40) + 60; // 60-100 range
-      const passed = score >= game.passingScore;
-      const timeTaken = Math.floor(Math.random() * (game.timeLimit * 60)) + 60;
-      
-      setGameResults({
-        gameId: game.id,
-        score,
-        passed,
-        game,
-        timeTaken
-      });
+  // Timer effect
+  useEffect(() => {
+    if (gameStarted && timeLeft > 0) {
+      const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
+      return () => clearTimeout(timer);
+    } else if (gameStarted && timeLeft === 0) {
+      handleGameComplete();
+    }
+  }, [timeLeft, gameStarted]);
 
-      // Update user stats
+  const handlePlayGame = (game: any) => {
+    setSelectedGame(game.id);
+    setCurrentQuestion(0);
+    setSelectedAnswer(null);
+    setScore(0);
+    setAnswers([]);
+    setTimeLeft(game.timeLimit * 60);
+    setGameStarted(true);
+    setGameResults(null);
+  };
+
+  const handleAnswerSelect = (answerIndex: number) => {
+    setSelectedAnswer(answerIndex);
+  };
+
+  const handleNextQuestion = () => {
+    const game = availableGames.find(g => g.id === selectedGame);
+    if (!game) return;
+
+    const newAnswers = [...answers, selectedAnswer || -1];
+    setAnswers(newAnswers);
+
+    // Calculate score
+    if (selectedAnswer === game.questions[currentQuestion].correct) {
+      setScore(score + 1);
+    }
+
+    if (currentQuestion + 1 < game.questions.length) {
+      setCurrentQuestion(currentQuestion + 1);
+      setSelectedAnswer(null);
+    } else {
+      handleGameComplete();
+    }
+  };
+
+  const handleGameComplete = () => {
+    const game = availableGames.find(g => g.id === selectedGame);
+    if (!game) return;
+
+    const finalScore = Math.round((score / game.questions.length) * 100);
+    const passed = finalScore >= game.passingScore;
+    const timeTaken = (game.timeLimit * 60) - timeLeft;
+
+    setGameResults({
+      gameId: game.id,
+      score: finalScore,
+      passed,
+      game,
+      timeTaken
+    });
+
+    // Update user stats
+    setUserStats(prev => ({
+      ...prev,
+      gamesPlayed: prev.gamesPlayed + 1,
+      gamesPassed: passed ? prev.gamesPassed + 1 : prev.gamesPassed,
+      averageScore: Math.round((prev.averageScore + finalScore) / 2)
+    }));
+
+    // Award badge if passed and first time
+    if (passed && !userStats.badges.includes(game.title.split(' ')[0] + ' Master')) {
+      const newBadge = game.title.split(' ')[0] + ' Master';
       setUserStats(prev => ({
         ...prev,
-        gamesPlayed: prev.gamesPlayed + 1,
-        gamesPassed: passed ? prev.gamesPassed + 1 : prev.gamesPassed,
-        averageScore: Math.round((prev.averageScore + score) / 2)
+        badges: [...prev.badges, newBadge]
       }));
-
-      // Award badge if passed and first time
-      if (passed && !userStats.badges.includes(game.title.split(' ')[0] + ' Expert')) {
-        const newBadge = game.title.split(' ')[0] + ' Expert';
-        setUserStats(prev => ({
-          ...prev,
-          badges: [...prev.badges, newBadge]
-        }));
-        
-        toast({
-          title: "🏆 Badge Earned!",
-          description: `You've earned the "${newBadge}" badge!`,
-        });
-      }
-
-      if (passed) {
-        toast({
-          title: "🎉 Congratulations!",
-          description: `You scored ${score}% and passed ${game.title}!`,
-        });
-      } else {
-        toast({
-          title: "Keep Learning!",
-          description: `You scored ${score}%. Try again to improve your score!`,
-          variant: "destructive"
-        });
-      }
       
-      setSelectedGame(null);
-    }, 3000);
+      toast({
+        title: "🏆 Badge Earned!",
+        description: `You've earned the "${newBadge}" badge!`,
+      });
+    }
+
+    if (passed) {
+      toast({
+        title: "🎉 Congratulations!",
+        description: `You scored ${finalScore}% and passed ${game.title}!`,
+      });
+    } else {
+      toast({
+        title: "Keep Learning!",
+        description: `You scored ${finalScore}%. Try again to improve your score!`,
+        variant: "destructive"
+      });
+    }
+    
+    setGameStarted(false);
+    setSelectedGame(null);
   };
 
   const resetGame = () => {
     setGameResults(null);
     setSelectedGame(null);
+    setGameStarted(false);
+    setCurrentQuestion(0);
+    setSelectedAnswer(null);
+    setScore(0);
+    setAnswers([]);
   };
 
   const getGameIcon = (gameType: string, topic: string) => {
@@ -182,6 +327,69 @@ const Gamification = () => {
     };
     return icons[topic] || Trophy;
   };
+
+  const formatTime = (seconds: number) => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+  };
+
+  // Game Playing Interface
+  if (gameStarted && selectedGame) {
+    const game = availableGames.find(g => g.id === selectedGame);
+    if (!game) return null;
+
+    const question = game.questions[currentQuestion];
+    
+    return (
+      <div className="space-y-6 max-w-4xl mx-auto">
+        <Card className="border-primary">
+          <CardHeader className="text-center">
+            <div className="flex justify-between items-center mb-4">
+              <Badge variant="outline">{game.title}</Badge>
+              <div className="flex items-center gap-2">
+                <Clock className="h-4 w-4" />
+                <span className={`font-mono ${timeLeft < 30 ? 'text-destructive' : ''}`}>
+                  {formatTime(timeLeft)}
+                </span>
+              </div>
+            </div>
+            <CardTitle>Question {currentQuestion + 1} of {game.questions.length}</CardTitle>
+            <Progress value={((currentQuestion + 1) / game.questions.length) * 100} className="mt-2" />
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="text-center">
+              <h3 className="text-xl font-semibold mb-6">{question.question}</h3>
+              <div className="space-y-3">
+                {question.options.map((option, index) => (
+                  <Button
+                    key={index}
+                    variant={selectedAnswer === index ? "default" : "outline"}
+                    className="w-full p-4 h-auto text-left justify-start"
+                    onClick={() => handleAnswerSelect(index)}
+                  >
+                    <span className="mr-3 font-semibold">{String.fromCharCode(65 + index)}.</span>
+                    {option}
+                  </Button>
+                ))}
+              </div>
+            </div>
+            <div className="flex justify-between items-center pt-6">
+              <div className="text-sm text-muted-foreground">
+                Score: {score}/{currentQuestion + (selectedAnswer !== null ? 1 : 0)}
+              </div>
+              <Button 
+                onClick={handleNextQuestion}
+                disabled={selectedAnswer === null}
+              >
+                {currentQuestion + 1 === game.questions.length ? 'Complete Game' : 'Next Question'}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -266,16 +474,26 @@ const Gamification = () => {
                 Completed in {Math.floor(gameResults.timeTaken / 60)}m {gameResults.timeTaken % 60}s
               </div>
             </div>
-            <Button onClick={resetGame}>Play Another Game</Button>
+            <div className="flex gap-2 justify-center">
+              <Button onClick={resetGame}>
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Play Another Game
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => handlePlayGame(gameResults.game)}
+              >
+                Retry This Game
+              </Button>
+            </div>
           </CardContent>
         </Card>
       )}
 
       {/* Available Games */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
         {availableGames.map((game) => {
           const IconComponent = getGameIcon(game.gameType, game.topic);
-          const isPlaying = selectedGame === game.id;
           
           return (
             <Card key={game.id} className="hover:shadow-lg transition-shadow">
@@ -296,7 +514,7 @@ const Gamification = () => {
                 </div>
 
                 <div className="flex justify-between items-center text-sm">
-                  <span>Topic: {game.topic}</span>
+                  <span>Questions: {game.questions.length}</span>
                   <div className="flex items-center gap-1">
                     <Star className="h-4 w-4 text-yellow-500" />
                     <span>Pass: {game.passingScore}%</span>
@@ -305,20 +523,11 @@ const Gamification = () => {
 
                 <Button 
                   onClick={() => handlePlayGame(game)}
-                  disabled={isPlaying || selectedGame !== null}
+                  disabled={gameStarted}
                   className="w-full"
                 >
-                  {isPlaying ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      Playing...
-                    </>
-                  ) : (
-                    <>
-                      <Play className="h-4 w-4 mr-2" />
-                      Start Game
-                    </>
-                  )}
+                  <Play className="h-4 w-4 mr-2" />
+                  Start Game
                 </Button>
               </CardContent>
             </Card>
