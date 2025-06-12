@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,6 +12,7 @@ import { Plus, Upload, Search, Edit, Trash2, Play, Users, Clock, Eye, Video, Ref
 import { useCourses, useCourseCategories, useCreateCourse, useUpdateCourse, useDeleteCourse, useUploadFile } from '@/hooks/useDatabase';
 import { createSampleCategories } from '@/utils/createSampleCategories';
 import VideoUpload from './VideoUpload';
+import CoursePreview from './CoursePreview';
 import { useToast } from '@/hooks/use-toast';
 
 const CourseManagement = () => {
@@ -20,6 +20,7 @@ const CourseManagement = () => {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [previewCourse, setPreviewCourse] = useState<any>(null);
   const [editingCourse, setEditingCourse] = useState<any>(null);
   const [newCourse, setNewCourse] = useState({
     title: '',
@@ -428,14 +429,25 @@ const CourseManagement = () => {
                     )}
                   </div>
                   <div className="flex space-x-2 mt-4">
-                    <Button size="sm" variant="outline" className="flex-1">
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      className="flex-1"
+                      onClick={() => setPreviewCourse(course)}
+                    >
                       <Eye className="h-4 w-4 mr-2" />
                       Preview
                     </Button>
-                    <Button size="sm" className="flex-1">
-                      <Play className="h-4 w-4 mr-2" />
-                      Edit Content
-                    </Button>
+                    {course.video_url && (
+                      <Button 
+                        size="sm" 
+                        className="flex-1"
+                        onClick={() => setPreviewCourse(course)}
+                      >
+                        <Play className="h-4 w-4 mr-2" />
+                        Play Video
+                      </Button>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -511,6 +523,15 @@ const CourseManagement = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Course Preview Dialog */}
+      {previewCourse && (
+        <CoursePreview
+          course={previewCourse}
+          isOpen={!!previewCourse}
+          onClose={() => setPreviewCourse(null)}
+        />
+      )}
     </div>
   );
 };
