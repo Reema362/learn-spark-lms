@@ -67,23 +67,19 @@ export class StorageService {
 
         console.log('File uploaded successfully to Supabase:', data);
 
-        // Get the proper public URL for the uploaded file
-        const { data: publicUrl } = supabase.storage
+        // Get the public URL for the uploaded file
+        const { data: publicUrlData } = supabase.storage
           .from('courses')
           .getPublicUrl(data.path);
 
-        const finalUrl = publicUrl.publicUrl;
+        const finalUrl = publicUrlData.publicUrl;
         console.log('Generated public URL:', finalUrl);
         
-        // Verify the URL is properly encoded
-        const encodedUrl = encodeURI(finalUrl);
-        console.log('Final encoded URL:', encodedUrl);
-        
-        return encodedUrl;
+        return finalUrl;
       } else {
         // For app session users (demo mode), create mock URL with proper structure
         console.log('Using demo mode upload for app session user');
-        const mockUrl = `https://gfwnftqkzkjxujrznhww.supabase.co/storage/v1/object/public/courses/${encodeURIComponent(finalPath)}`;
+        const mockUrl = `https://gfwnftqkzkjxujrznhww.supabase.co/storage/v1/object/public/courses/${finalPath}`;
         console.log('Using mock URL:', mockUrl);
         
         // Store file reference in local state for demo purposes
@@ -127,11 +123,9 @@ export class StorageService {
 
   // Helper method to get the correct public URL for a storage path
   static getPublicUrl(path: string): string {
-    // Ensure proper encoding of the path
-    const encodedPath = encodeURIComponent(path);
     const publicUrl = supabase.storage
       .from('courses')
-      .getPublicUrl(encodedPath).data.publicUrl;
+      .getPublicUrl(path).data.publicUrl;
     
     return publicUrl;
   }

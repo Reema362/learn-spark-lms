@@ -14,8 +14,12 @@ const Courses = () => {
   const [selectedCourse, setSelectedCourse] = useState<any>(null);
   const [courseViewerOpen, setCourseViewerOpen] = useState(false);
 
+  console.log('Learner courses data:', courses);
+
   // Filter only published courses for learners
   const publishedCourses = courses?.filter(course => course.status === 'published') || [];
+  
+  console.log('Published courses for learners:', publishedCourses);
 
   const formatDuration = (durationHours: number) => {
     const totalMinutes = durationHours * 60;
@@ -29,6 +33,7 @@ const Courses = () => {
   };
 
   const handleViewCourse = (course: any) => {
+    console.log('Opening course for viewing:', course);
     setSelectedCourse(course);
     setCourseViewerOpen(true);
   };
@@ -67,6 +72,7 @@ const Courses = () => {
   }
 
   if (error) {
+    console.error('Error loading courses:', error);
     return (
       <div className="space-y-6 animate-fade-in">
         <div className="flex justify-center items-center min-h-[400px]">
