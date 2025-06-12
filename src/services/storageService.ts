@@ -1,13 +1,22 @@
 
 import { supabase } from '@/integrations/supabase/client';
+import { sanitizeFileName, generateUniqueFileName } from '@/utils/fileUtils';
 
 export class StorageService {
   static async uploadFile(file: File, path: string) {
     try {
+      // Generate a clean, unique filename
+      const cleanFileName = generateUniqueFileName(file.name);
       const cleanPath = path.startsWith('/') ? path.slice(1) : path;
       
-      console.log('Uploading file to path:', cleanPath);
-      console.log('File details:', { name: file.name, size: file.size, type: file.type });
+      // Use the directory from path but replace filename with sanitized version
+      const pathParts = cleanPath.split('/');
+      pathParts[pathParts.length - 1] = cleanFileName;
+      const finalPath = pathParts.join('/');
+      
+      console.log('Uploading file to path:', finalPath);
+      console.log('Original filename:', file.name);
+      console.log('Sanitized filename:', cleanFileName);
       
       // Check authentication status
       const { data: { session } } = await supabase.auth.getSession();
@@ -46,7 +55,7 @@ export class StorageService {
       if (session?.user) {
         const { data, error } = await supabase.storage
           .from('courses')
-          .upload(cleanPath, file, {
+          .upload(finalPath, file, {
             cacheControl: '3600',
             upsert: true
           });
@@ -63,20 +72,27 @@ export class StorageService {
           .from('courses')
           .getPublicUrl(data.path);
 
-        console.log('Generated public URL:', publicUrl.publicUrl);
-        return publicUrl.publicUrl;
+        const finalUrl = publicUrl.publicUrl;
+        console.log('Generated public URL:', finalUrl);
+        
+        // Verify the URL is properly encoded
+        const encodedUrl = encodeURI(finalUrl);
+        console.log('Final encoded URL:', encodedUrl);
+        
+        return encodedUrl;
       } else {
         // For app session users (demo mode), create mock URL with proper structure
         console.log('Using demo mode upload for app session user');
-        const mockUrl = `https://gfwnftqkzkjxujrznhww.supabase.co/storage/v1/object/public/courses/${cleanPath}`;
+        const mockUrl = `https://gfwnftqkzkjxujrznhww.supabase.co/storage/v1/object/public/courses/${encodeURIComponent(finalPath)}`;
         console.log('Using mock URL:', mockUrl);
         
         // Store file reference in local state for demo purposes
         const uploadedFiles = JSON.parse(localStorage.getItem('demo-uploaded-files') || '[]');
         uploadedFiles.push({
-          path: cleanPath,
+          path: finalPath,
           url: mockUrl,
-          fileName: file.name,
+          fileName: cleanFileName,
+          originalName: file.name,
           size: file.size,
           uploadedAt: new Date().toISOString(),
           uploadedBy: user.email
@@ -111,9 +127,13 @@ export class StorageService {
 
   // Helper method to get the correct public URL for a storage path
   static getPublicUrl(path: string): string {
-    return supabase.storage
+    // Ensure proper encoding of the path
+    const encodedPath = encodeURIComponent(path);
+    const publicUrl = supabase.storage
       .from('courses')
-      .getPublicUrl(path).data.publicUrl;
+      .getPublicUrl(encodedPath).data.publicUrl;
+    
+    return publicUrl;
   }
 
   // Helper method to check if a file exists in storage

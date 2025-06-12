@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Play, Pause, Volume2, VolumeX, Maximize2, RotateCcw, AlertCircle } from 'lucide-react';
+import { Play, Pause, Volume2, VolumeX, Maximize2, RotateCcw, AlertCircle, RefreshCw } from 'lucide-react';
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface VideoPlayerProps {
@@ -17,6 +17,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, title, isOpen, onCl
   const [isMuted, setIsMuted] = useState(false);
   const [hasError, setHasError] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [errorDetails, setErrorDetails] = useState<string>('');
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
   // Reset states when dialog opens/closes or URL changes
@@ -25,6 +26,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, title, isOpen, onCl
       setHasError(false);
       setIsLoading(true);
       setIsPlaying(false);
+      setErrorDetails('');
       console.log('Loading video from URL:', videoUrl);
     }
   }, [isOpen, videoUrl]);
@@ -40,6 +42,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, title, isOpen, onCl
         playPromise.catch(error => {
           console.error('Error playing video:', error);
           setHasError(true);
+          setErrorDetails(`Playback failed: ${error.message}`);
         });
       }
     }
@@ -69,27 +72,64 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, title, isOpen, onCl
       playPromise.catch(error => {
         console.error('Error restarting video:', error);
         setHasError(true);
+        setErrorDetails(`Restart failed: ${error.message}`);
       });
     }
+  };
+
+  const handleRetry = () => {
+    if (!videoRef.current) return;
+    
+    setHasError(false);
+    setIsLoading(true);
+    setErrorDetails('');
+    
+    // Force reload the video
+    videoRef.current.load();
   };
 
   const handleVideoLoad = () => {
     console.log('Video loaded successfully');
     setIsLoading(false);
     setHasError(false);
+    setErrorDetails('');
   };
 
   const handleVideoError = (e: React.SyntheticEvent<HTMLVideoElement, Event>) => {
     const video = e.currentTarget;
     const error = video.error;
+    
+    let errorMessage = 'Unknown video error';
+    if (error) {
+      switch (error.code) {
+        case MediaError.MEDIA_ERR_ABORTED:
+          errorMessage = 'Video playback was aborted';
+          break;
+        case MediaError.MEDIA_ERR_NETWORK:
+          errorMessage = 'Network error while loading video';
+          break;
+        case MediaError.MEDIA_ERR_DECODE:
+          errorMessage = 'Video format not supported or file corrupted';
+          break;
+        case MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED:
+          errorMessage = 'Video format not supported or URL inaccessible';
+          break;
+        default:
+          errorMessage = error.message || 'Unknown video error';
+      }
+    }
+    
     console.error('Video error:', {
       code: error?.code,
       message: error?.message,
-      url: videoUrl
+      url: videoUrl,
+      errorMessage
     });
+    
     setHasError(true);
     setIsLoading(false);
     setIsPlaying(false);
+    setErrorDetails(errorMessage);
   };
 
   const handleVideoEvents = (ref: HTMLVideoElement | null) => {
@@ -101,8 +141,12 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, title, isOpen, onCl
       ref.addEventListener('ended', () => setIsPlaying(false));
       ref.addEventListener('error', handleVideoError as any);
       ref.addEventListener('loadstart', () => {
-        console.log('Video load started');
+        console.log('Video load started for URL:', videoUrl);
         setIsLoading(true);
+      });
+      ref.addEventListener('canplay', () => {
+        console.log('Video can start playing');
+        setIsLoading(false);
       });
     }
   };
@@ -141,6 +185,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, title, isOpen, onCl
               controls={false}
               playsInline
               preload="metadata"
+              crossOrigin="anonymous"
             >
               Your browser does not support the video tag.
             </video>
@@ -202,17 +247,36 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, title, isOpen, onCl
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
-                <strong>Video playback error:</strong> The video file could not be loaded or played. 
-                This might be due to:
-                <ul className="list-disc list-inside mt-2 ml-4">
-                  <li>Invalid file format (try MP4, WebM, or MOV)</li>
-                  <li>File not accessible in the storage bucket</li>
-                  <li>Network connectivity issues</li>
-                  <li>Corrupted video file</li>
-                </ul>
-                <p className="text-xs mt-2 break-all">
-                  <strong>Video URL:</strong> {videoUrl}
-                </p>
+                <div className="space-y-2">
+                  <strong>Video playback error:</strong> {errorDetails}
+                  
+                  <div className="mt-3">
+                    <p className="text-sm">This might be due to:</p>
+                    <ul className="list-disc list-inside text-sm ml-2 space-y-1">
+                      <li>Invalid video file format (try MP4, WebM, or MOV)</li>
+                      <li>File not accessible in the storage bucket</li>
+                      <li>Network connectivity issues</li>
+                      <li>Corrupted or incomplete video file</li>
+                      <li>File name contains special characters</li>
+                    </ul>
+                  </div>
+                  
+                  <div className="flex items-center gap-2 mt-3">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleRetry}
+                      className="flex items-center gap-1"
+                    >
+                      <RefreshCw className="h-3 w-3" />
+                      Retry
+                    </Button>
+                  </div>
+                  
+                  <p className="text-xs mt-2 break-all opacity-75">
+                    <strong>Video URL:</strong> {videoUrl}
+                  </p>
+                </div>
               </AlertDescription>
             </Alert>
           )}
@@ -220,8 +284,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, title, isOpen, onCl
           {/* Fallback message if video fails to load */}
           {!hasError && (
             <div className="text-center text-muted-foreground">
-              <p>If the video doesn't load, the URL might be invalid or the file might not be accessible.</p>
-              <p className="text-xs mt-1 break-all">Video URL: {videoUrl}</p>
+              <p className="text-sm">If the video doesn't load, check the file format and storage accessibility.</p>
+              <p className="text-xs mt-1 break-all opacity-75">Video URL: {videoUrl}</p>
             </div>
           )}
         </div>

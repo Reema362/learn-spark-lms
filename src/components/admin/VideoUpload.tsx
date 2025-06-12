@@ -6,10 +6,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Upload, Video, CheckCircle, Plus } from 'lucide-react';
+import { Upload, Video, CheckCircle, Plus, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { DatabaseService } from '@/services/database';
 import { useCourseCategories } from '@/hooks/useDatabase';
+import { sanitizeFileName } from '@/utils/fileUtils';
 
 const VideoUpload = () => {
   const [videoFile, setVideoFile] = useState<File | null>(null);
@@ -32,10 +33,19 @@ const VideoUpload = () => {
     const file = event.target.files?.[0];
     if (file && file.type.startsWith('video/')) {
       setVideoFile(file);
+      
+      // Show filename info
+      const sanitized = sanitizeFileName(file.name);
+      if (sanitized !== file.name) {
+        toast({
+          title: "File Name Sanitized",
+          description: `Original: ${file.name}\nSanitized: ${sanitized}`,
+        });
+      }
     } else {
       toast({
         title: "Invalid File",
-        description: "Please select a valid video file",
+        description: "Please select a valid video file (MP4, WebM, MOV, AVI)",
         variant: "destructive"
       });
     }
@@ -94,15 +104,23 @@ const VideoUpload = () => {
 
     setUploading(true);
     try {
-      // Upload video file
-      const videoPath = `videos/${Date.now()}-${videoFile.name}`;
+      console.log('Starting video upload process...');
+      console.log('Original filename:', videoFile.name);
+      
+      // Upload video file with sanitized path
+      const videoPath = `videos/${Date.now()}-${sanitizeFileName(videoFile.name)}`;
+      console.log('Video upload path:', videoPath);
+      
       const videoUrl = await DatabaseService.uploadFile(videoFile, videoPath);
+      console.log('Video uploaded to URL:', videoUrl);
 
       // Upload thumbnail if provided
       let thumbnailUrl = '';
       if (thumbnailFile) {
-        const thumbnailPath = `thumbnails/${Date.now()}-${thumbnailFile.name}`;
+        const thumbnailPath = `thumbnails/${Date.now()}-${sanitizeFileName(thumbnailFile.name)}`;
+        console.log('Thumbnail upload path:', thumbnailPath);
         thumbnailUrl = await DatabaseService.uploadFile(thumbnailFile, thumbnailPath);
+        console.log('Thumbnail uploaded to URL:', thumbnailUrl);
       }
 
       // Create course with duration in hours (converted from minutes)
@@ -112,6 +130,8 @@ const VideoUpload = () => {
         video_url: videoUrl,
         thumbnail_url: thumbnailUrl
       });
+
+      console.log('Course created:', course);
 
       // Create lesson for the video
       await DatabaseService.createLesson({
@@ -123,9 +143,11 @@ const VideoUpload = () => {
         order_index: 1
       });
 
+      console.log('Lesson created for course');
+
       toast({
         title: "Success",
-        description: "Video course uploaded successfully",
+        description: "Video course uploaded successfully to courses bucket",
       });
 
       // Reset form
@@ -141,6 +163,7 @@ const VideoUpload = () => {
       });
 
     } catch (error: any) {
+      console.error('Upload error:', error);
       toast({
         title: "Upload Failed",
         description: error.message,
@@ -159,7 +182,7 @@ const VideoUpload = () => {
           Upload Video Course
         </CardTitle>
         <CardDescription>
-          Upload video courses in MP4 or other video formats
+          Upload video courses to the 'courses' storage bucket. Files will be automatically sanitized for compatibility.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -271,7 +294,7 @@ const VideoUpload = () => {
             <Input
               id="video-file"
               type="file"
-              accept="video/*"
+              accept="video/mp4,video/webm,video/quicktime,video/x-msvideo"
               onChange={handleVideoChange}
             />
             {videoFile && (
@@ -280,6 +303,10 @@ const VideoUpload = () => {
                 {videoFile.name} ({(videoFile.size / (1024 * 1024)).toFixed(1)} MB)
               </div>
             )}
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <AlertTriangle className="h-3 w-3" />
+              Files with special characters will be automatically sanitized
+            </div>
           </div>
 
           <div className="grid gap-2">
@@ -305,7 +332,7 @@ const VideoUpload = () => {
           className="w-full"
         >
           <Upload className="h-4 w-4 mr-2" />
-          {uploading ? 'Uploading...' : 'Upload Video Course'}
+          {uploading ? 'Uploading to courses bucket...' : 'Upload Video Course'}
         </Button>
       </CardContent>
     </Card>
