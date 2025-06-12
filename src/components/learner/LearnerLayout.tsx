@@ -1,8 +1,9 @@
+
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
-import { BookOpen, Award, HelpCircle, LogOut, Shield, Menu, X, Trophy } from 'lucide-react';
+import { BookOpen, Award, HelpCircle, LogOut, Menu, X, Trophy } from 'lucide-react';
 import { useState } from 'react';
 import AIFloatingActions from '@/components/shared/AIFloatingActions';
 
@@ -40,7 +41,11 @@ const LearnerLayout = ({ children }: { children: React.ReactNode }) => {
         <div className="flex items-center justify-between p-6 border-b border-border">
           <div className="flex items-center space-x-2">
             <div className="w-8 h-8 bg-gradient-to-r from-primary to-accent rounded-full flex items-center justify-center">
-              <Shield className="h-5 w-5 text-white" />
+              <img 
+                src="/lovable-uploads/69bbb4e9-b332-463e-8fc2-574961155f4a.png" 
+                alt="AVO Automation Logo" 
+                className="h-5 w-5 object-contain"
+              />
             </div>
             <span className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
               AvoCop

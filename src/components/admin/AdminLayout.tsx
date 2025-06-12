@@ -15,7 +15,8 @@ import {
   FileText,
   LogOut,
   Menu,
-  X
+  X,
+  Trophy
 } from 'lucide-react';
 import { useState } from 'react';
 import AIFloatingActions from '@/components/shared/AIFloatingActions';
@@ -33,6 +34,7 @@ const AdminLayout = ({ children }: { children: React.ReactNode }) => {
     { path: '/admin/analytics', icon: BarChart3, label: 'Analytics & Reporting' },
     { path: '/admin/escalations', icon: AlertTriangle, label: 'Escalation Management' },
     { path: '/admin/support', icon: MessageSquare, label: 'Queries & Support' },
+    { path: '/admin/gamification', icon: Trophy, label: 'Gamification Management' },
     { path: '/admin/iam', icon: Shield, label: 'IAM Management' },
     { path: '/admin/templates', icon: FileText, label: 'Templates Management' },
   ];
@@ -63,7 +65,11 @@ const AdminLayout = ({ children }: { children: React.ReactNode }) => {
         <div className="flex items-center justify-between p-6 border-b border-border">
           <div className="flex items-center space-x-2">
             <div className="w-8 h-8 bg-gradient-to-r from-primary to-accent rounded-full flex items-center justify-center">
-              <Shield className="h-5 w-5 text-white" />
+              <img 
+                src="/lovable-uploads/69bbb4e9-b332-463e-8fc2-574961155f4a.png" 
+                alt="AVO Automation Logo" 
+                className="h-5 w-5 object-contain"
+              />
             </div>
             <span className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
               AvoCop Admin

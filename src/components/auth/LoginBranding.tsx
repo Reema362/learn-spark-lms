@@ -1,13 +1,16 @@
 
 import React from 'react';
-import { Shield } from 'lucide-react';
 
 const LoginBranding: React.FC = () => {
   return (
     <div className="text-center lg:text-left text-white animate-fade-in">
       <div className="flex items-center justify-center lg:justify-start mb-6">
         <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center mr-4 shadow-2xl">
-          <Shield className="h-8 w-8 text-white" />
+          <img 
+            src="/lovable-uploads/69bbb4e9-b332-463e-8fc2-574961155f4a.png" 
+            alt="AVO Automation Logo" 
+            className="h-10 w-10 object-contain"
+          />
         </div>
         <div>
           <h1 className="text-5xl font-bold bg-gradient-to-r from-white to-white/80 bg-clip-text text-transparent">

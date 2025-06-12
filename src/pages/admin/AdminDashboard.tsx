@@ -12,7 +12,6 @@ import IAMManagement from '@/components/admin/IAMManagement';
 import TemplatesManagement from '@/components/admin/TemplatesManagement';
 import GamificationManagement from '@/components/admin/GamificationManagement';
 import Analytics from '@/components/admin/Analytics';
-import Gamification from '@/components/learner/Gamification';
 
 const AdminDashboard = () => {
   return (
@@ -23,11 +22,10 @@ const AdminDashboard = () => {
         <Route path="/courses" element={<CourseManagement />} />
         <Route path="/campaigns" element={<CampaignManagement />} />
         <Route path="/escalations" element={<EscalationManagement />} />
-        <Route path="/queries" element={<QueriesSupport />} />
+        <Route path="/support" element={<QueriesSupport />} />
+        <Route path="/gamification" element={<GamificationManagement />} />
         <Route path="/iam" element={<IAMManagement />} />
         <Route path="/templates" element={<TemplatesManagement />} />
-        <Route path="/gamification" element={<GamificationManagement />} />
-        <Route path="/gamification-view" element={<Gamification />} />
         <Route path="/analytics" element={<Analytics />} />
       </Routes>
     </AdminLayout>
