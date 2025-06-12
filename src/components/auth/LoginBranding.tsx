@@ -5,11 +5,11 @@ const LoginBranding: React.FC = () => {
   return (
     <div className="text-center lg:text-left text-white animate-fade-in">
       <div className="flex items-center justify-center lg:justify-start mb-6">
-        <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center mr-4 shadow-2xl">
+        <div className="w-20 h-20 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center mr-4 shadow-2xl">
           <img 
-            src="/lovable-uploads/69bbb4e9-b332-463e-8fc2-574961155f4a.png" 
+            src="/lovable-uploads/c1be4ea5-1c8c-461b-a36c-a2dc54ee21bb.png" 
             alt="AVO Automation Logo" 
-            className="h-10 w-10 object-contain"
+            className="h-14 w-14 object-contain"
           />
         </div>
         <div>

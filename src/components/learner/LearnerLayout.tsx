@@ -40,11 +40,11 @@ const LearnerLayout = ({ children }: { children: React.ReactNode }) => {
       `}>
         <div className="flex items-center justify-between p-6 border-b border-border">
           <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-gradient-to-r from-primary to-accent rounded-full flex items-center justify-center">
+            <div className="w-10 h-10 bg-gradient-to-r from-primary to-accent rounded-full flex items-center justify-center">
               <img 
-                src="/lovable-uploads/69bbb4e9-b332-463e-8fc2-574961155f4a.png" 
+                src="/lovable-uploads/c1be4ea5-1c8c-461b-a36c-a2dc54ee21bb.png" 
                 alt="AVO Automation Logo" 
-                className="h-5 w-5 object-contain"
+                className="h-7 w-7 object-contain"
               />
             </div>
             <span className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">

@@ -14,7 +14,7 @@ export class StorageService {
       pathParts[pathParts.length - 1] = cleanFileName;
       const finalPath = pathParts.join('/');
       
-      console.log('Uploading file to path:', finalPath);
+      console.log('Uploading file to courses bucket:', finalPath);
       console.log('Original filename:', file.name);
       console.log('Sanitized filename:', cleanFileName);
       
@@ -49,9 +49,9 @@ export class StorageService {
         throw new Error('Permission denied: You must be logged in as an admin to upload files.');
       }
 
-      console.log('Authentication verified, proceeding with upload');
+      console.log('Authentication verified, proceeding with upload to courses bucket');
       
-      // For Supabase authenticated users, try actual upload
+      // For Supabase authenticated users, try actual upload to courses bucket
       if (session?.user) {
         const { data, error } = await supabase.storage
           .from('courses')
@@ -65,7 +65,7 @@ export class StorageService {
           throw new Error(`File upload failed: ${error.message}`);
         }
 
-        console.log('File uploaded successfully to Supabase:', data);
+        console.log('File uploaded successfully to courses bucket:', data);
 
         // Get the proper public URL for the uploaded file
         const { data: publicUrl } = supabase.storage
@@ -73,13 +73,9 @@ export class StorageService {
           .getPublicUrl(data.path);
 
         const finalUrl = publicUrl.publicUrl;
-        console.log('Generated public URL:', finalUrl);
+        console.log('Generated public URL from courses bucket:', finalUrl);
         
-        // Verify the URL is properly encoded
-        const encodedUrl = encodeURI(finalUrl);
-        console.log('Final encoded URL:', encodedUrl);
-        
-        return encodedUrl;
+        return finalUrl;
       } else {
         // For app session users (demo mode), create mock URL with proper structure
         console.log('Using demo mode upload for app session user');

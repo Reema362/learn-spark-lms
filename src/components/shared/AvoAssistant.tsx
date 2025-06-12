@@ -1,16 +1,19 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Mic, MicOff, Volume2, VolumeX, X } from 'lucide-react';
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
+import { X, Send, MessageSquare, Volume2, VolumeX, Sparkles } from "lucide-react";
 import { useToast } from '@/hooks/use-toast';
 
 interface Message {
   id: string;
-  type: 'user' | 'assistant';
-  content: string;
+  text: string;
+  isUser: boolean;
   timestamp: Date;
+  category?: string;
 }
 
 interface AvoAssistantProps {
@@ -20,66 +23,23 @@ interface AvoAssistantProps {
 }
 
 const AvoAssistant: React.FC<AvoAssistantProps> = ({ isOpen, onClose, userRole }) => {
-  const [isListening, setIsListening] = useState(false);
-  const [isSpeaking, setIsSpeaking] = useState(false);
-  const [transcript, setTranscript] = useState('');
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      type: 'assistant',
-      content: `Hello! I'm Avo, your AI assistant. I'm here to help you navigate the AvoCop learning platform. How can I assist you today?`,
-      timestamp: new Date()
+      text: `Hello! I'm your intelligent AVO Assistant. I can help you with ${userRole === 'admin' ? 'administrative tasks, user management, course creation, and platform analytics' : 'learning paths, course recommendations, progress tracking, and answering questions about security topics'}. What would you like to know?`,
+      isUser: false,
+      timestamp: new Date(),
+      category: 'welcome'
     }
   ]);
-  const recognitionRef = useRef<any>(null);
-  const synthesisRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const [inputValue, setInputValue] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [audioEnabled, setAudioEnabled] = useState(true);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
+  // Auto-scroll to bottom when new messages are added
   useEffect(() => {
-    if (typeof window !== 'undefined' && 'webkitSpeechRecognition' in window) {
-      const recognition = new (window as any).webkitSpeechRecognition();
-      recognition.continuous = false;
-      recognition.interimResults = true;
-      recognition.lang = 'en-US';
-      
-      recognition.onresult = (event: any) => {
-        const current = event.resultIndex;
-        const transcript = event.results[current][0].transcript;
-        setTranscript(transcript);
-        
-        if (event.results[current].isFinal) {
-          handleVoiceCommand(transcript);
-        }
-      };
-      
-      recognition.onerror = (event: any) => {
-        console.error('Speech recognition error:', event.error);
-        setIsListening(false);
-        toast({
-          title: "Voice Recognition Error",
-          description: "Unable to process voice input. Please try again.",
-          variant: "destructive"
-        });
-      };
-      
-      recognition.onend = () => {
-        setIsListening(false);
-      };
-      
-      recognitionRef.current = recognition;
-    }
-
-    // Set up female voice on load
-    if ('speechSynthesis' in window) {
-      speechSynthesis.onvoiceschanged = () => {
-        // This ensures voices are loaded
-      };
-    }
-  }, []);
-
-  useEffect(() => {
-    // Scroll to bottom when new messages are added
     if (scrollAreaRef.current) {
       const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
       if (scrollContainer) {
@@ -88,219 +48,212 @@ const AvoAssistant: React.FC<AvoAssistantProps> = ({ isOpen, onClose, userRole }
     }
   }, [messages]);
 
-  const addMessage = (content: string, type: 'user' | 'assistant') => {
-    const newMessage: Message = {
-      id: Date.now().toString(),
-      type,
-      content,
-      timestamp: new Date()
-    };
-    setMessages(prev => [...prev, newMessage]);
-  };
-
-  const startListening = () => {
-    if (recognitionRef.current) {
-      setIsListening(true);
-      setTranscript('');
-      recognitionRef.current.start();
-    } else {
-      toast({
-        title: "Not Supported",
-        description: "Voice recognition is not supported in this browser.",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const stopListening = () => {
-    if (recognitionRef.current) {
-      recognitionRef.current.stop();
-    }
-    setIsListening(false);
-  };
-
-  const handleVoiceCommand = (command: string) => {
-    addMessage(command, 'user');
+  const speakText = async (text: string) => {
+    if (!audioEnabled) return;
     
-    const lowerCommand = command.toLowerCase();
-    let response = '';
-
-    // Admin-specific commands
-    if (userRole === 'admin') {
-      if (lowerCommand.includes('dashboard') || lowerCommand.includes('overview')) {
-        response = 'I can help you navigate to the dashboard overview. You can view user statistics, course completion rates, and recent activities there.';
-      } else if (lowerCommand.includes('user') || lowerCommand.includes('manage users')) {
-        response = 'For user management, you can add new users, organize them into groups, and assign courses. Would you like me to guide you through the process?';
-      } else if (lowerCommand.includes('course') || lowerCommand.includes('create course')) {
-        response = 'I can assist you with course management. You can create new courses, upload content, and track learner progress in the course management section.';
-      } else if (lowerCommand.includes('analytics') || lowerCommand.includes('report')) {
-        response = 'Analytics and reporting features provide detailed insights into learner performance and engagement metrics. I can help you interpret the data.';
-      }
-    } 
-    // Learner-specific commands
-    else {
-      if (lowerCommand.includes('course') || lowerCommand.includes('my courses')) {
-        response = 'Your assigned courses are displayed in the courses section. I can help you navigate to incomplete courses and track your progress.';
-      } else if (lowerCommand.includes('certificate') || lowerCommand.includes('certification')) {
-        response = 'Your earned certificates are available in the certifications tab. You can download them as PDF files for your records.';
-      } else if (lowerCommand.includes('help') || lowerCommand.includes('support')) {
-        response = 'I can assist you with course content or technical issues. You can also raise support tickets in the help section for additional assistance.';
-      }
-    }
-
-    // General commands
-    if (!response) {
-      if (lowerCommand.includes('hello') || lowerCommand.includes('hi')) {
-        response = `Hello! I'm Avo, your AI assistant. I'm here to help you navigate the AvoCop learning platform. How can I assist you today?`;
-      } else if (lowerCommand.includes('time') || lowerCommand.includes('date')) {
-        response = `The current time is ${new Date().toLocaleTimeString()} and today is ${new Date().toLocaleDateString()}.`;
-      } else if (lowerCommand.includes('logout') || lowerCommand.includes('sign out')) {
-        response = 'To sign out, click on your profile menu in the sidebar and select Sign Out. Your session will be safely terminated.';
-      } else {
-        response = 'I understand you said: "' + command + '". I\'m here to help with navigation, course management, and platform guidance. Could you please rephrase your request?';
-      }
-    }
-
-    addMessage(response, 'assistant');
-    speakResponse(response);
-  };
-
-  const speakResponse = (text: string) => {
-    if ('speechSynthesis' in window) {
-      setIsSpeaking(true);
+    try {
+      // Use Web Speech API with female voice
       const utterance = new SpeechSynthesisUtterance(text);
-      
-      // Set female voice with enhanced preferences
       const voices = speechSynthesis.getVoices();
+      
+      // Find a female voice
       const femaleVoice = voices.find(voice => 
+        voice.name.toLowerCase().includes('female') || 
+        voice.name.toLowerCase().includes('woman') ||
         voice.name.toLowerCase().includes('samantha') ||
         voice.name.toLowerCase().includes('karen') ||
         voice.name.toLowerCase().includes('victoria') ||
-        voice.name.toLowerCase().includes('female') ||
-        (voice.name.toLowerCase().includes('google') && voice.name.toLowerCase().includes('female')) ||
-        voice.lang.startsWith('en') && voice.name.toLowerCase().includes('us female')
-      ) || voices.find(voice => voice.lang.startsWith('en') && voice.name.includes('Female')) ||
-          voices.find(voice => voice.lang.startsWith('en'));
+        voice.name.toLowerCase().includes('zira') ||
+        voice.gender === 'female'
+      );
       
       if (femaleVoice) {
         utterance.voice = femaleVoice;
+      } else {
+        // Fallback with higher pitch for more feminine sound
+        utterance.pitch = 1.3;
       }
       
       utterance.rate = 0.9;
-      utterance.pitch = 1.2; // Higher pitch for more feminine voice
       utterance.volume = 0.8;
-      
-      utterance.onend = () => {
-        setIsSpeaking(false);
-      };
-      
-      utterance.onerror = () => {
-        setIsSpeaking(false);
-      };
-      
-      synthesisRef.current = utterance;
       speechSynthesis.speak(utterance);
+    } catch (error) {
+      console.error('Speech synthesis error:', error);
     }
   };
 
-  const stopSpeaking = () => {
-    speechSynthesis.cancel();
-    setIsSpeaking(false);
+  const handleSendMessage = async () => {
+    if (!inputValue.trim() || isLoading) return;
+
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      text: inputValue,
+      isUser: true,
+      timestamp: new Date()
+    };
+
+    setMessages(prev => [...prev, userMessage]);
+    setInputValue('');
+    setIsLoading(true);
+
+    try {
+      // Simulate AI response based on user role
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      const adminResponses = [
+        "I can help you manage users and permissions. Would you like to see analytics or create new content?",
+        "For course management, I recommend organizing content by security domains. Need help with that?",
+        "Analytics show good engagement rates. Let me help you optimize your training programs.",
+        "I can assist with user onboarding, content creation, and platform administration.",
+        "Would you like me to help you set up automated campaigns or review user progress?"
+      ];
+      
+      const learnerResponses = [
+        "Based on your learning progress, I recommend focusing on data protection fundamentals next.",
+        "Great question! This topic relates to our cybersecurity essentials course. Would you like me to explain more?",
+        "I can see you're progressing well! Consider taking the advanced security awareness modules.",
+        "Let me help you understand this security concept better. Here's a practical example...",
+        "Your learning path suggests exploring incident response training. Shall we discuss that?"
+      ];
+      
+      const responses = userRole === 'admin' ? adminResponses : learnerResponses;
+      const randomResponse = responses[Math.floor(Math.random() * responses.length)];
+      
+      const botMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        text: randomResponse,
+        isUser: false,
+        timestamp: new Date(),
+        category: userRole === 'admin' ? 'management' : 'learning'
+      };
+
+      setMessages(prev => [...prev, botMessage]);
+      
+      // Speak the assistant's response with female voice
+      speakText(randomResponse);
+      
+    } catch (error) {
+      console.error('Error sending message:', error);
+      toast({
+        title: "Error",
+        description: "Failed to send message. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md mx-auto h-[600px] flex flex-col">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
-              <span className="text-white text-sm font-bold">A</span>
+    <Card className="fixed bottom-4 right-4 w-[420px] h-[600px] z-50 shadow-2xl border-2 border-accent/30 bg-background/95 backdrop-blur-sm">
+      <CardHeader className="pb-3 bg-gradient-to-r from-accent to-primary text-primary-foreground">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <Sparkles className="h-5 w-5" />
+            <div>
+              <CardTitle className="text-lg">AVO Intelligence</CardTitle>
+              <CardDescription className="text-primary-foreground/80 text-sm">
+                Advanced AI Assistant for {userRole === 'admin' ? 'Administrators' : 'Learners'}
+              </CardDescription>
             </div>
-            <span>Avo Assistant</span>
-          </CardTitle>
-          <Button variant="ghost" size="sm" onClick={onClose}>
-            <X className="h-4 w-4" />
-          </Button>
-        </CardHeader>
-        <CardContent className="space-y-4 flex-1 flex flex-col">
-          {/* Messages Area */}
-          <ScrollArea ref={scrollAreaRef} className="flex-1 h-[300px] w-full rounded border p-4">
-            <div className="space-y-3">
-              {messages.map((message) => (
-                <div
-                  key={message.id}
-                  className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
-                >
+          </div>
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setAudioEnabled(!audioEnabled)}
+              className="text-primary-foreground hover:bg-primary-foreground/20"
+            >
+              {audioEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onClose}
+              className="text-primary-foreground hover:bg-primary-foreground/20"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </CardHeader>
+      
+      <CardContent className="p-0 flex flex-col h-[500px]">
+        <ScrollArea ref={scrollAreaRef} className="flex-1 p-4">
+          <div className="space-y-4">
+            {messages.map((message) => (
+              <div
+                key={message.id}
+                className={`flex ${message.isUser ? 'justify-end' : 'justify-start'}`}
+              >
+                <div className="flex flex-col max-w-[85%]">
                   <div
-                    className={`max-w-[80%] p-3 rounded-lg ${
-                      message.type === 'user'
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-muted text-muted-foreground'
+                    className={`p-3 rounded-lg ${
+                      message.isUser
+                        ? 'bg-accent text-accent-foreground'
+                        : 'bg-muted text-muted-foreground border'
                     }`}
                   >
-                    <p className="text-sm">{message.content}</p>
-                    <p className="text-xs opacity-70 mt-1">
-                      {message.timestamp.toLocaleTimeString()}
-                    </p>
+                    <p className="text-sm leading-relaxed">{message.text}</p>
+                    <div className="flex items-center justify-between mt-2">
+                      <p className="text-xs opacity-70">
+                        {message.timestamp.toLocaleTimeString()}
+                      </p>
+                      {message.category && !message.isUser && (
+                        <Badge variant="outline" className="text-xs">
+                          {message.category}
+                        </Badge>
+                      )}
+                    </div>
                   </div>
                 </div>
-              ))}
-            </div>
-          </ScrollArea>
-
-          {/* Voice Control Section */}
-          <div className="text-center">
-            <div className={`w-16 h-16 mx-auto rounded-full flex items-center justify-center ${
-              isListening ? 'bg-red-100 animate-pulse' : 
-              isSpeaking ? 'bg-green-100 animate-pulse' : 'bg-gray-100'
-            }`}>
-              {isListening ? (
-                <Mic className="h-6 w-6 text-red-500" />
-              ) : isSpeaking ? (
-                <Volume2 className="h-6 w-6 text-green-500" />
-              ) : (
-                <Mic className="h-6 w-6 text-gray-500" />
-              )}
-            </div>
-            <p className="mt-2 text-sm text-muted-foreground">
-              {isListening ? 'Listening...' : 
-               isSpeaking ? 'Speaking...' : 
-               'Tap to speak with Avo'}
-            </p>
-            
-            {transcript && isListening && (
-              <div className="mt-2 p-2 bg-muted rounded text-xs">
-                <strong>You're saying:</strong> {transcript}
+              </div>
+            ))}
+            {isLoading && (
+              <div className="flex justify-start">
+                <div className="bg-muted text-muted-foreground p-3 rounded-lg border">
+                  <div className="flex space-x-1">
+                    <div className="w-2 h-2 bg-current rounded-full animate-bounce"></div>
+                    <div className="w-2 h-2 bg-current rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                    <div className="w-2 h-2 bg-current rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                  </div>
+                </div>
               </div>
             )}
           </div>
-
-          {/* Control Buttons */}
-          <div className="flex justify-center space-x-2">
-            {!isListening ? (
-              <Button onClick={startListening} className="flex items-center space-x-2">
-                <Mic className="h-4 w-4" />
-                <span>Start Listening</span>
-              </Button>
-            ) : (
-              <Button onClick={stopListening} variant="destructive" className="flex items-center space-x-2">
-                <MicOff className="h-4 w-4" />
-                <span>Stop Listening</span>
-              </Button>
-            )}
-
-            {isSpeaking && (
-              <Button onClick={stopSpeaking} variant="outline" className="flex items-center space-x-2">
-                <VolumeX className="h-4 w-4" />
-                <span>Stop Speaking</span>
-              </Button>
-            )}
+        </ScrollArea>
+        
+        <div className="p-4 border-t bg-muted/30">
+          <div className="flex space-x-2">
+            <Input
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder={`Ask me about ${userRole === 'admin' ? 'platform management, analytics, or user administration' : 'courses, security topics, or learning paths'}...`}
+              disabled={isLoading}
+              className="flex-1"
+            />
+            <Button
+              onClick={handleSendMessage}
+              disabled={!inputValue.trim() || isLoading}
+              size="sm"
+              className="bg-accent hover:bg-accent/90"
+            >
+              <Send className="h-4 w-4" />
+            </Button>
           </div>
-        </CardContent>
-      </Card>
-    </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 };
 
