@@ -9,42 +9,63 @@ export class StorageService {
       console.log('Uploading file to path:', cleanPath);
       console.log('File details:', { name: file.name, size: file.size, type: file.type });
       
-      // Check if user is authenticated via our app's auth system
-      const userSession = localStorage.getItem('avocop_user');
-      if (!userSession) {
-        throw new Error('Permission denied: You must be logged in to upload files.');
-      }
-
+      // Check authentication status
+      const { data: { session } } = await supabase.auth.getSession();
+      let isAuthenticated = false;
       let user = null;
-      try {
-        const parsedSession = JSON.parse(userSession);
-        user = parsedSession;
-        console.log('Current authenticated user from app session:', user);
-      } catch (parseError) {
-        console.log('Error parsing user session:', parseError);
-        throw new Error('Permission denied: Invalid session. Please log in again.');
+
+      if (session?.user) {
+        // User is authenticated with Supabase
+        isAuthenticated = true;
+        user = session.user;
+        console.log('User authenticated with Supabase:', user.email);
+      } else {
+        // Check for app session (demo mode)
+        const userSession = localStorage.getItem('avocop_user');
+        if (userSession) {
+          try {
+            const parsedSession = JSON.parse(userSession);
+            if (parsedSession && parsedSession.id && parsedSession.email && parsedSession.role === 'admin') {
+              isAuthenticated = true;
+              user = parsedSession;
+              console.log('User authenticated with app session:', user.email);
+            }
+          } catch (parseError) {
+            console.log('Error parsing user session:', parseError);
+          }
+        }
       }
 
-      // Validate user object has required properties
-      if (!user || !user.id || !user.email || !user.role) {
-        throw new Error('Permission denied: Invalid user session. Please log in again.');
+      if (!isAuthenticated || !user) {
+        throw new Error('Permission denied: You must be logged in as an admin to upload files.');
       }
 
-      console.log('User authenticated, proceeding with upload');
+      console.log('Authentication verified, proceeding with upload');
       
-      // Upload to the courses bucket with the new policies
-      const { data, error } = await supabase.storage
-        .from('courses')
-        .upload(cleanPath, file, {
-          cacheControl: '3600',
-          upsert: true
-        });
+      // For Supabase authenticated users, try actual upload
+      if (session?.user) {
+        const { data, error } = await supabase.storage
+          .from('courses')
+          .upload(cleanPath, file, {
+            cacheControl: '3600',
+            upsert: true
+          });
 
-      if (error) {
-        console.error('Storage upload error:', error);
-        
-        // For demo purposes, create a mock URL if upload fails
-        console.log('Upload failed, creating mock URL for demo purposes...');
+        if (error) {
+          console.error('Storage upload error:', error);
+          throw new Error(`File upload failed: ${error.message}`);
+        }
+
+        console.log('File uploaded successfully to Supabase:', data);
+
+        const { data: publicUrl } = supabase.storage
+          .from('courses')
+          .getPublicUrl(data.path);
+
+        return publicUrl.publicUrl;
+      } else {
+        // For app session users (demo mode), create mock URL
+        console.log('Using demo mode upload for app session user');
         const mockUrl = `https://gfwnftqkzkjxujrznhww.supabase.co/storage/v1/object/public/courses/${cleanPath}`;
         console.log('Using mock URL:', mockUrl);
         
@@ -62,14 +83,6 @@ export class StorageService {
         
         return mockUrl;
       }
-
-      console.log('File uploaded successfully:', data);
-
-      const { data: publicUrl } = supabase.storage
-        .from('courses')
-        .getPublicUrl(data.path);
-
-      return publicUrl.publicUrl;
     } catch (error: any) {
       console.error('File upload failed:', error);
       throw new Error(`File upload failed: ${error.message}`);
@@ -77,10 +90,20 @@ export class StorageService {
   }
 
   static async deleteFile(path: string) {
-    const { error } = await supabase.storage
-      .from('courses')
-      .remove([path]);
+    // Check authentication
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (session?.user) {
+      const { error } = await supabase.storage
+        .from('courses')
+        .remove([path]);
 
-    if (error) throw error;
+      if (error) throw error;
+    } else {
+      // For demo mode, remove from local storage
+      const uploadedFiles = JSON.parse(localStorage.getItem('demo-uploaded-files') || '[]');
+      const updatedFiles = uploadedFiles.filter((file: any) => file.path !== path);
+      localStorage.setItem('demo-uploaded-files', JSON.stringify(updatedFiles));
+    }
   }
 }

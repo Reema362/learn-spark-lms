@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, saveUserSession, loadUserSession, clearUserSession, logAuditEvent } from '../utils/sessionManager';
 import { supabase } from '@/integrations/supabase/client';
@@ -49,9 +48,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setUser(userData);
             saveUserSession(userData);
           }
+        } else {
+          // Check for app session (demo mode)
+          const appSession = loadUserSession();
+          if (appSession) {
+            setUser(appSession);
+          }
         }
       } catch (error) {
         console.error('Error getting session:', error);
+        // Fallback to app session
+        const appSession = loadUserSession();
+        if (appSession) {
+          setUser(appSession);
+        }
       } finally {
         setLoading(false);
       }
@@ -91,39 +101,48 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => subscription.unsubscribe();
   }, []);
 
-  const createLearnerProfile = async (userId: string, email: string) => {
+  const createOrUpdateAdminProfile = async (email: string, name: string) => {
     try {
-      console.log('Creating learner profile for:', email);
-      
-      const { data: newProfile, error: insertError } = await supabase
+      // Check if profile exists
+      const { data: existingProfile } = await supabase
         .from('profiles')
-        .insert({
-          id: userId,
-          email: email,
-          first_name: email.split('@')[0],
-          last_name: '',
-          role: 'user'
-        })
-        .select()
+        .select('*')
+        .eq('email', email)
         .single();
 
-      if (insertError) {
-        console.error('Error creating learner profile:', insertError);
-        
-        // Handle specific constraint violations
-        if (insertError.code === '23505') {
-          throw new Error('A profile with this email already exists');
-        } else if (insertError.code === '23503') {
-          throw new Error('Invalid user reference. Please try logging in again.');
-        } else {
-          throw new Error(`Failed to create profile: ${insertError.message}`);
-        }
-      }
+      if (existingProfile) {
+        // Update existing profile to admin
+        const { data: updatedProfile, error: updateError } = await supabase
+          .from('profiles')
+          .update({ role: 'admin' })
+          .eq('email', email)
+          .select()
+          .single();
 
-      console.log('Learner profile created successfully:', newProfile);
-      return newProfile;
+        if (updateError) throw updateError;
+        return updatedProfile;
+      } else {
+        // Create new admin profile
+        const adminId = crypto.randomUUID();
+        const [firstName, lastName] = name.split(' ');
+        
+        const { data: newProfile, error: insertError } = await supabase
+          .from('profiles')
+          .insert({
+            id: adminId,
+            email: email,
+            first_name: firstName || name,
+            last_name: lastName || '',
+            role: 'admin'
+          })
+          .select()
+          .single();
+
+        if (insertError) throw insertError;
+        return newProfile;
+      }
     } catch (error) {
-      console.error('Error in createLearnerProfile:', error);
+      console.error('Error creating/updating admin profile:', error);
       throw error;
     }
   };
@@ -132,11 +151,89 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLoading(true);
     
     try {
+      // For admin login with predefined credentials
+      if (userType === 'admin' && password) {
+        const adminCredentials = [
+          { email: 'naveen.v1@slksoftware.com', password: 'AdminPass2024!Strong', name: 'Naveen V' },
+          { email: 'reema.jain@slksoftware.com', password: 'AdminPass2024!Strong', name: 'Reema Jain' }
+        ];
+
+        const adminUser = adminCredentials.find(admin => admin.email === email && admin.password === password);
+
+        if (adminUser) {
+          try {
+            // Try to sign in with Supabase first
+            const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+              email,
+              password: 'defaultpassword123' // Use a default password for demo
+            });
+
+            if (signInError && signInError.message.includes('Invalid login credentials')) {
+              // User doesn't exist in Supabase, try to sign them up
+              const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+                email,
+                password: 'defaultpassword123',
+                options: {
+                  data: {
+                    first_name: adminUser.name.split(' ')[0],
+                    last_name: adminUser.name.split(' ')[1] || ''
+                  }
+                }
+              });
+
+              if (signUpError) {
+                console.log('Supabase signup failed, using app session:', signUpError);
+                // Fall back to app session
+                throw new Error('Use app session');
+              }
+            }
+
+            // Create or update admin profile in database
+            await createOrUpdateAdminProfile(adminUser.email, adminUser.name);
+
+            // The auth state change listener will handle the rest
+            toast({
+              title: "Welcome back!",
+              description: `Successfully logged in as ${adminUser.name}`,
+            });
+            
+            return true;
+          } catch (supabaseError) {
+            console.log('Using app session for admin:', supabaseError);
+            
+            // Fallback to app session for demo purposes
+            const userData: User = {
+              id: crypto.randomUUID(),
+              email: adminUser.email,
+              name: adminUser.name,
+              role: 'admin'
+            };
+
+            setUser(userData);
+            saveUserSession(userData);
+            logAuditEvent(`User ${userData.email} (admin) logged in via app session`);
+            
+            toast({
+              title: "Welcome back!",
+              description: `Successfully logged in as ${adminUser.name}`,
+            });
+            
+            return true;
+          }
+        } else {
+          toast({
+            title: "Login Failed",
+            description: "Invalid email or password. Please check your credentials.",
+            variant: "destructive",
+          });
+          return false;
+        }
+      }
+
       // For learner SSO-style login (no password required)
       if (userType === 'learner' && !password) {
         console.log('Starting learner SSO login for:', email);
         
-        // First, check if learner profile already exists
         const { data: existingProfile, error: searchError } = await supabase
           .from('profiles')
           .select('*')
@@ -145,14 +242,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         let profile = existingProfile;
 
-        // If profile doesn't exist, create one
         if (!existingProfile && searchError?.code === 'PGRST116') {
           console.log('No existing profile found, creating new learner profile');
           
           try {
-            // Generate a unique user ID for the profile
             const userId = crypto.randomUUID();
-            profile = await createLearnerProfile(userId, email);
+            const { data: newProfile, error: insertError } = await supabase
+              .from('profiles')
+              .insert({
+                id: userId,
+                email: email,
+                first_name: email.split('@')[0],
+                last_name: '',
+                role: 'user'
+              })
+              .select()
+              .single();
+
+            if (insertError) throw insertError;
+            profile = newProfile;
           } catch (createError: any) {
             console.error('Failed to create learner profile:', createError);
             toast({
@@ -173,9 +281,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
 
         if (profile) {
-          console.log('Profile found/created, creating session for:', profile.email);
-          
-          // Create a session for the learner (simulated SSO)
           const userData: User = {
             id: profile.id,
             email: profile.email,
@@ -193,58 +298,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           });
           
           return true;
-        } else {
-          toast({
-            title: "Login Failed",
-            description: "Failed to create or retrieve learner profile.",
-            variant: "destructive",
-          });
-          return false;
         }
       }
 
-      // For admin login - use demo authentication for now
-      if (userType === 'admin' && password) {
-        // Demo admin credentials
-        const adminCredentials = [
-          { email: 'naveen.v1@slksoftware.com', password: 'AdminPass2024!Strong', name: 'Naveen V', id: 'admin-1' },
-          { email: 'reema.jain@slksoftware.com', password: 'AdminPass2024!Strong', name: 'Reema Jain', id: 'admin-2' }
-        ];
-
-        const adminUser = adminCredentials.find(admin => admin.email === email && admin.password === password);
-
-        if (adminUser) {
-          console.log('Valid admin credentials, creating session for:', email);
-          
-          // Create admin session without Supabase auth for now
-          const userData: User = {
-            id: adminUser.id,
-            email: adminUser.email,
-            name: adminUser.name,
-            role: 'admin'
-          };
-
-          setUser(userData);
-          saveUserSession(userData);
-          logAuditEvent(`User ${userData.email} (admin) logged in`);
-          
-          toast({
-            title: "Welcome back!",
-            description: `Successfully logged in as ${adminUser.name}`,
-          });
-          
-          return true;
-        } else {
-          toast({
-            title: "Login Failed",
-            description: "Invalid email or password. Please check your credentials.",
-            variant: "destructive",
-          });
-          return false;
-        }
-      }
-
-      // If no userType specified, try Supabase auth for backward compatibility
+      // Regular Supabase auth for backward compatibility
       if (password) {
         const { data, error } = await supabase.auth.signInWithPassword({
           email,
@@ -262,7 +319,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
 
         if (data.user) {
-          // The auth state change listener will handle setting the user state
           toast({
             title: "Welcome back!",
             description: `Successfully logged in`,
@@ -298,7 +354,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       logAuditEvent(`User ${user.email} (${user.role}) logged out`);
     }
     
-    // Only try to sign out from Supabase if user is authenticated there
+    // Try to sign out from Supabase
     try {
       await supabase.auth.signOut();
     } catch (error) {
