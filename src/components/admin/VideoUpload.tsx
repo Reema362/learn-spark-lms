@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +12,7 @@ import { StorageService } from '@/services/storageService';
 import { CourseService } from '@/services/courseService';
 import { useCourseCategories } from '@/hooks/useDatabase';
 import { sanitizeFileName } from '@/utils/fileUtils';
+import { supabase } from '@/integrations/supabase/client';
 
 const VideoUpload = () => {
   const [videoFile, setVideoFile] = useState<File | null>(null);
@@ -105,6 +107,19 @@ const VideoUpload = () => {
     setUploading(true);
     try {
       console.log('Starting admin video upload process...');
+      
+      // Verify authentication before starting upload
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError || !session) {
+        throw new Error('Please log in again to upload videos. Your session may have expired.');
+      }
+      
+      console.log('Authenticated user uploading:', {
+        email: session.user.email,
+        id: session.user.id
+      });
+      
       console.log('Original filename:', videoFile.name);
       
       // Upload video file with improved error handling
@@ -166,7 +181,7 @@ const VideoUpload = () => {
       console.error('Admin upload error:', error);
       toast({
         title: "Upload Failed",
-        description: `Upload failed: ${error.message}. Please check your admin permissions and try again.`,
+        description: error.message,
         variant: "destructive"
       });
     } finally {

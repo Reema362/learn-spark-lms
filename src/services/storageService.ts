@@ -5,6 +5,25 @@ import { sanitizeFileName, generateUniqueFileName } from '@/utils/fileUtils';
 export class StorageService {
   static async uploadFile(file: File, path: string) {
     try {
+      // First, verify we have an authenticated session
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError) {
+        console.error('Session error:', sessionError);
+        throw new Error(`Authentication error: ${sessionError.message}`);
+      }
+      
+      if (!session || !session.user) {
+        console.error('No authenticated session found');
+        throw new Error('You must be logged in to upload files. Please log in and try again.');
+      }
+      
+      console.log('Authenticated user for upload:', {
+        id: session.user.id,
+        email: session.user.email,
+        role: session.user.user_metadata?.role || 'unknown'
+      });
+      
       // Generate a clean, unique filename
       const cleanFileName = generateUniqueFileName(file.name);
       const cleanPath = path.startsWith('/') ? path.slice(1) : path;
@@ -17,8 +36,15 @@ export class StorageService {
       console.log('Uploading file to Supabase courses bucket, path:', finalPath);
       console.log('Original filename:', file.name);
       console.log('Sanitized filename:', cleanFileName);
+      console.log('Session access token present:', !!session.access_token);
       
-      // Upload to Supabase storage with the new clean policies
+      // Ensure the Supabase client is using the current session
+      await supabase.auth.setSession({
+        access_token: session.access_token,
+        refresh_token: session.refresh_token
+      });
+      
+      // Upload to Supabase storage with explicit session context
       const { data, error } = await supabase.storage
         .from('courses')
         .upload(finalPath, file, {
@@ -27,7 +53,19 @@ export class StorageService {
         });
 
       if (error) {
-        console.error('Storage upload error:', error);
+        console.error('Storage upload error details:', {
+          message: error.message,
+          statusCode: error.statusCode,
+          user: session.user.email,
+          filePath: finalPath,
+          fileSize: file.size,
+          fileType: file.type
+        });
+        
+        if (error.message.includes('row-level security policy')) {
+          throw new Error(`Upload failed: Authentication issue. Please ensure you're logged in as an admin user and try again. (${error.message})`);
+        }
+        
         throw new Error(`File upload failed: ${error.message}`);
       }
 
@@ -43,13 +81,25 @@ export class StorageService {
       
       return finalUrl;
     } catch (error: any) {
-      console.error('File upload failed:', error);
+      console.error('File upload failed with detailed error:', {
+        message: error.message,
+        stack: error.stack,
+        fileName: file.name,
+        fileSize: file.size,
+        uploadPath: path
+      });
       throw new Error(`File upload failed: ${error.message}`);
     }
   }
 
   static async deleteFile(path: string) {
     try {
+      // Verify session before delete operation
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Authentication required for file deletion');
+      }
+      
       const { error } = await supabase.storage
         .from('courses')
         .remove([path]);
