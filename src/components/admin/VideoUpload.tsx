@@ -8,11 +8,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Upload, Video, CheckCircle, Plus, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { StorageService } from '@/services/storageService';
-import { CourseService } from '@/services/courseService';
+import { DatabaseService } from '@/services/database';
 import { useCourseCategories } from '@/hooks/useDatabase';
 import { sanitizeFileName } from '@/utils/fileUtils';
-import { supabase } from '@/integrations/supabase/client';
 
 const VideoUpload = () => {
   const [videoFile, setVideoFile] = useState<File | null>(null);
@@ -77,7 +75,7 @@ const VideoUpload = () => {
     }
 
     try {
-      await CourseService.createCourseCategory(newCategory);
+      await DatabaseService.createCourseCategory(newCategory);
       await refetchCategories();
       setNewCategory({ name: '', color: '#3B82F6' });
       setShowNewCategory(false);
@@ -106,50 +104,37 @@ const VideoUpload = () => {
 
     setUploading(true);
     try {
-      console.log('Starting admin video upload process...');
-      
-      // Verify authentication before starting upload
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      
-      if (sessionError || !session) {
-        throw new Error('Please log in again to upload videos. Your session may have expired.');
-      }
-      
-      console.log('Authenticated user uploading:', {
-        email: session.user.email,
-        id: session.user.id
-      });
-      
+      console.log('Starting video upload process...');
       console.log('Original filename:', videoFile.name);
       
-      // Upload video file with improved error handling
+      // Upload video file with sanitized path
       const videoPath = `videos/${Date.now()}-${sanitizeFileName(videoFile.name)}`;
       console.log('Video upload path:', videoPath);
       
-      const videoUrl = await StorageService.uploadFile(videoFile, videoPath);
-      console.log('Video uploaded successfully, URL:', videoUrl);
+      const videoUrl = await DatabaseService.uploadFile(videoFile, videoPath);
+      console.log('Video uploaded to URL:', videoUrl);
 
       // Upload thumbnail if provided
       let thumbnailUrl = '';
       if (thumbnailFile) {
         const thumbnailPath = `thumbnails/${Date.now()}-${sanitizeFileName(thumbnailFile.name)}`;
         console.log('Thumbnail upload path:', thumbnailPath);
-        thumbnailUrl = await StorageService.uploadFile(thumbnailFile, thumbnailPath);
-        console.log('Thumbnail uploaded successfully, URL:', thumbnailUrl);
+        thumbnailUrl = await DatabaseService.uploadFile(thumbnailFile, thumbnailPath);
+        console.log('Thumbnail uploaded to URL:', thumbnailUrl);
       }
 
-      // Create course with duration in hours (converted from minutes) - defaults to draft
-      const course = await CourseService.createCourse({
+      // Create course with duration in hours (converted from minutes)
+      const course = await DatabaseService.createCourse({
         ...courseData,
         duration_hours: Math.ceil(courseData.duration_minutes / 60), // Convert minutes to hours
         video_url: videoUrl,
         thumbnail_url: thumbnailUrl
       });
 
-      console.log('Course created successfully as draft:', course);
+      console.log('Course created:', course);
 
       // Create lesson for the video
-      await CourseService.createLesson({
+      await DatabaseService.createLesson({
         title: courseData.title,
         course_id: course.id,
         video_url: videoUrl,
@@ -158,11 +143,11 @@ const VideoUpload = () => {
         order_index: 1
       });
 
-      console.log('Lesson created successfully for course');
+      console.log('Lesson created for course');
 
       toast({
-        title: "Upload Successful!",
-        description: "Video course uploaded successfully and saved as draft. You can publish it from Course Management.",
+        title: "Success",
+        description: "Video course uploaded successfully to courses bucket",
       });
 
       // Reset form
@@ -178,7 +163,7 @@ const VideoUpload = () => {
       });
 
     } catch (error: any) {
-      console.error('Admin upload error:', error);
+      console.error('Upload error:', error);
       toast({
         title: "Upload Failed",
         description: error.message,
@@ -194,10 +179,10 @@ const VideoUpload = () => {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Video className="h-5 w-5" />
-          Admin Video Course Upload
+          Upload Video Course
         </CardTitle>
         <CardDescription>
-          Upload video courses as an administrator. Courses will be created as drafts and can be published later.
+          Upload video courses to the 'courses' storage bucket. Files will be automatically sanitized for compatibility.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -318,9 +303,9 @@ const VideoUpload = () => {
                 {videoFile.name} ({(videoFile.size / (1024 * 1024)).toFixed(1)} MB)
               </div>
             )}
-            <div className="flex items-center gap-2 text-xs text-green-600">
-              <CheckCircle className="h-3 w-3" />
-              Storage policies configured - admin upload enabled
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <AlertTriangle className="h-3 w-3" />
+              Files with special characters will be automatically sanitized
             </div>
           </div>
 
@@ -347,7 +332,7 @@ const VideoUpload = () => {
           className="w-full"
         >
           <Upload className="h-4 w-4 mr-2" />
-          {uploading ? 'Uploading Video Course...' : 'Upload Video Course as Draft'}
+          {uploading ? 'Uploading to courses bucket...' : 'Upload Video Course'}
         </Button>
       </CardContent>
     </Card>

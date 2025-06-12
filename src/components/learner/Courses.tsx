@@ -14,12 +14,8 @@ const Courses = () => {
   const [selectedCourse, setSelectedCourse] = useState<any>(null);
   const [courseViewerOpen, setCourseViewerOpen] = useState(false);
 
-  console.log('Learner courses data:', courses);
-
   // Filter only published courses for learners
   const publishedCourses = courses?.filter(course => course.status === 'published') || [];
-  
-  console.log('Published courses for learners:', publishedCourses);
 
   const formatDuration = (durationHours: number) => {
     const totalMinutes = durationHours * 60;
@@ -33,8 +29,6 @@ const Courses = () => {
   };
 
   const handleViewCourse = (course: any) => {
-    console.log('Opening course for viewing:', course);
-    console.log('Course video URL:', course.video_url);
     setSelectedCourse(course);
     setCourseViewerOpen(true);
   };
@@ -50,7 +44,7 @@ const Courses = () => {
         {course.video_url ? (
           <>
             <Play className="h-4 w-4 mr-2" />
-            Watch Video
+            Start Course
           </>
         ) : (
           <>
@@ -73,7 +67,6 @@ const Courses = () => {
   }
 
   if (error) {
-    console.error('Error loading courses:', error);
     return (
       <div className="space-y-6 animate-fade-in">
         <div className="flex justify-center items-center min-h-[400px]">
@@ -95,7 +88,7 @@ const Courses = () => {
           <p className="text-muted-foreground">Explore and learn from our information security courses</p>
         </div>
         <div className="text-right">
-          <p className="text-sm text-muted-foreground">Published Courses</p>
+          <p className="text-sm text-muted-foreground">Total Courses</p>
           <p className="text-2xl font-bold">{publishedCourses.length}</p>
         </div>
       </div>
@@ -133,8 +126,8 @@ const Courses = () => {
         {publishedCourses.length === 0 ? (
           <div className="text-center py-8">
             <BookOpen className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No Published Courses Available</h3>
-            <p className="text-muted-foreground">Check back later for new published courses.</p>
+            <h3 className="text-lg font-semibold mb-2">No Courses Available</h3>
+            <p className="text-muted-foreground">Check back later for new courses.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-6">
@@ -175,9 +168,9 @@ const Courses = () => {
                       {course.difficulty_level || 'Beginner'}
                     </div>
                     {course.video_url && (
-                      <div className="flex items-center text-green-600">
+                      <div className="flex items-center">
                         <Video className="h-4 w-4 mr-1" />
-                        Video Available
+                        Video
                       </div>
                     )}
                   </div>

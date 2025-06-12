@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 
 interface Course {
@@ -30,17 +31,11 @@ export class CourseService {
         `)
         .order('created_at', { ascending: false });
       
-      if (error) {
-        console.error('Error fetching courses:', error);
-        throw error;
-      }
-      
-      console.log('Fetched courses from Supabase:', data);
-      return data || [];
+      if (error) throw error;
+      return data;
     } else {
       // Return demo courses for app session users
       const demoCourses = JSON.parse(localStorage.getItem('demo-courses') || '[]');
-      console.log('Fetched demo courses:', demoCourses);
       return demoCourses;
     }
   }
@@ -86,17 +81,12 @@ export class CourseService {
           thumbnail_url: course.thumbnail_url,
           video_url: course.video_url,
           created_by: session.user.id,
-          status: 'draft' // Default to draft, admin must manually publish
+          status: 'draft'
         })
         .select()
         .single();
 
-      if (error) {
-        console.error('Error creating course:', error);
-        throw error;
-      }
-      
-      console.log('Course created successfully as draft:', data);
+      if (error) throw error;
       return data;
     } else {
       // Create demo course for app session users
@@ -118,7 +108,7 @@ export class CourseService {
         thumbnail_url: course.thumbnail_url,
         video_url: course.video_url,
         created_by: user.id,
-        status: 'draft', // Default to draft
+        status: 'draft',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       };
@@ -127,7 +117,6 @@ export class CourseService {
       demoCourses.push(newCourse);
       localStorage.setItem('demo-courses', JSON.stringify(demoCourses));
 
-      console.log('Demo course created as draft:', newCourse);
       return newCourse;
     }
   }
