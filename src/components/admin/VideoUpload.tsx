@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,7 +7,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Upload, Video, CheckCircle, Plus, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { DatabaseService } from '@/services/database';
+import { StorageService } from '@/services/storageService';
+import { CourseService } from '@/services/courseService';
 import { useCourseCategories } from '@/hooks/useDatabase';
 import { sanitizeFileName } from '@/utils/fileUtils';
 
@@ -75,7 +75,7 @@ const VideoUpload = () => {
     }
 
     try {
-      await DatabaseService.createCourseCategory(newCategory);
+      await CourseService.createCourseCategory(newCategory);
       await refetchCategories();
       setNewCategory({ name: '', color: '#3B82F6' });
       setShowNewCategory(false);
@@ -104,14 +104,14 @@ const VideoUpload = () => {
 
     setUploading(true);
     try {
-      console.log('Starting video upload process...');
+      console.log('Starting video upload process to Supabase courses bucket...');
       console.log('Original filename:', videoFile.name);
       
-      // Upload video file with sanitized path
+      // Upload video file directly to Supabase storage
       const videoPath = `videos/${Date.now()}-${sanitizeFileName(videoFile.name)}`;
       console.log('Video upload path:', videoPath);
       
-      const videoUrl = await DatabaseService.uploadFile(videoFile, videoPath);
+      const videoUrl = await StorageService.uploadFile(videoFile, videoPath);
       console.log('Video uploaded to URL:', videoUrl);
 
       // Upload thumbnail if provided
@@ -119,22 +119,22 @@ const VideoUpload = () => {
       if (thumbnailFile) {
         const thumbnailPath = `thumbnails/${Date.now()}-${sanitizeFileName(thumbnailFile.name)}`;
         console.log('Thumbnail upload path:', thumbnailPath);
-        thumbnailUrl = await DatabaseService.uploadFile(thumbnailFile, thumbnailPath);
+        thumbnailUrl = await StorageService.uploadFile(thumbnailFile, thumbnailPath);
         console.log('Thumbnail uploaded to URL:', thumbnailUrl);
       }
 
-      // Create course with duration in hours (converted from minutes)
-      const course = await DatabaseService.createCourse({
+      // Create course with duration in hours (converted from minutes) - defaults to draft
+      const course = await CourseService.createCourse({
         ...courseData,
         duration_hours: Math.ceil(courseData.duration_minutes / 60), // Convert minutes to hours
         video_url: videoUrl,
         thumbnail_url: thumbnailUrl
       });
 
-      console.log('Course created:', course);
+      console.log('Course created as draft:', course);
 
       // Create lesson for the video
-      await DatabaseService.createLesson({
+      await CourseService.createLesson({
         title: courseData.title,
         course_id: course.id,
         video_url: videoUrl,
@@ -147,7 +147,7 @@ const VideoUpload = () => {
 
       toast({
         title: "Success",
-        description: "Video course uploaded successfully to courses bucket",
+        description: "Video course uploaded successfully to Supabase courses bucket as draft. You can publish it later from Course Management.",
       });
 
       // Reset form
@@ -182,7 +182,7 @@ const VideoUpload = () => {
           Upload Video Course
         </CardTitle>
         <CardDescription>
-          Upload video courses to the 'courses' storage bucket. Files will be automatically sanitized for compatibility.
+          Upload video courses to the 'courses' storage bucket. Courses will be created as drafts and can be published later.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -305,7 +305,7 @@ const VideoUpload = () => {
             )}
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <AlertTriangle className="h-3 w-3" />
-              Files with special characters will be automatically sanitized
+              Files will be uploaded directly to Supabase courses bucket
             </div>
           </div>
 
@@ -332,7 +332,7 @@ const VideoUpload = () => {
           className="w-full"
         >
           <Upload className="h-4 w-4 mr-2" />
-          {uploading ? 'Uploading to courses bucket...' : 'Upload Video Course'}
+          {uploading ? 'Uploading to Supabase courses bucket...' : 'Upload Video Course as Draft'}
         </Button>
       </CardContent>
     </Card>

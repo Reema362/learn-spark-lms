@@ -86,7 +86,7 @@ export class CourseService {
           thumbnail_url: course.thumbnail_url,
           video_url: course.video_url,
           created_by: session.user.id,
-          status: 'published' // Default to published so learners can see it
+          status: 'draft' // Default to draft, admin must manually publish
         })
         .select()
         .single();
@@ -96,7 +96,7 @@ export class CourseService {
         throw error;
       }
       
-      console.log('Course created successfully:', data);
+      console.log('Course created successfully as draft:', data);
       return data;
     } else {
       // Create demo course for app session users
@@ -118,7 +118,7 @@ export class CourseService {
         thumbnail_url: course.thumbnail_url,
         video_url: course.video_url,
         created_by: user.id,
-        status: 'published', // Default to published
+        status: 'draft', // Default to draft
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       };
@@ -127,7 +127,7 @@ export class CourseService {
       demoCourses.push(newCourse);
       localStorage.setItem('demo-courses', JSON.stringify(demoCourses));
 
-      console.log('Demo course created:', newCourse);
+      console.log('Demo course created as draft:', newCourse);
       return newCourse;
     }
   }

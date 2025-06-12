@@ -14,89 +14,34 @@ export class StorageService {
       pathParts[pathParts.length - 1] = cleanFileName;
       const finalPath = pathParts.join('/');
       
-      console.log('Uploading file to path:', finalPath);
+      console.log('Uploading file to Supabase courses bucket, path:', finalPath);
       console.log('Original filename:', file.name);
       console.log('Sanitized filename:', cleanFileName);
       
-      // Check authentication status
-      const { data: { session } } = await supabase.auth.getSession();
-      let isAuthenticated = false;
-      let user = null;
-
-      if (session?.user) {
-        // User is authenticated with Supabase
-        isAuthenticated = true;
-        user = session.user;
-        console.log('User authenticated with Supabase:', user.email);
-      } else {
-        // Check for app session (demo mode)
-        const userSession = localStorage.getItem('avocop_user');
-        if (userSession) {
-          try {
-            const parsedSession = JSON.parse(userSession);
-            if (parsedSession && parsedSession.id && parsedSession.email && parsedSession.role === 'admin') {
-              isAuthenticated = true;
-              user = parsedSession;
-              console.log('User authenticated with app session:', user.email);
-            }
-          } catch (parseError) {
-            console.log('Error parsing user session:', parseError);
-          }
-        }
-      }
-
-      if (!isAuthenticated || !user) {
-        throw new Error('Permission denied: You must be logged in as an admin to upload files.');
-      }
-
-      console.log('Authentication verified, proceeding with upload');
-      
-      // For Supabase authenticated users, try actual upload
-      if (session?.user) {
-        const { data, error } = await supabase.storage
-          .from('courses')
-          .upload(finalPath, file, {
-            cacheControl: '3600',
-            upsert: true
-          });
-
-        if (error) {
-          console.error('Storage upload error:', error);
-          throw new Error(`File upload failed: ${error.message}`);
-        }
-
-        console.log('File uploaded successfully to Supabase:', data);
-
-        // Get the public URL for the uploaded file
-        const { data: publicUrlData } = supabase.storage
-          .from('courses')
-          .getPublicUrl(data.path);
-
-        const finalUrl = publicUrlData.publicUrl;
-        console.log('Generated public URL:', finalUrl);
-        
-        return finalUrl;
-      } else {
-        // For app session users (demo mode), create mock URL with proper structure
-        console.log('Using demo mode upload for app session user');
-        const mockUrl = `https://gfwnftqkzkjxujrznhww.supabase.co/storage/v1/object/public/courses/${finalPath}`;
-        console.log('Using mock URL:', mockUrl);
-        
-        // Store file reference in local state for demo purposes
-        const uploadedFiles = JSON.parse(localStorage.getItem('demo-uploaded-files') || '[]');
-        uploadedFiles.push({
-          path: finalPath,
-          url: mockUrl,
-          fileName: cleanFileName,
-          originalName: file.name,
-          size: file.size,
-          uploadedAt: new Date().toISOString(),
-          uploadedBy: user.email
+      // Always upload to Supabase storage - no demo mode fallback
+      const { data, error } = await supabase.storage
+        .from('courses')
+        .upload(finalPath, file, {
+          cacheControl: '3600',
+          upsert: true
         });
-        localStorage.setItem('demo-uploaded-files', JSON.stringify(uploadedFiles));
-        
-        return mockUrl;
+
+      if (error) {
+        console.error('Storage upload error:', error);
+        throw new Error(`File upload failed: ${error.message}`);
       }
+
+      console.log('File uploaded successfully to Supabase:', data);
+
+      // Get the public URL for the uploaded file
+      const { data: publicUrlData } = supabase.storage
+        .from('courses')
+        .getPublicUrl(data.path);
+
+      const finalUrl = publicUrlData.publicUrl;
+      console.log('Generated public URL:', finalUrl);
+      
+      return finalUrl;
     } catch (error: any) {
       console.error('File upload failed:', error);
       throw new Error(`File upload failed: ${error.message}`);
@@ -104,21 +49,11 @@ export class StorageService {
   }
 
   static async deleteFile(path: string) {
-    // Check authentication
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    if (session?.user) {
-      const { error } = await supabase.storage
-        .from('courses')
-        .remove([path]);
+    const { error } = await supabase.storage
+      .from('courses')
+      .remove([path]);
 
-      if (error) throw error;
-    } else {
-      // For demo mode, remove from local storage
-      const uploadedFiles = JSON.parse(localStorage.getItem('demo-uploaded-files') || '[]');
-      const updatedFiles = uploadedFiles.filter((file: any) => file.path !== path);
-      localStorage.setItem('demo-uploaded-files', JSON.stringify(updatedFiles));
-    }
+    if (error) throw error;
   }
 
   // Helper method to get the correct public URL for a storage path
