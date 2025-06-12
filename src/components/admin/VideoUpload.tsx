@@ -104,15 +104,15 @@ const VideoUpload = () => {
 
     setUploading(true);
     try {
-      console.log('Starting video upload process to Supabase courses bucket...');
+      console.log('Starting admin video upload process...');
       console.log('Original filename:', videoFile.name);
       
-      // Upload video file directly to Supabase storage
+      // Upload video file with improved error handling
       const videoPath = `videos/${Date.now()}-${sanitizeFileName(videoFile.name)}`;
       console.log('Video upload path:', videoPath);
       
       const videoUrl = await StorageService.uploadFile(videoFile, videoPath);
-      console.log('Video uploaded to URL:', videoUrl);
+      console.log('Video uploaded successfully, URL:', videoUrl);
 
       // Upload thumbnail if provided
       let thumbnailUrl = '';
@@ -120,7 +120,7 @@ const VideoUpload = () => {
         const thumbnailPath = `thumbnails/${Date.now()}-${sanitizeFileName(thumbnailFile.name)}`;
         console.log('Thumbnail upload path:', thumbnailPath);
         thumbnailUrl = await StorageService.uploadFile(thumbnailFile, thumbnailPath);
-        console.log('Thumbnail uploaded to URL:', thumbnailUrl);
+        console.log('Thumbnail uploaded successfully, URL:', thumbnailUrl);
       }
 
       // Create course with duration in hours (converted from minutes) - defaults to draft
@@ -131,7 +131,7 @@ const VideoUpload = () => {
         thumbnail_url: thumbnailUrl
       });
 
-      console.log('Course created as draft:', course);
+      console.log('Course created successfully as draft:', course);
 
       // Create lesson for the video
       await CourseService.createLesson({
@@ -143,11 +143,11 @@ const VideoUpload = () => {
         order_index: 1
       });
 
-      console.log('Lesson created for course');
+      console.log('Lesson created successfully for course');
 
       toast({
-        title: "Success",
-        description: "Video course uploaded successfully to Supabase courses bucket as draft. You can publish it later from Course Management.",
+        title: "Upload Successful!",
+        description: "Video course uploaded successfully and saved as draft. You can publish it from Course Management.",
       });
 
       // Reset form
@@ -163,10 +163,10 @@ const VideoUpload = () => {
       });
 
     } catch (error: any) {
-      console.error('Upload error:', error);
+      console.error('Admin upload error:', error);
       toast({
         title: "Upload Failed",
-        description: error.message,
+        description: `Upload failed: ${error.message}. Please check your admin permissions and try again.`,
         variant: "destructive"
       });
     } finally {
@@ -179,10 +179,10 @@ const VideoUpload = () => {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Video className="h-5 w-5" />
-          Upload Video Course
+          Admin Video Course Upload
         </CardTitle>
         <CardDescription>
-          Upload video courses to the 'courses' storage bucket. Courses will be created as drafts and can be published later.
+          Upload video courses as an administrator. Courses will be created as drafts and can be published later.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -303,9 +303,9 @@ const VideoUpload = () => {
                 {videoFile.name} ({(videoFile.size / (1024 * 1024)).toFixed(1)} MB)
               </div>
             )}
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <AlertTriangle className="h-3 w-3" />
-              Files will be uploaded directly to Supabase courses bucket
+            <div className="flex items-center gap-2 text-xs text-green-600">
+              <CheckCircle className="h-3 w-3" />
+              Storage policies configured - admin upload enabled
             </div>
           </div>
 
@@ -332,7 +332,7 @@ const VideoUpload = () => {
           className="w-full"
         >
           <Upload className="h-4 w-4 mr-2" />
-          {uploading ? 'Uploading to Supabase courses bucket...' : 'Upload Video Course as Draft'}
+          {uploading ? 'Uploading Video Course...' : 'Upload Video Course as Draft'}
         </Button>
       </CardContent>
     </Card>

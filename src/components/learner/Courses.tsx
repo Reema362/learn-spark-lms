@@ -34,6 +34,7 @@ const Courses = () => {
 
   const handleViewCourse = (course: any) => {
     console.log('Opening course for viewing:', course);
+    console.log('Course video URL:', course.video_url);
     setSelectedCourse(course);
     setCourseViewerOpen(true);
   };
@@ -49,7 +50,7 @@ const Courses = () => {
         {course.video_url ? (
           <>
             <Play className="h-4 w-4 mr-2" />
-            Start Course
+            Watch Video
           </>
         ) : (
           <>
@@ -94,7 +95,7 @@ const Courses = () => {
           <p className="text-muted-foreground">Explore and learn from our information security courses</p>
         </div>
         <div className="text-right">
-          <p className="text-sm text-muted-foreground">Total Courses</p>
+          <p className="text-sm text-muted-foreground">Published Courses</p>
           <p className="text-2xl font-bold">{publishedCourses.length}</p>
         </div>
       </div>
@@ -132,8 +133,8 @@ const Courses = () => {
         {publishedCourses.length === 0 ? (
           <div className="text-center py-8">
             <BookOpen className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No Courses Available</h3>
-            <p className="text-muted-foreground">Check back later for new courses.</p>
+            <h3 className="text-lg font-semibold mb-2">No Published Courses Available</h3>
+            <p className="text-muted-foreground">Check back later for new published courses.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-6">
@@ -174,9 +175,9 @@ const Courses = () => {
                       {course.difficulty_level || 'Beginner'}
                     </div>
                     {course.video_url && (
-                      <div className="flex items-center">
+                      <div className="flex items-center text-green-600">
                         <Video className="h-4 w-4 mr-1" />
-                        Video
+                        Video Available
                       </div>
                     )}
                   </div>

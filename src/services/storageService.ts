@@ -18,7 +18,7 @@ export class StorageService {
       console.log('Original filename:', file.name);
       console.log('Sanitized filename:', cleanFileName);
       
-      // Always upload to Supabase storage - no demo mode fallback
+      // Upload to Supabase storage with the new clean policies
       const { data, error } = await supabase.storage
         .from('courses')
         .upload(finalPath, file, {
@@ -49,20 +49,28 @@ export class StorageService {
   }
 
   static async deleteFile(path: string) {
-    const { error } = await supabase.storage
-      .from('courses')
-      .remove([path]);
+    try {
+      const { error } = await supabase.storage
+        .from('courses')
+        .remove([path]);
 
-    if (error) throw error;
+      if (error) {
+        console.error('Delete file error:', error);
+        throw error;
+      }
+    } catch (error) {
+      console.error('Failed to delete file:', error);
+      throw error;
+    }
   }
 
   // Helper method to get the correct public URL for a storage path
   static getPublicUrl(path: string): string {
-    const publicUrl = supabase.storage
+    const { data } = supabase.storage
       .from('courses')
-      .getPublicUrl(path).data.publicUrl;
+      .getPublicUrl(path);
     
-    return publicUrl;
+    return data.publicUrl;
   }
 
   // Helper method to check if a file exists in storage
