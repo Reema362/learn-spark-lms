@@ -58,13 +58,15 @@ export class StorageService {
 
         console.log('File uploaded successfully to Supabase:', data);
 
+        // Get the proper public URL for the uploaded file
         const { data: publicUrl } = supabase.storage
           .from('courses')
           .getPublicUrl(data.path);
 
+        console.log('Generated public URL:', publicUrl.publicUrl);
         return publicUrl.publicUrl;
       } else {
-        // For app session users (demo mode), create mock URL
+        // For app session users (demo mode), create mock URL with proper structure
         console.log('Using demo mode upload for app session user');
         const mockUrl = `https://gfwnftqkzkjxujrznhww.supabase.co/storage/v1/object/public/courses/${cleanPath}`;
         console.log('Using mock URL:', mockUrl);
@@ -104,6 +106,28 @@ export class StorageService {
       const uploadedFiles = JSON.parse(localStorage.getItem('demo-uploaded-files') || '[]');
       const updatedFiles = uploadedFiles.filter((file: any) => file.path !== path);
       localStorage.setItem('demo-uploaded-files', JSON.stringify(updatedFiles));
+    }
+  }
+
+  // Helper method to get the correct public URL for a storage path
+  static getPublicUrl(path: string): string {
+    return supabase.storage
+      .from('courses')
+      .getPublicUrl(path).data.publicUrl;
+  }
+
+  // Helper method to check if a file exists in storage
+  static async fileExists(path: string): Promise<boolean> {
+    try {
+      const { data, error } = await supabase.storage
+        .from('courses')
+        .list(path.substring(0, path.lastIndexOf('/')), {
+          search: path.substring(path.lastIndexOf('/') + 1)
+        });
+      
+      return !error && data && data.length > 0;
+    } catch {
+      return false;
     }
   }
 }
