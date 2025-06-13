@@ -51,52 +51,35 @@ export class StorageService {
 
       console.log('Authentication verified, proceeding with upload to courses bucket');
       
-      // For Supabase authenticated users, try actual upload to courses bucket
-      if (session?.user) {
-        const { data, error } = await supabase.storage
-          .from('courses')
-          .upload(finalPath, file, {
-            cacheControl: '3600',
-            upsert: true
-          });
-
-        if (error) {
-          console.error('Storage upload error:', error);
-          throw new Error(`File upload failed: ${error.message}`);
-        }
-
-        console.log('File uploaded successfully to courses bucket:', data);
-
-        // Get the proper public URL for the uploaded file
-        const { data: publicUrl } = supabase.storage
-          .from('courses')
-          .getPublicUrl(data.path);
-
-        const finalUrl = publicUrl.publicUrl;
-        console.log('Generated public URL from courses bucket:', finalUrl);
-        
-        return finalUrl;
-      } else {
-        // For app session users (demo mode), create mock URL with proper structure
-        console.log('Using demo mode upload for app session user');
-        const mockUrl = `https://gfwnftqkzkjxujrznhww.supabase.co/storage/v1/object/public/courses/${encodeURIComponent(finalPath)}`;
-        console.log('Using mock URL:', mockUrl);
-        
-        // Store file reference in local state for demo purposes
-        const uploadedFiles = JSON.parse(localStorage.getItem('demo-uploaded-files') || '[]');
-        uploadedFiles.push({
-          path: finalPath,
-          url: mockUrl,
-          fileName: cleanFileName,
-          originalName: file.name,
-          size: file.size,
-          uploadedAt: new Date().toISOString(),
-          uploadedBy: user.email
+      // Upload to courses bucket with proper error handling
+      const { data, error } = await supabase.storage
+        .from('courses')
+        .upload(finalPath, file, {
+          cacheControl: '3600',
+          upsert: true
         });
-        localStorage.setItem('demo-uploaded-files', JSON.stringify(uploadedFiles));
-        
-        return mockUrl;
+
+      if (error) {
+        console.error('Storage upload error:', error);
+        console.error('Error details:', {
+          message: error.message,
+          statusCode: error.statusCode,
+          error: error.error
+        });
+        throw new Error(`File upload failed: ${error.message}`);
       }
+
+      console.log('File uploaded successfully to courses bucket:', data);
+
+      // Get the proper public URL for the uploaded file
+      const { data: publicUrl } = supabase.storage
+        .from('courses')
+        .getPublicUrl(data.path);
+
+      const finalUrl = publicUrl.publicUrl;
+      console.log('Generated public URL from courses bucket:', finalUrl);
+      
+      return finalUrl;
     } catch (error: any) {
       console.error('File upload failed:', error);
       throw new Error(`File upload failed: ${error.message}`);
@@ -123,22 +106,28 @@ export class StorageService {
 
   // Helper method to get the correct public URL for a storage path
   static getPublicUrl(path: string): string {
-    // Ensure proper encoding of the path
-    const encodedPath = encodeURIComponent(path);
+    // Clean the path - remove any leading slashes and ensure proper encoding
+    const cleanPath = path.startsWith('/') ? path.slice(1) : path;
     const publicUrl = supabase.storage
       .from('courses')
-      .getPublicUrl(encodedPath).data.publicUrl;
+      .getPublicUrl(cleanPath).data.publicUrl;
     
+    console.log('Generated public URL for path:', cleanPath, '-> URL:', publicUrl);
     return publicUrl;
   }
 
   // Helper method to check if a file exists in storage
   static async fileExists(path: string): Promise<boolean> {
     try {
+      const cleanPath = path.startsWith('/') ? path.slice(1) : path;
+      const pathParts = cleanPath.split('/');
+      const fileName = pathParts.pop();
+      const folderPath = pathParts.join('/') || '/';
+
       const { data, error } = await supabase.storage
         .from('courses')
-        .list(path.substring(0, path.lastIndexOf('/')), {
-          search: path.substring(path.lastIndexOf('/') + 1)
+        .list(folderPath === '/' ? '' : folderPath, {
+          search: fileName
         });
       
       return !error && data && data.length > 0;

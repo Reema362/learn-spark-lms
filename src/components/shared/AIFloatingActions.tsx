@@ -1,64 +1,49 @@
 
 import React, { useState } from 'react';
+import { MessageCircle, Bot } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Mic, Bot, Sun, Moon } from 'lucide-react';
-import { useTheme } from '@/context/ThemeContext';
-import AvoAssistant from './AvoAssistant';
 import AvoBot from './AvoBot';
+import AvoAssistant from './AvoAssistant';
 
 interface AIFloatingActionsProps {
   userRole: 'admin' | 'learner';
 }
 
 const AIFloatingActions: React.FC<AIFloatingActionsProps> = ({ userRole }) => {
-  const [showAssistant, setShowAssistant] = useState(false);
-  const [showBot, setShowBot] = useState(false);
-  const { theme, toggleTheme } = useTheme();
+  const [avoBotOpen, setAvoBotOpen] = useState(false);
+  const [avoAssistantOpen, setAvoAssistantOpen] = useState(false);
 
   return (
     <>
       {/* Floating Action Buttons */}
-      <div className="fixed bottom-6 right-6 z-40 flex flex-col space-y-3">
-        {/* Theme Toggle */}
+      <div className="fixed bottom-6 right-6 flex flex-col gap-3 z-40">
         <Button
-          onClick={toggleTheme}
-          size="sm"
-          variant="outline"
-          className="w-12 h-12 rounded-full shadow-lg bg-background/95 backdrop-blur-sm border-2"
+          onClick={() => setAvoAssistantOpen(true)}
+          className="w-14 h-14 rounded-full bg-gradient-to-r from-primary to-accent shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110"
+          title="AVO Assistant - AI Helper"
         >
-          {theme === 'light' ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
+          <MessageCircle className="h-6 w-6" />
         </Button>
-
-        {/* Avo Bot */}
+        
         <Button
-          onClick={() => setShowBot(true)}
-          size="sm"
-          className="w-12 h-12 rounded-full shadow-lg bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600"
+          onClick={() => setAvoBotOpen(true)}
+          className="w-14 h-14 rounded-full bg-gradient-to-r from-accent to-primary shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110"
+          title="AVO Bot - Security Expert"
         >
-          <Bot className="h-5 w-5" />
-        </Button>
-
-        {/* Avo Assistant */}
-        <Button
-          onClick={() => setShowAssistant(true)}
-          size="sm"
-          className="w-12 h-12 rounded-full shadow-lg bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
-        >
-          <Mic className="h-5 w-5" />
+          <Bot className="h-6 w-6" />
         </Button>
       </div>
 
-      {/* AI Components */}
-      <AvoAssistant
-        isOpen={showAssistant}
-        onClose={() => setShowAssistant(false)}
-        userRole={userRole}
-      />
-      
+      {/* AVO Bot Modal */}
       <AvoBot
-        isOpen={showBot}
-        onClose={() => setShowBot(false)}
-        userRole={userRole}
+        isOpen={avoBotOpen}
+        onClose={() => setAvoBotOpen(false)}
+      />
+
+      {/* AVO Assistant Modal */}
+      <AvoAssistant
+        isOpen={avoAssistantOpen}
+        onClose={() => setAvoAssistantOpen(false)}
       />
     </>
   );

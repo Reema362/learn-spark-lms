@@ -1,42 +1,36 @@
 
 import React, { useState, useRef, useEffect } from 'react';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Badge } from "@/components/ui/badge";
-import { X, Send, MessageSquare, Volume2, VolumeX, Sparkles } from "lucide-react";
-import { useToast } from '@/hooks/use-toast';
-
-interface Message {
-  id: string;
-  text: string;
-  isUser: boolean;
-  timestamp: Date;
-  category?: string;
-}
+import { Send, MessageCircle, Volume2, VolumeX } from 'lucide-react';
 
 interface AvoAssistantProps {
   isOpen: boolean;
   onClose: () => void;
-  userRole: 'admin' | 'learner';
 }
 
-const AvoAssistant: React.FC<AvoAssistantProps> = ({ isOpen, onClose, userRole }) => {
+interface Message {
+  id: string;
+  text: string;
+  sender: 'user' | 'assistant';
+  timestamp: Date;
+}
+
+const AvoAssistant: React.FC<AvoAssistantProps> = ({ isOpen, onClose }) => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      text: `Hello! I'm your intelligent AVO Assistant. I can help you with ${userRole === 'admin' ? 'administrative tasks, user management, course creation, and platform analytics' : 'learning paths, course recommendations, progress tracking, and answering questions about security topics'}. What would you like to know?`,
-      isUser: false,
-      timestamp: new Date(),
-      category: 'welcome'
+      text: "Hi there! I'm AVO Assistant, your helpful AI companion. I'm here to help you navigate the platform, answer questions, and assist with your learning journey. What can I help you with today?",
+      sender: 'assistant',
+      timestamp: new Date()
     }
   ]);
-  const [inputValue, setInputValue] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [audioEnabled, setAudioEnabled] = useState(true);
+  const [inputMessage, setInputMessage] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
+  const [speechEnabled, setSpeechEnabled] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
-  const { toast } = useToast();
 
   // Auto-scroll to bottom when new messages are added
   useEffect(() => {
@@ -48,100 +42,76 @@ const AvoAssistant: React.FC<AvoAssistantProps> = ({ isOpen, onClose, userRole }
     }
   }, [messages]);
 
-  const speakText = async (text: string) => {
-    if (!audioEnabled) return;
-    
-    try {
-      // Use Web Speech API with female voice
+  const speak = (text: string) => {
+    if (speechEnabled && 'speechSynthesis' in window) {
       const utterance = new SpeechSynthesisUtterance(text);
-      const voices = speechSynthesis.getVoices();
+      const voices = window.speechSynthesis.getVoices();
       
       // Find a female voice
       const femaleVoice = voices.find(voice => 
-        voice.name.toLowerCase().includes('female') || 
+        voice.name.toLowerCase().includes('female') ||
         voice.name.toLowerCase().includes('woman') ||
         voice.name.toLowerCase().includes('samantha') ||
         voice.name.toLowerCase().includes('karen') ||
         voice.name.toLowerCase().includes('victoria') ||
-        voice.name.toLowerCase().includes('zira') ||
-        voice.gender === 'female'
+        voice.name.toLowerCase().includes('zira')
       );
       
       if (femaleVoice) {
         utterance.voice = femaleVoice;
-      } else {
-        // Fallback with higher pitch for more feminine sound
-        utterance.pitch = 1.3;
       }
       
       utterance.rate = 0.9;
-      utterance.volume = 0.8;
-      speechSynthesis.speak(utterance);
-    } catch (error) {
-      console.error('Speech synthesis error:', error);
+      utterance.pitch = 1.2;
+      window.speechSynthesis.speak(utterance);
+    }
+  };
+
+  const getAssistantResponse = (userMessage: string): string => {
+    const lowerMessage = userMessage.toLowerCase();
+    
+    if (lowerMessage.includes('course') || lowerMessage.includes('learn')) {
+      return "I can help you find and navigate courses! You can browse available courses, track your progress, and access video content. Would you like me to guide you through any specific course features?";
+    } else if (lowerMessage.includes('video') || lowerMessage.includes('play')) {
+      return "For video playback, simply click on any course with video content. The videos are stored securely and should load smoothly. If you're having trouble, try refreshing the page or checking your internet connection.";
+    } else if (lowerMessage.includes('help') || lowerMessage.includes('how')) {
+      return "I'm here to help! You can ask me about navigating the platform, understanding features, troubleshooting issues, or getting the most out of your learning experience. What specific area would you like help with?";
+    } else if (lowerMessage.includes('certificate') || lowerMessage.includes('badge')) {
+      return "Certificates and badges are earned by completing courses and achieving specific milestones. Check your progress in the Certifications section to see what you've earned and what's available to unlock!";
+    } else if (lowerMessage.includes('profile') || lowerMessage.includes('account')) {
+      return "You can manage your profile settings and view your learning progress from your account section. This includes updating personal information, viewing completed courses, and tracking achievements.";
+    } else {
+      return "I'm here to assist you with anything related to the platform! Feel free to ask me about courses, features, navigation, or any questions you might have about your learning journey.";
     }
   };
 
   const handleSendMessage = async () => {
-    if (!inputValue.trim() || isLoading) return;
+    if (!inputMessage.trim()) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
-      text: inputValue,
-      isUser: true,
+      text: inputMessage,
+      sender: 'user',
       timestamp: new Date()
     };
 
     setMessages(prev => [...prev, userMessage]);
-    setInputValue('');
-    setIsLoading(true);
+    setInputMessage('');
+    setIsTyping(true);
 
-    try {
-      // Simulate AI response based on user role
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      const adminResponses = [
-        "I can help you manage users and permissions. Would you like to see analytics or create new content?",
-        "For course management, I recommend organizing content by security domains. Need help with that?",
-        "Analytics show good engagement rates. Let me help you optimize your training programs.",
-        "I can assist with user onboarding, content creation, and platform administration.",
-        "Would you like me to help you set up automated campaigns or review user progress?"
-      ];
-      
-      const learnerResponses = [
-        "Based on your learning progress, I recommend focusing on data protection fundamentals next.",
-        "Great question! This topic relates to our cybersecurity essentials course. Would you like me to explain more?",
-        "I can see you're progressing well! Consider taking the advanced security awareness modules.",
-        "Let me help you understand this security concept better. Here's a practical example...",
-        "Your learning path suggests exploring incident response training. Shall we discuss that?"
-      ];
-      
-      const responses = userRole === 'admin' ? adminResponses : learnerResponses;
-      const randomResponse = responses[Math.floor(Math.random() * responses.length)];
-      
-      const botMessage: Message = {
+    // Simulate assistant response delay
+    setTimeout(() => {
+      const assistantResponse: Message = {
         id: (Date.now() + 1).toString(),
-        text: randomResponse,
-        isUser: false,
-        timestamp: new Date(),
-        category: userRole === 'admin' ? 'management' : 'learning'
+        text: getAssistantResponse(inputMessage),
+        sender: 'assistant',
+        timestamp: new Date()
       };
 
-      setMessages(prev => [...prev, botMessage]);
-      
-      // Speak the assistant's response with female voice
-      speakText(randomResponse);
-      
-    } catch (error) {
-      console.error('Error sending message:', error);
-      toast({
-        title: "Error",
-        description: "Failed to send message. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoading(false);
-    }
+      setMessages(prev => [...prev, assistantResponse]);
+      setIsTyping(false);
+      speak(assistantResponse.text);
+    }, 800 + Math.random() * 800);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -151,109 +121,81 @@ const AvoAssistant: React.FC<AvoAssistantProps> = ({ isOpen, onClose, userRole }
     }
   };
 
-  if (!isOpen) return null;
-
   return (
-    <Card className="fixed bottom-4 right-4 w-[420px] h-[600px] z-50 shadow-2xl border-2 border-accent/30 bg-background/95 backdrop-blur-sm">
-      <CardHeader className="pb-3 bg-gradient-to-r from-accent to-primary text-primary-foreground">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <Sparkles className="h-5 w-5" />
-            <div>
-              <CardTitle className="text-lg">AVO Intelligence</CardTitle>
-              <CardDescription className="text-primary-foreground/80 text-sm">
-                Advanced AI Assistant for {userRole === 'admin' ? 'Administrators' : 'Learners'}
-              </CardDescription>
-            </div>
-          </div>
-          <div className="flex items-center space-x-2">
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-2xl h-[600px] flex flex-col">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <MessageCircle className="h-5 w-5 text-primary" />
+            AVO Assistant - AI Helper
+          </DialogTitle>
+          <DialogDescription>
+            Your intelligent learning companion
+          </DialogDescription>
+          <div className="flex items-center gap-2">
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
-              onClick={() => setAudioEnabled(!audioEnabled)}
-              className="text-primary-foreground hover:bg-primary-foreground/20"
+              onClick={() => setSpeechEnabled(!speechEnabled)}
+              className="flex items-center gap-2"
             >
-              {audioEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onClose}
-              className="text-primary-foreground hover:bg-primary-foreground/20"
-            >
-              <X className="h-4 w-4" />
+              {speechEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+              {speechEnabled ? 'Voice On' : 'Voice Off'}
             </Button>
           </div>
-        </div>
-      </CardHeader>
-      
-      <CardContent className="p-0 flex flex-col h-[500px]">
-        <ScrollArea ref={scrollAreaRef} className="flex-1 p-4">
-          <div className="space-y-4">
-            {messages.map((message) => (
-              <div
-                key={message.id}
-                className={`flex ${message.isUser ? 'justify-end' : 'justify-start'}`}
-              >
-                <div className="flex flex-col max-w-[85%]">
+        </DialogHeader>
+
+        <div className="flex-1 flex flex-col min-h-0">
+          <ScrollArea ref={scrollAreaRef} className="flex-1 pr-4">
+            <div className="space-y-4">
+              {messages.map((message) => (
+                <div
+                  key={message.id}
+                  className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+                >
                   <div
-                    className={`p-3 rounded-lg ${
-                      message.isUser
-                        ? 'bg-accent text-accent-foreground'
-                        : 'bg-muted text-muted-foreground border'
+                    className={`max-w-[80%] rounded-lg px-4 py-2 ${
+                      message.sender === 'user'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted'
                     }`}
                   >
-                    <p className="text-sm leading-relaxed">{message.text}</p>
-                    <div className="flex items-center justify-between mt-2">
-                      <p className="text-xs opacity-70">
-                        {message.timestamp.toLocaleTimeString()}
-                      </p>
-                      {message.category && !message.isUser && (
-                        <Badge variant="outline" className="text-xs">
-                          {message.category}
-                        </Badge>
-                      )}
+                    <p className="text-sm">{message.text}</p>
+                    <p className="text-xs opacity-70 mt-1">
+                      {message.timestamp.toLocaleTimeString()}
+                    </p>
+                  </div>
+                </div>
+              ))}
+              {isTyping && (
+                <div className="flex justify-start">
+                  <div className="bg-muted rounded-lg px-4 py-2">
+                    <div className="flex space-x-1">
+                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
-            {isLoading && (
-              <div className="flex justify-start">
-                <div className="bg-muted text-muted-foreground p-3 rounded-lg border">
-                  <div className="flex space-x-1">
-                    <div className="w-2 h-2 bg-current rounded-full animate-bounce"></div>
-                    <div className="w-2 h-2 bg-current rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                    <div className="w-2 h-2 bg-current rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </ScrollArea>
-        
-        <div className="p-4 border-t bg-muted/30">
-          <div className="flex space-x-2">
+              )}
+            </div>
+          </ScrollArea>
+
+          <div className="flex gap-2 mt-4">
             <Input
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
+              value={inputMessage}
+              onChange={(e) => setInputMessage(e.target.value)}
               onKeyPress={handleKeyPress}
-              placeholder={`Ask me about ${userRole === 'admin' ? 'platform management, analytics, or user administration' : 'courses, security topics, or learning paths'}...`}
-              disabled={isLoading}
+              placeholder="How can I help you today?"
               className="flex-1"
             />
-            <Button
-              onClick={handleSendMessage}
-              disabled={!inputValue.trim() || isLoading}
-              size="sm"
-              className="bg-accent hover:bg-accent/90"
-            >
+            <Button onClick={handleSendMessage} disabled={!inputMessage.trim()}>
               <Send className="h-4 w-4" />
             </Button>
           </div>
         </div>
-      </CardContent>
-    </Card>
+      </DialogContent>
+    </Dialog>
   );
 };
 

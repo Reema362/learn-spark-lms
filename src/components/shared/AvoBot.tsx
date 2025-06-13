@@ -1,38 +1,36 @@
 
 import React, { useState, useRef, useEffect } from 'react';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { X, Send, Bot, Volume2, VolumeX } from "lucide-react";
-import { useToast } from '@/hooks/use-toast';
-
-interface Message {
-  id: string;
-  text: string;
-  isUser: boolean;
-  timestamp: Date;
-}
+import { Send, Bot, Volume2, VolumeX } from 'lucide-react';
 
 interface AvoBotProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
+interface Message {
+  id: string;
+  text: string;
+  sender: 'user' | 'bot';
+  timestamp: Date;
+}
+
 const AvoBot: React.FC<AvoBotProps> = ({ isOpen, onClose }) => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      text: "Hi! I'm AVO, your AI assistant. I'm here to help you with security awareness, course questions, or any learning-related queries. How can I assist you today?",
-      isUser: false,
+      text: "Hello! I'm AVO Bot, your information security expert. How can I help you stay secure today?",
+      sender: 'bot',
       timestamp: new Date()
     }
   ]);
-  const [inputValue, setInputValue] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [audioEnabled, setAudioEnabled] = useState(true);
+  const [inputMessage, setInputMessage] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
+  const [speechEnabled, setSpeechEnabled] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
-  const { toast } = useToast();
 
   // Auto-scroll to bottom when new messages are added
   useEffect(() => {
@@ -44,89 +42,76 @@ const AvoBot: React.FC<AvoBotProps> = ({ isOpen, onClose }) => {
     }
   }, [messages]);
 
-  const speakText = async (text: string) => {
-    if (!audioEnabled) return;
-    
-    try {
-      // Use Web Speech API with female voice
+  const speak = (text: string) => {
+    if (speechEnabled && 'speechSynthesis' in window) {
       const utterance = new SpeechSynthesisUtterance(text);
-      const voices = speechSynthesis.getVoices();
+      const voices = window.speechSynthesis.getVoices();
       
       // Find a female voice
       const femaleVoice = voices.find(voice => 
-        voice.name.toLowerCase().includes('female') || 
+        voice.name.toLowerCase().includes('female') ||
         voice.name.toLowerCase().includes('woman') ||
         voice.name.toLowerCase().includes('samantha') ||
         voice.name.toLowerCase().includes('karen') ||
         voice.name.toLowerCase().includes('victoria') ||
-        voice.gender === 'female'
+        voice.name.toLowerCase().includes('zira')
       );
       
       if (femaleVoice) {
         utterance.voice = femaleVoice;
-      } else {
-        // Fallback to first available voice with higher pitch
-        utterance.pitch = 1.2;
       }
       
       utterance.rate = 0.9;
-      utterance.volume = 0.8;
-      speechSynthesis.speak(utterance);
-    } catch (error) {
-      console.error('Speech synthesis error:', error);
+      utterance.pitch = 1.1;
+      window.speechSynthesis.speak(utterance);
+    }
+  };
+
+  const getSecurityResponse = (userMessage: string): string => {
+    const lowerMessage = userMessage.toLowerCase();
+    
+    if (lowerMessage.includes('password')) {
+      return "Strong passwords are crucial! Use at least 12 characters with a mix of uppercase, lowercase, numbers, and symbols. Consider using a password manager for unique passwords across all accounts.";
+    } else if (lowerMessage.includes('phishing')) {
+      return "Great question about phishing! Always verify sender authenticity, check URLs carefully, never click suspicious links, and when in doubt, contact the sender through a different channel.";
+    } else if (lowerMessage.includes('2fa') || lowerMessage.includes('two factor')) {
+      return "Two-factor authentication adds an extra security layer! Enable it on all important accounts using authenticator apps, SMS, or hardware keys. It significantly reduces the risk of unauthorized access.";
+    } else if (lowerMessage.includes('malware') || lowerMessage.includes('virus')) {
+      return "To protect against malware: keep software updated, use reputable antivirus, avoid suspicious downloads, and regularly backup your data. Be cautious with email attachments and USB devices.";
+    } else if (lowerMessage.includes('wifi') || lowerMessage.includes('network')) {
+      return "For secure WiFi: use WPA3 encryption, avoid public WiFi for sensitive tasks, use VPN when needed, and change default router passwords. Never auto-connect to unknown networks.";
+    } else {
+      return "I'm here to help with information security! Ask me about passwords, phishing, malware, network security, data protection, or any other cybersecurity topics you'd like to learn about.";
     }
   };
 
   const handleSendMessage = async () => {
-    if (!inputValue.trim() || isLoading) return;
+    if (!inputMessage.trim()) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
-      text: inputValue,
-      isUser: true,
+      text: inputMessage,
+      sender: 'user',
       timestamp: new Date()
     };
 
     setMessages(prev => [...prev, userMessage]);
-    setInputValue('');
-    setIsLoading(true);
+    setInputMessage('');
+    setIsTyping(true);
 
-    try {
-      // Simulate AI response (replace with actual AI integration)
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const responses = [
-        "I understand your question about security. Let me help you with that...",
-        "That's a great question! Here's what I can tell you about information security...",
-        "Based on your query, I recommend checking out our security awareness courses...",
-        "I'm here to help with your learning journey. Let me provide you with some guidance...",
-        "Security is very important! Here are some best practices you should know..."
-      ];
-      
-      const randomResponse = responses[Math.floor(Math.random() * responses.length)];
-      
-      const botMessage: Message = {
+    // Simulate bot response delay
+    setTimeout(() => {
+      const botResponse: Message = {
         id: (Date.now() + 1).toString(),
-        text: randomResponse,
-        isUser: false,
+        text: getSecurityResponse(inputMessage),
+        sender: 'bot',
         timestamp: new Date()
       };
 
-      setMessages(prev => [...prev, botMessage]);
-      
-      // Speak the bot's response with female voice
-      speakText(randomResponse);
-      
-    } catch (error) {
-      console.error('Error sending message:', error);
-      toast({
-        title: "Error",
-        description: "Failed to send message. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoading(false);
-    }
+      setMessages(prev => [...prev, botResponse]);
+      setIsTyping(false);
+      speak(botResponse.text);
+    }, 1000 + Math.random() * 1000);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -136,99 +121,81 @@ const AvoBot: React.FC<AvoBotProps> = ({ isOpen, onClose }) => {
     }
   };
 
-  if (!isOpen) return null;
-
   return (
-    <Card className="fixed bottom-4 right-4 w-96 h-[500px] z-50 shadow-2xl border-2 border-primary/20 bg-background/95 backdrop-blur-sm">
-      <CardHeader className="pb-3 bg-gradient-to-r from-primary to-accent text-primary-foreground">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <Bot className="h-5 w-5" />
-            <div>
-              <CardTitle className="text-lg">AVO Assistant</CardTitle>
-              <CardDescription className="text-primary-foreground/80 text-sm">
-                Your AI Security Helper
-              </CardDescription>
-            </div>
-          </div>
-          <div className="flex items-center space-x-2">
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-2xl h-[600px] flex flex-col">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Bot className="h-5 w-5 text-primary" />
+            AVO Bot - Security Expert
+          </DialogTitle>
+          <DialogDescription>
+            Your personal information security assistant
+          </DialogDescription>
+          <div className="flex items-center gap-2">
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
-              onClick={() => setAudioEnabled(!audioEnabled)}
-              className="text-primary-foreground hover:bg-primary-foreground/20"
+              onClick={() => setSpeechEnabled(!speechEnabled)}
+              className="flex items-center gap-2"
             >
-              {audioEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onClose}
-              className="text-primary-foreground hover:bg-primary-foreground/20"
-            >
-              <X className="h-4 w-4" />
+              {speechEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+              {speechEnabled ? 'Voice On' : 'Voice Off'}
             </Button>
           </div>
-        </div>
-      </CardHeader>
-      
-      <CardContent className="p-0 flex flex-col h-[400px]">
-        <ScrollArea ref={scrollAreaRef} className="flex-1 p-4">
-          <div className="space-y-4">
-            {messages.map((message) => (
-              <div
-                key={message.id}
-                className={`flex ${message.isUser ? 'justify-end' : 'justify-start'}`}
-              >
+        </DialogHeader>
+
+        <div className="flex-1 flex flex-col min-h-0">
+          <ScrollArea ref={scrollAreaRef} className="flex-1 pr-4">
+            <div className="space-y-4">
+              {messages.map((message) => (
                 <div
-                  className={`max-w-[80%] p-3 rounded-lg ${
-                    message.isUser
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted text-muted-foreground'
-                  }`}
+                  key={message.id}
+                  className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
-                  <p className="text-sm">{message.text}</p>
-                  <p className="text-xs opacity-70 mt-1">
-                    {message.timestamp.toLocaleTimeString()}
-                  </p>
-                </div>
-              </div>
-            ))}
-            {isLoading && (
-              <div className="flex justify-start">
-                <div className="bg-muted text-muted-foreground p-3 rounded-lg">
-                  <div className="flex space-x-1">
-                    <div className="w-2 h-2 bg-current rounded-full animate-bounce"></div>
-                    <div className="w-2 h-2 bg-current rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                    <div className="w-2 h-2 bg-current rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                  <div
+                    className={`max-w-[80%] rounded-lg px-4 py-2 ${
+                      message.sender === 'user'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted'
+                    }`}
+                  >
+                    <p className="text-sm">{message.text}</p>
+                    <p className="text-xs opacity-70 mt-1">
+                      {message.timestamp.toLocaleTimeString()}
+                    </p>
                   </div>
                 </div>
-              </div>
-            )}
-          </div>
-        </ScrollArea>
-        
-        <div className="p-4 border-t">
-          <div className="flex space-x-2">
+              ))}
+              {isTyping && (
+                <div className="flex justify-start">
+                  <div className="bg-muted rounded-lg px-4 py-2">
+                    <div className="flex space-x-1">
+                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </ScrollArea>
+
+          <div className="flex gap-2 mt-4">
             <Input
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
+              value={inputMessage}
+              onChange={(e) => setInputMessage(e.target.value)}
               onKeyPress={handleKeyPress}
-              placeholder="Ask me anything about security..."
-              disabled={isLoading}
+              placeholder="Ask me about security..."
               className="flex-1"
             />
-            <Button
-              onClick={handleSendMessage}
-              disabled={!inputValue.trim() || isLoading}
-              size="sm"
-            >
+            <Button onClick={handleSendMessage} disabled={!inputMessage.trim()}>
               <Send className="h-4 w-4" />
             </Button>
           </div>
         </div>
-      </CardContent>
-    </Card>
+      </DialogContent>
+    </Dialog>
   );
 };
 
