@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -112,15 +111,29 @@ const VideoUpload = () => {
       console.log('Video upload path:', videoPath);
       
       const videoUrl = await DatabaseService.uploadFile(videoFile, videoPath);
-      console.log('Video uploaded to URL:', videoUrl);
+      console.log('Video uploaded successfully, URL:', videoUrl);
+
+      // Check if upload was successful
+      if (!videoUrl) {
+        throw new Error('Video upload failed - no URL returned from storage service');
+      }
 
       // Upload thumbnail if provided
       let thumbnailUrl = '';
       if (thumbnailFile) {
-        const thumbnailPath = `thumbnails/${Date.now()}-${sanitizeFileName(thumbnailFile.name)}`;
-        console.log('Thumbnail upload path:', thumbnailPath);
-        thumbnailUrl = await DatabaseService.uploadFile(thumbnailFile, thumbnailPath);
-        console.log('Thumbnail uploaded to URL:', thumbnailUrl);
+        try {
+          const thumbnailPath = `thumbnails/${Date.now()}-${sanitizeFileName(thumbnailFile.name)}`;
+          console.log('Thumbnail upload path:', thumbnailPath);
+          thumbnailUrl = await DatabaseService.uploadFile(thumbnailFile, thumbnailPath);
+          console.log('Thumbnail uploaded successfully, URL:', thumbnailUrl);
+        } catch (thumbnailError: any) {
+          console.warn('Thumbnail upload failed:', thumbnailError);
+          toast({
+            title: "Thumbnail Upload Warning",
+            description: "Video uploaded successfully, but thumbnail upload failed. You can add a thumbnail later.",
+            variant: "default"
+          });
+        }
       }
 
       // Create course with duration in hours (converted from minutes)
@@ -128,7 +141,8 @@ const VideoUpload = () => {
         ...courseData,
         duration_hours: Math.ceil(courseData.duration_minutes / 60), // Convert minutes to hours
         video_url: videoUrl,
-        thumbnail_url: thumbnailUrl
+        status: 'published', // Set to published so it shows up for learners
+        thumbnail_url: thumbnailUrl || null
       });
 
       console.log('Course created:', course);
@@ -147,7 +161,7 @@ const VideoUpload = () => {
 
       toast({
         title: "Success",
-        description: "Video course uploaded successfully to courses bucket",
+        description: "Video course uploaded and published successfully! Learners can now access it.",
       });
 
       // Reset form
@@ -164,9 +178,20 @@ const VideoUpload = () => {
 
     } catch (error: any) {
       console.error('Upload error:', error);
+      
+      // Show specific error message
+      let errorMessage = error.message;
+      if (errorMessage.includes('Permission denied')) {
+        errorMessage = 'Upload failed: Admin permissions required. Please ensure you are logged in as an administrator.';
+      } else if (errorMessage.includes('bucket')) {
+        errorMessage = 'Upload failed: Storage bucket not accessible. Please contact support.';
+      } else if (!errorMessage || errorMessage === 'undefined') {
+        errorMessage = 'Upload failed: Unknown error occurred. Please try again.';
+      }
+      
       toast({
         title: "Upload Failed",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {
@@ -332,7 +357,7 @@ const VideoUpload = () => {
           className="w-full"
         >
           <Upload className="h-4 w-4 mr-2" />
-          {uploading ? 'Uploading to courses bucket...' : 'Upload Video Course'}
+          {uploading ? 'Uploading to courses bucket...' : 'Upload & Publish Video Course'}
         </Button>
       </CardContent>
     </Card>

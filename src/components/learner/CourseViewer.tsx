@@ -1,11 +1,11 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Play, Clock, Users, Video, FileText, BookOpen } from 'lucide-react';
-import VideoPlayer from '../admin/VideoPlayer';
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Play, Pause, Volume2, Maximize, Clock, BookOpen, Award } from 'lucide-react';
+import { StorageService } from '@/services/storageService';
 
 interface CourseViewerProps {
   course: any;
@@ -14,7 +14,39 @@ interface CourseViewerProps {
 }
 
 const CourseViewer: React.FC<CourseViewerProps> = ({ course, isOpen, onClose }) => {
-  const [videoPlayerOpen, setVideoPlayerOpen] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [videoError, setVideoError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (course?.video_url && isOpen) {
+      try {
+        // Get the proper URL for video playback
+        const url = StorageService.getPublicUrl(course.video_url);
+        console.log('Setting video URL for course:', course.title);
+        console.log('Original video_url:', course.video_url);
+        console.log('Processed video URL:', url);
+        setVideoUrl(url);
+        setVideoError(null);
+      } catch (error: any) {
+        console.error('Error getting video URL:', error);
+        setVideoError('Failed to load video URL');
+        setVideoUrl(null);
+      }
+    }
+  }, [course?.video_url, isOpen]);
+
+  const handleVideoError = (e: any) => {
+    console.error('Video playback error:', e);
+    setVideoError('Video failed to load. Please try refreshing or contact support.');
+  };
+
+  const handleVideoLoad = () => {
+    console.log('Video loaded successfully');
+    setVideoError(null);
+  };
+
+  if (!course) return null;
 
   const formatDuration = (durationHours: number) => {
     const totalMinutes = durationHours * 60;
@@ -27,173 +59,136 @@ const CourseViewer: React.FC<CourseViewerProps> = ({ course, isOpen, onClose }) 
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'published':
-        return <Badge variant="default" className="bg-success text-success-foreground">Available</Badge>;
-      default:
-        return <Badge variant="secondary">Not Available</Badge>;
-    }
-  };
-
   return (
-    <>
-      <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-4xl max-h-[90vh]">
-          <DialogHeader>
-            <DialogTitle>{course.title}</DialogTitle>
-            <DialogDescription>Course content and materials</DialogDescription>
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-4xl max-h-[90vh] p-0">
+        <div className="flex flex-col h-full">
+          <DialogHeader className="p-6 pb-4">
+            <DialogTitle className="text-xl font-bold">{course.title}</DialogTitle>
+            <div className="flex items-center gap-4 mt-2">
+              <Badge variant="outline">{course.difficulty_level || 'Beginner'}</Badge>
+              <div className="flex items-center text-sm text-muted-foreground">
+                <Clock className="h-4 w-4 mr-1" />
+                {formatDuration(course.duration_hours || 1)}
+              </div>
+              {course.course_categories && (
+                <Badge variant="secondary">
+                  {course.course_categories.name}
+                </Badge>
+              )}
+            </div>
           </DialogHeader>
           
-          <ScrollArea className="max-h-[75vh] pr-4">
-            <div className="space-y-6">
-              {/* Course Header */}
-              <div className="flex justify-between items-start">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    {getStatusBadge(course.status)}
-                    {course.is_mandatory && (
-                      <Badge variant="outline" className="bg-warning/10 text-warning border-warning">
-                        Required
-                      </Badge>
-                    )}
-                  </div>
-                  
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                      <Clock className="h-4 w-4" />
-                      {formatDuration(course.duration_hours || 1)}
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Users className="h-4 w-4" />
-                      {course.difficulty_level || 'Beginner'}
-                    </div>
-                  </div>
-                </div>
-                
-                {course.video_url && (
-                  <Button onClick={() => setVideoPlayerOpen(true)} className="flex items-center gap-2">
-                    <Play className="h-4 w-4" />
-                    Start Learning
-                  </Button>
-                )}
-              </div>
-
-              {/* Thumbnail */}
-              {course.thumbnail_url && (
-                <div className="w-full h-48 bg-muted rounded-lg overflow-hidden">
-                  <img
-                    src={course.thumbnail_url}
-                    alt={course.title}
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      e.currentTarget.style.display = 'none';
-                    }}
-                  />
-                </div>
-              )}
-
-              {/* Description */}
-              <div className="space-y-2">
-                <h3 className="font-semibold">About This Course</h3>
-                <p className="text-muted-foreground">
-                  {course.description || 'No description available'}
-                </p>
-              </div>
-
-              {/* Content */}
-              {course.content && (
-                <div className="space-y-2">
-                  <h3 className="font-semibold flex items-center gap-2">
-                    <FileText className="h-4 w-4" />
-                    Course Content
-                  </h3>
-                  <ScrollArea className="bg-muted/50 p-4 rounded-lg max-h-40">
-                    <p className="text-sm whitespace-pre-wrap">{course.content}</p>
-                  </ScrollArea>
-                </div>
-              )}
-
-              {/* Learning Materials */}
-              <div className="space-y-2">
-                <h3 className="font-semibold">Learning Materials</h3>
-                <div className="space-y-2">
-                  {course.video_url && (
-                    <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                      <div className="flex items-center gap-2">
-                        <Video className="h-4 w-4 text-blue-500" />
-                        <span className="text-sm">Video Content</span>
+          <ScrollArea className="flex-1 px-6">
+            {/* Video Player Section */}
+            {course.video_url && (
+              <div className="mb-6">
+                <div className="bg-black rounded-lg overflow-hidden aspect-video">
+                  {videoError ? (
+                    <div className="w-full h-full flex items-center justify-center bg-gray-900 text-white">
+                      <div className="text-center">
+                        <Play className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                        <p className="text-sm">{videoError}</p>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="mt-2"
+                          onClick={() => {
+                            setVideoError(null);
+                            if (course?.video_url) {
+                              const url = StorageService.getPublicUrl(course.video_url);
+                              setVideoUrl(url);
+                            }
+                          }}
+                        >
+                          Retry
+                        </Button>
                       </div>
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => setVideoPlayerOpen(true)}
-                      >
-                        <Play className="h-3 w-3 mr-1" />
-                        Watch
-                      </Button>
                     </div>
-                  )}
-                  
-                  {course.thumbnail_url && (
-                    <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                      <div className="flex items-center gap-2">
-                        <FileText className="h-4 w-4 text-green-500" />
-                        <span className="text-sm">Course Materials</span>
+                  ) : videoUrl ? (
+                    <video
+                      className="w-full h-full"
+                      controls
+                      onError={handleVideoError}
+                      onLoadedData={handleVideoLoad}
+                      preload="metadata"
+                    >
+                      <source src={videoUrl} type="video/mp4" />
+                      <source src={videoUrl} type="video/webm" />
+                      <source src={videoUrl} type="video/quicktime" />
+                      Your browser does not support the video tag.
+                    </video>
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-gray-900 text-white">
+                      <div className="text-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-2"></div>
+                        <p className="text-sm">Loading video...</p>
                       </div>
-                      <Badge variant="outline">Available</Badge>
                     </div>
-                  )}
-                  
-                  {!course.video_url && !course.thumbnail_url && (
-                    <p className="text-sm text-muted-foreground">No learning materials available</p>
                   )}
                 </div>
               </div>
+            )}
 
-              {/* Category */}
-              {course.course_categories && (
-                <div className="space-y-2">
-                  <h3 className="font-semibold">Category</h3>
-                  <div className="flex items-center gap-2">
-                    <span 
-                      className="w-3 h-3 rounded-full" 
-                      style={{ backgroundColor: course.course_categories.color }}
-                    ></span>
-                    <span className="text-sm">{course.course_categories.name}</span>
-                  </div>
-                </div>
-              )}
-
-              {/* Course Actions */}
-              <div className="flex gap-2 pt-4 border-t">
-                {course.video_url ? (
-                  <Button onClick={() => setVideoPlayerOpen(true)} className="flex-1">
-                    <Play className="h-4 w-4 mr-2" />
-                    Start Course
-                  </Button>
-                ) : (
-                  <Button variant="outline" className="flex-1" disabled>
+            {/* Course Information */}
+            <div className="space-y-4 mb-6">
+              {course.description && (
+                <div>
+                  <h3 className="font-semibold mb-2 flex items-center">
                     <BookOpen className="h-4 w-4 mr-2" />
-                    No Video Available
-                  </Button>
-                )}
+                    Course Description
+                  </h3>
+                  <p className="text-muted-foreground">{course.description}</p>
+                </div>
+              )}
+
+              {course.content && (
+                <div>
+                  <h3 className="font-semibold mb-2">Course Content</h3>
+                  <div className="prose prose-sm max-w-none">
+                    <p className="text-muted-foreground whitespace-pre-wrap">{course.content}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Course Progress Placeholder */}
+              <div className="bg-muted/50 p-4 rounded-lg">
+                <h3 className="font-semibold mb-2 flex items-center">
+                  <Award className="h-4 w-4 mr-2" />
+                  Learning Progress
+                </h3>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span>Progress</span>
+                    <span>0%</span>
+                  </div>
+                  <div className="w-full bg-background rounded-full h-2">
+                    <div className="bg-primary h-2 rounded-full" style={{ width: '0%' }}></div>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Start watching to track your progress
+                  </p>
+                </div>
               </div>
             </div>
           </ScrollArea>
-        </DialogContent>
-      </Dialog>
-
-      {/* Video Player Modal */}
-      {course.video_url && (
-        <VideoPlayer
-          videoUrl={course.video_url}
-          title={course.title}
-          isOpen={videoPlayerOpen}
-          onClose={() => setVideoPlayerOpen(false)}
-        />
-      )}
-    </>
+          
+          <div className="p-6 pt-4 border-t">
+            <div className="flex justify-between items-center">
+              <Button variant="outline" onClick={onClose}>
+                Close
+              </Button>
+              {course.video_url && !videoError && (
+                <Button>
+                  <Play className="h-4 w-4 mr-2" />
+                  Continue Learning
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 };
 

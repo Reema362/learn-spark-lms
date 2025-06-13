@@ -54,18 +54,23 @@ export class StorageService {
       if (isDemoMode) {
         // For demo mode, simulate file upload by storing in localStorage
         console.log('Demo mode: Simulating file upload');
-        const demoUrl = `https://demo-storage.avocop.com/courses/${finalPath}`;
         
-        // Store demo file info in localStorage
+        // Create a proper demo URL that can be used for video playback
+        const fileUrl = URL.createObjectURL(file);
+        const demoUrl = `demo://${finalPath}`;
+        
+        // Store demo file info in localStorage with the actual blob URL
         const demoFiles = JSON.parse(localStorage.getItem('demo-uploaded-files') || '[]');
-        demoFiles.push({
+        const demoFile = {
           path: finalPath,
           url: demoUrl,
+          blobUrl: fileUrl, // Store the actual blob URL for playback
           originalName: file.name,
           uploadedAt: new Date().toISOString(),
           size: file.size,
           type: file.type
-        });
+        };
+        demoFiles.push(demoFile);
         localStorage.setItem('demo-uploaded-files', JSON.stringify(demoFiles));
         
         console.log('Demo file upload simulated:', demoUrl);
@@ -87,8 +92,8 @@ export class StorageService {
         console.error('Error message:', error.message);
         
         // Provide more specific error messages
-        if (error.message.includes('row-level security')) {
-          throw new Error('Permission denied: Admin access required to upload files to courses bucket.');
+        if (error.message.includes('row-level security') || error.message.includes('permission')) {
+          throw new Error('Permission denied: Admin access required to upload files to courses bucket. Please contact your administrator.');
         } else if (error.message.includes('bucket')) {
           throw new Error('Storage error: Courses bucket not found or not accessible.');
         } else {
@@ -134,7 +139,18 @@ export class StorageService {
   // Helper method to get the correct public URL for a storage path
   static getPublicUrl(path: string): string {
     // Check if this is a demo mode URL
-    if (path.includes('demo-storage.avocop.com')) {
+    if (path.startsWith('demo://')) {
+      // Extract the path and find the blob URL from localStorage
+      const demoPath = path.replace('demo://', '');
+      const demoFiles = JSON.parse(localStorage.getItem('demo-uploaded-files') || '[]');
+      const demoFile = demoFiles.find((file: any) => file.path === demoPath);
+      
+      if (demoFile && demoFile.blobUrl) {
+        console.log('Using demo blob URL for video playback:', demoFile.blobUrl);
+        return demoFile.blobUrl;
+      }
+      
+      // Fallback for demo URLs without blob
       return path;
     }
     
