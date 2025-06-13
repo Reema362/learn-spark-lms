@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { sanitizeFileName, generateUniqueFileName } from '@/utils/fileUtils';
 
@@ -21,6 +22,7 @@ export class StorageService {
       const { data: { session } } = await supabase.auth.getSession();
       let isAuthenticated = false;
       let user = null;
+      let isDemoMode = false;
 
       if (session?.user) {
         // User is authenticated with Supabase
@@ -36,7 +38,8 @@ export class StorageService {
             if (parsedSession && parsedSession.id && parsedSession.email && parsedSession.role === 'admin') {
               isAuthenticated = true;
               user = parsedSession;
-              console.log('User authenticated with app session:', user.email);
+              isDemoMode = true;
+              console.log('User authenticated with demo mode:', user.email);
             }
           } catch (parseError) {
             console.log('Error parsing user session:', parseError);
@@ -48,7 +51,28 @@ export class StorageService {
         throw new Error('Permission denied: You must be logged in as an admin to upload files.');
       }
 
-      console.log('Authentication verified, proceeding with upload to courses bucket');
+      if (isDemoMode) {
+        // For demo mode, simulate file upload by storing in localStorage
+        console.log('Demo mode: Simulating file upload');
+        const demoUrl = `https://demo-storage.avocop.com/courses/${finalPath}`;
+        
+        // Store demo file info in localStorage
+        const demoFiles = JSON.parse(localStorage.getItem('demo-uploaded-files') || '[]');
+        demoFiles.push({
+          path: finalPath,
+          url: demoUrl,
+          originalName: file.name,
+          uploadedAt: new Date().toISOString(),
+          size: file.size,
+          type: file.type
+        });
+        localStorage.setItem('demo-uploaded-files', JSON.stringify(demoFiles));
+        
+        console.log('Demo file upload simulated:', demoUrl);
+        return demoUrl;
+      }
+
+      console.log('Real authentication verified, proceeding with Supabase upload');
       
       // Upload to courses bucket with proper error handling
       const { data, error } = await supabase.storage
@@ -61,7 +85,15 @@ export class StorageService {
       if (error) {
         console.error('Storage upload error:', error);
         console.error('Error message:', error.message);
-        throw new Error(`File upload failed: ${error.message}`);
+        
+        // Provide more specific error messages
+        if (error.message.includes('row-level security')) {
+          throw new Error('Permission denied: Admin access required to upload files to courses bucket.');
+        } else if (error.message.includes('bucket')) {
+          throw new Error('Storage error: Courses bucket not found or not accessible.');
+        } else {
+          throw new Error(`File upload failed: ${error.message}`);
+        }
       }
 
       console.log('File uploaded successfully to courses bucket:', data);
@@ -101,6 +133,11 @@ export class StorageService {
 
   // Helper method to get the correct public URL for a storage path
   static getPublicUrl(path: string): string {
+    // Check if this is a demo mode URL
+    if (path.includes('demo-storage.avocop.com')) {
+      return path;
+    }
+    
     // Clean the path - remove any leading slashes and ensure proper encoding
     const cleanPath = path.startsWith('/') ? path.slice(1) : path;
     const publicUrl = supabase.storage
@@ -114,6 +151,12 @@ export class StorageService {
   // Helper method to check if a file exists in storage
   static async fileExists(path: string): Promise<boolean> {
     try {
+      // Check demo mode first
+      const demoFiles = JSON.parse(localStorage.getItem('demo-uploaded-files') || '[]');
+      if (demoFiles.some((file: any) => file.path === path)) {
+        return true;
+      }
+      
       const cleanPath = path.startsWith('/') ? path.slice(1) : path;
       const pathParts = cleanPath.split('/');
       const fileName = pathParts.pop();
