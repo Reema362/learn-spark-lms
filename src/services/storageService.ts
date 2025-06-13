@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { sanitizeFileName, generateUniqueFileName } from '@/utils/fileUtils';
 
@@ -61,11 +60,7 @@ export class StorageService {
 
       if (error) {
         console.error('Storage upload error:', error);
-        console.error('Error details:', {
-          message: error.message,
-          statusCode: error.statusCode,
-          error: error.error
-        });
+        console.error('Error message:', error.message);
         throw new Error(`File upload failed: ${error.message}`);
       }
 
