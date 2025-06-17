@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -88,8 +87,8 @@ const CourseViewer: React.FC<CourseViewerProps> = ({ course, isOpen, onClose }) 
           if (progressDelta >= 10 || timeSinceLastUpdate >= 30000) {
             const user = getCurrentUser();
             if (user?.id && course?.id) {
-              // Find the video lesson for this course
-              const videoLessonId = course.lessons?.[0]?.id || course.id; // Fallback to course ID
+              // Use course ID as lesson ID for video-based courses
+              const videoLessonId = course.id;
               
               updateProgress.mutate({
                 lessonId: videoLessonId,
