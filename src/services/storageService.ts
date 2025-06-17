@@ -164,6 +164,24 @@ export class StorageService {
     return publicUrl;
   }
 
+  // Helper method to get public video URL specifically for admin video player
+  static getPublicVideoUrl(videoUrl: string): string {
+    if (!videoUrl) return '';
+    
+    // If it's already a full URL (http/https), return as is
+    if (videoUrl.startsWith('http://') || videoUrl.startsWith('https://')) {
+      return videoUrl;
+    }
+    
+    // If it's a demo URL, handle it
+    if (videoUrl.startsWith('demo://')) {
+      return this.getPublicUrl(videoUrl);
+    }
+    
+    // If it's a storage path, convert to public URL
+    return this.getPublicUrl(videoUrl);
+  }
+
   // Helper method to check if a file exists in storage
   static async fileExists(path: string): Promise<boolean> {
     try {

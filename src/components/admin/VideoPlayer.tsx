@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Play, Pause, Volume2, VolumeX, Maximize2, RotateCcw, AlertCircle, RefreshCw } from 'lucide-react';
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { StorageService } from '@/services/storageService';
 
 interface VideoPlayerProps {
   videoUrl: string;
@@ -18,18 +19,28 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, title, isOpen, onCl
   const [hasError, setHasError] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [errorDetails, setErrorDetails] = useState<string>('');
+  const [publicVideoUrl, setPublicVideoUrl] = useState<string>('');
   const videoRef = useRef<HTMLVideoElement | null>(null);
+
+  // Get public video URL when component mounts or videoUrl changes
+  useEffect(() => {
+    if (videoUrl) {
+      const publicUrl = StorageService.getPublicVideoUrl(videoUrl);
+      setPublicVideoUrl(publicUrl);
+      console.log('Video URL converted from:', videoUrl, 'to:', publicUrl);
+    }
+  }, [videoUrl]);
 
   // Reset states when dialog opens/closes or URL changes
   useEffect(() => {
-    if (isOpen && videoUrl) {
+    if (isOpen && publicVideoUrl) {
       setHasError(false);
       setIsLoading(true);
       setIsPlaying(false);
       setErrorDetails('');
-      console.log('Loading video from URL:', videoUrl);
+      console.log('Loading video from public URL:', publicVideoUrl);
     }
-  }, [isOpen, videoUrl]);
+  }, [isOpen, publicVideoUrl]);
 
   const handlePlayPause = () => {
     if (!videoRef.current || hasError) return;
@@ -122,7 +133,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, title, isOpen, onCl
     console.error('Video error:', {
       code: error?.code,
       message: error?.message,
-      url: videoUrl,
+      url: publicVideoUrl,
       errorMessage
     });
     
@@ -141,7 +152,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, title, isOpen, onCl
       ref.addEventListener('ended', () => setIsPlaying(false));
       ref.addEventListener('error', handleVideoError as any);
       ref.addEventListener('loadstart', () => {
-        console.log('Video load started for URL:', videoUrl);
+        console.log('Video load started for URL:', publicVideoUrl);
         setIsLoading(true);
       });
       ref.addEventListener('canplay', () => {
@@ -162,6 +173,21 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, title, isOpen, onCl
     };
   }, []);
 
+  if (!publicVideoUrl) {
+    return (
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="max-w-4xl w-full">
+          <DialogHeader>
+            <DialogTitle>{title}</DialogTitle>
+          </DialogHeader>
+          <div className="flex justify-center items-center p-8">
+            <p className="text-muted-foreground">No video URL available</p>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl w-full">
@@ -180,7 +206,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, title, isOpen, onCl
 
             <video
               ref={handleVideoEvents}
-              src={videoUrl}
+              src={publicVideoUrl}
               className="w-full h-auto max-h-96"
               controls={false}
               playsInline
@@ -274,7 +300,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, title, isOpen, onCl
                   </div>
                   
                   <p className="text-xs mt-2 break-all opacity-75">
-                    <strong>Video URL:</strong> {videoUrl}
+                    <strong>Video URL:</strong> {publicVideoUrl}
                   </p>
                 </div>
               </AlertDescription>
@@ -285,7 +311,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, title, isOpen, onCl
           {!hasError && (
             <div className="text-center text-muted-foreground">
               <p className="text-sm">If the video doesn't load, check the file format and storage accessibility.</p>
-              <p className="text-xs mt-1 break-all opacity-75">Video URL: {videoUrl}</p>
+              <p className="text-xs mt-1 break-all opacity-75">Video URL: {publicVideoUrl}</p>
             </div>
           )}
         </div>

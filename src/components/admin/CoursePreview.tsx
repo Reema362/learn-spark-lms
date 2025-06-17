@@ -6,6 +6,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Play, Clock, Users, Video, FileText } from 'lucide-react';
 import VideoPlayer from './VideoPlayer';
+import { StorageService } from '@/services/storageService';
 
 interface CoursePreviewProps {
   course: any;
@@ -39,6 +40,16 @@ const CoursePreview: React.FC<CoursePreviewProps> = ({ course, isOpen, onClose }
         return <Badge variant="secondary">Unknown</Badge>;
     }
   };
+
+  // Get public video URL for preview
+  const getVideoUrl = () => {
+    if (course.video_url) {
+      return StorageService.getPublicVideoUrl(course.video_url);
+    }
+    return '';
+  };
+
+  const videoUrl = getVideoUrl();
 
   return (
     <>
@@ -75,7 +86,7 @@ const CoursePreview: React.FC<CoursePreviewProps> = ({ course, isOpen, onClose }
                   </div>
                 </div>
                 
-                {course.video_url && (
+                {videoUrl && (
                   <Button onClick={() => setVideoPlayerOpen(true)} className="flex items-center gap-2">
                     <Play className="h-4 w-4" />
                     Play Video
@@ -122,7 +133,7 @@ const CoursePreview: React.FC<CoursePreviewProps> = ({ course, isOpen, onClose }
               <div className="space-y-2">
                 <h3 className="font-semibold">Media Files</h3>
                 <div className="space-y-2">
-                  {course.video_url && (
+                  {videoUrl && (
                     <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                       <div className="flex items-center gap-2">
                         <Video className="h-4 w-4 text-blue-500" />
@@ -149,7 +160,7 @@ const CoursePreview: React.FC<CoursePreviewProps> = ({ course, isOpen, onClose }
                     </div>
                   )}
                   
-                  {!course.video_url && !course.thumbnail_url && (
+                  {!videoUrl && !course.thumbnail_url && (
                     <p className="text-sm text-muted-foreground">No media files uploaded</p>
                   )}
                 </div>
@@ -189,11 +200,12 @@ const CoursePreview: React.FC<CoursePreviewProps> = ({ course, isOpen, onClose }
               </div>
 
               {/* Debug Information */}
-              {course.video_url && (
+              {videoUrl && (
                 <div className="space-y-2">
                   <h3 className="font-semibold text-xs text-muted-foreground">Debug Info</h3>
                   <div className="bg-muted/30 p-2 rounded text-xs font-mono break-all">
-                    <p><strong>Video URL:</strong> {course.video_url}</p>
+                    <p><strong>Original Video URL:</strong> {course.video_url}</p>
+                    <p><strong>Public Video URL:</strong> {videoUrl}</p>
                   </div>
                 </div>
               )}
@@ -203,7 +215,7 @@ const CoursePreview: React.FC<CoursePreviewProps> = ({ course, isOpen, onClose }
       </Dialog>
 
       {/* Video Player Modal */}
-      {course.video_url && (
+      {videoUrl && (
         <VideoPlayer
           videoUrl={course.video_url}
           title={course.title}

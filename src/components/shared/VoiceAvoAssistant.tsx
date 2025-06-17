@@ -47,9 +47,9 @@ const VoiceAvoAssistant: React.FC<VoiceAvoAssistantProps> = ({ isOpen, onClose }
 
   // Initialize speech recognition
   useEffect(() => {
-    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      recognitionRef.current = new SpeechRecognition();
+    if (typeof window !== 'undefined' && ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
+      const SpeechRecognitionConstructor = window.SpeechRecognition || window.webkitSpeechRecognition;
+      recognitionRef.current = new SpeechRecognitionConstructor();
       recognitionRef.current.continuous = true;
       recognitionRef.current.interimResults = true;
       recognitionRef.current.lang = 'en-US';
@@ -85,7 +85,7 @@ const VoiceAvoAssistant: React.FC<VoiceAvoAssistantProps> = ({ isOpen, onClose }
   }, []);
 
   const speak = (text: string) => {
-    if (speechEnabled && 'speechSynthesis' in window) {
+    if (speechEnabled && typeof window !== 'undefined' && 'speechSynthesis' in window) {
       // Stop any ongoing speech
       window.speechSynthesis.cancel();
       
@@ -104,8 +104,9 @@ const VoiceAvoAssistant: React.FC<VoiceAvoAssistantProps> = ({ isOpen, onClose }
         voice.name.toLowerCase().includes('emma') ||
         voice.name.toLowerCase().includes('aria') ||
         voice.name.toLowerCase().includes('sarah') ||
-        (voice.name.toLowerCase().includes('google') && voice.name.toLowerCase().includes('us-en')) ||
-        voice.gender === 'female'
+        voice.name.toLowerCase().includes('susan') ||
+        voice.name.toLowerCase().includes('fiona') ||
+        (voice.name.toLowerCase().includes('google') && voice.name.toLowerCase().includes('us-en'))
       );
       
       if (femaleVoice) {
