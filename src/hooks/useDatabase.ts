@@ -10,3 +10,4 @@ export * from './useIAM';
 export * from './useGamification';
 export * from './useAnalytics';
 export * from './useFileUpload';
+export * from './useEnrollments';
