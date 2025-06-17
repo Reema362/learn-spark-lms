@@ -1,19 +1,18 @@
+
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Upload, Search, Edit, Trash2, Play, Users, Clock, Eye, Video, RefreshCw } from 'lucide-react';
+import { Plus, RefreshCw } from 'lucide-react';
 import { useCourses, useCourseCategories, useCreateCourse, useUpdateCourse, useDeleteCourse, useUploadFile } from '@/hooks/useDatabase';
 import { createSampleCategories } from '@/utils/createSampleCategories';
 import VideoUpload from './VideoUpload';
 import CoursePreview from './CoursePreview';
 import { useToast } from '@/hooks/use-toast';
+import CourseStats from './courses/CourseStats';
+import CourseFilters from './courses/CourseFilters';
+import CourseList from './courses/CourseList';
+import CreateCourseDialog from './courses/CreateCourseDialog';
+import EditCourseDialog from './courses/EditCourseDialog';
 
 const CourseManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -153,30 +152,6 @@ const CourseManagement = () => {
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'published':
-        return <Badge variant="default" className="bg-success text-success-foreground">Published</Badge>;
-      case 'draft':
-        return <Badge variant="secondary">Draft</Badge>;
-      case 'archived':
-        return <Badge variant="outline">Archived</Badge>;
-      default:
-        return <Badge variant="secondary">Unknown</Badge>;
-    }
-  };
-
-  const formatDuration = (durationHours: number) => {
-    const totalMinutes = durationHours * 60;
-    if (totalMinutes < 60) {
-      return `${totalMinutes} min`;
-    } else {
-      const hours = Math.floor(totalMinutes / 60);
-      const minutes = totalMinutes % 60;
-      return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
-    }
-  };
-
   if (coursesLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -198,133 +173,15 @@ const CourseManagement = () => {
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh Courses
           </Button>
-          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Create Course
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl">
-              <DialogHeader>
-                <DialogTitle>Create New Course</DialogTitle>
-                <DialogDescription>
-                  Add a new course to your learning platform
-                </DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="title">Course Title</Label>
-                  <Input
-                    id="title"
-                    value={newCourse.title}
-                    onChange={(e) => setNewCourse(prev => ({ ...prev, title: e.target.value }))}
-                    placeholder="Enter course title"
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="description">Description</Label>
-                  <Textarea
-                    id="description"
-                    value={newCourse.description}
-                    onChange={(e) => setNewCourse(prev => ({ ...prev, description: e.target.value }))}
-                    placeholder="Enter course description"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="category">Category</Label>
-                    <Select value={newCourse.category_id} onValueChange={(value) => setNewCourse(prev => ({ ...prev, category_id: value }))}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select category" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {categories.map((category: any) => (
-                          <SelectItem key={category.id} value={category.id}>
-                            {category.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="duration">Duration (hours)</Label>
-                    <Input
-                      id="duration"
-                      type="number"
-                      value={newCourse.duration_hours}
-                      onChange={(e) => setNewCourse(prev => ({ ...prev, duration_hours: parseInt(e.target.value) }))}
-                      min="1"
-                    />
-                  </div>
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="difficulty">Difficulty Level</Label>
-                  <Select value={newCourse.difficulty_level} onValueChange={(value) => setNewCourse(prev => ({ ...prev, difficulty_level: value }))}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="beginner">Beginner</SelectItem>
-                      <SelectItem value="intermediate">Intermediate</SelectItem>
-                      <SelectItem value="advanced">Advanced</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="thumbnail">Course Thumbnail</Label>
-                  <Input
-                    id="thumbnail"
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => handleFileUpload(e, 'thumbnail')}
-                  />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
-                  Cancel
-                </Button>
-                <Button onClick={handleCreateCourse} disabled={createCourse.isPending}>
-                  {createCourse.isPending ? 'Creating...' : 'Create Course'}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+          <Button onClick={() => setIsCreateDialogOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Create Course
+          </Button>
         </div>
       </div>
 
       {/* Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4 text-center">
-            <div className="text-2xl font-bold text-primary">{courses.length}</div>
-            <div className="text-sm text-muted-foreground">Total Courses</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 text-center">
-            <div className="text-2xl font-bold text-success">
-              {courses.filter((c: any) => c.status === 'published').length}
-            </div>
-            <div className="text-sm text-muted-foreground">Published</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 text-center">
-            <div className="text-2xl font-bold text-warning">
-              {courses.filter((c: any) => c.status === 'draft').length}
-            </div>
-            <div className="text-sm text-muted-foreground">Drafts</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 text-center">
-            <div className="text-2xl font-bold text-info">{categories.length}</div>
-            <div className="text-sm text-muted-foreground">Categories</div>
-          </CardContent>
-        </Card>
-      </div>
+      <CourseStats courses={courses} categories={categories} />
 
       {/* Tabs for different course management sections */}
       <Tabs defaultValue="courses" className="w-full">
@@ -335,135 +192,25 @@ const CourseManagement = () => {
         
         <TabsContent value="courses" className="space-y-4">
           {/* Filters */}
-          <div className="flex gap-4 items-center">
-            <div className="flex items-center space-x-2 flex-1">
-              <Search className="h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search courses..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="max-w-sm"
-              />
-            </div>
-            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-              <SelectTrigger className="w-48">
-                <SelectValue placeholder="All Categories" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Categories</SelectItem>
-                {categories.map((category: any) => (
-                  <SelectItem key={category.id} value={category.id}>
-                    <div className="flex items-center gap-2">
-                      <div 
-                        className="w-3 h-3 rounded-full" 
-                        style={{ backgroundColor: category.color }}
-                      ></div>
-                      {category.name}
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <CourseFilters
+            searchTerm={searchTerm}
+            onSearchChange={setSearchTerm}
+            selectedCategory={selectedCategory}
+            onCategoryChange={setSelectedCategory}
+            categories={categories}
+          />
 
           {/* Courses Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredCourses.map((course: any) => (
-              <Card key={course.id} className="dashboard-card hover:shadow-lg transition-shadow">
-                <CardHeader className="pb-3">
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <CardTitle className="text-lg mb-2 line-clamp-2">{course.title}</CardTitle>
-                      {getStatusBadge(course.status)}
-                    </div>
-                    <div className="flex space-x-1">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => {
-                          setEditingCourse(course);
-                          setIsEditDialogOpen(true);
-                        }}
-                        title="Edit course"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => handleDeleteCourse(course.id)}
-                        title="Delete course"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <CardDescription className="mb-4 line-clamp-2">
-                    {course.description || 'No description available'}
-                  </CardDescription>
-                  <div className="space-y-2 text-sm text-muted-foreground">
-                    <div className="flex items-center">
-                      <Clock className="h-4 w-4 mr-2" />
-                      {formatDuration(course.duration_hours || 1)}
-                    </div>
-                    <div className="flex items-center">
-                      <Users className="h-4 w-4 mr-2" />
-                      {course.difficulty_level || 'Beginner'}
-                    </div>
-                    {course.course_categories && (
-                      <div className="flex items-center">
-                        <span 
-                          className="w-3 h-3 rounded-full mr-2" 
-                          style={{ backgroundColor: course.course_categories.color }}
-                        ></span>
-                        {course.course_categories.name}
-                      </div>
-                    )}
-                    {course.video_url && (
-                      <div className="flex items-center text-green-600">
-                        <Video className="h-4 w-4 mr-2" />
-                        Video Available
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex space-x-2 mt-4">
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
-                      className="flex-1"
-                      onClick={() => setPreviewCourse(course)}
-                    >
-                      <Eye className="h-4 w-4 mr-2" />
-                      Preview
-                    </Button>
-                    {course.video_url && (
-                      <Button 
-                        size="sm" 
-                        className="flex-1"
-                        onClick={() => setPreviewCourse(course)}
-                      >
-                        <Play className="h-4 w-4 mr-2" />
-                        Play Video
-                      </Button>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-
-          {filteredCourses.length === 0 && (
-            <div className="text-center py-12">
-              <Video className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <p className="text-muted-foreground mb-4">No courses found matching your criteria.</p>
-              <Button onClick={() => setIsCreateDialogOpen(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Create Your First Course
-              </Button>
-            </div>
-          )}
+          <CourseList
+            courses={filteredCourses}
+            onEdit={(course) => {
+              setEditingCourse(course);
+              setIsEditDialogOpen(true);
+            }}
+            onDelete={handleDeleteCourse}
+            onPreview={setPreviewCourse}
+            onCreateNew={() => setIsCreateDialogOpen(true)}
+          />
         </TabsContent>
 
         <TabsContent value="video-upload">
@@ -471,58 +218,27 @@ const CourseManagement = () => {
         </TabsContent>
       </Tabs>
 
+      {/* Create Course Dialog */}
+      <CreateCourseDialog
+        isOpen={isCreateDialogOpen}
+        onClose={() => setIsCreateDialogOpen(false)}
+        newCourse={newCourse}
+        setNewCourse={setNewCourse}
+        categories={categories}
+        onSubmit={handleCreateCourse}
+        isLoading={createCourse.isPending}
+        onFileUpload={handleFileUpload}
+      />
+
       {/* Edit Course Dialog */}
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Edit Course</DialogTitle>
-            <DialogDescription>
-              Update course information
-            </DialogDescription>
-          </DialogHeader>
-          {editingCourse && (
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="edit-title">Course Title</Label>
-                <Input
-                  id="edit-title"
-                  value={editingCourse.title}
-                  onChange={(e) => setEditingCourse(prev => ({ ...prev, title: e.target.value }))}
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="edit-description">Description</Label>
-                <Textarea
-                  id="edit-description"
-                  value={editingCourse.description || ''}
-                  onChange={(e) => setEditingCourse(prev => ({ ...prev, description: e.target.value }))}
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="edit-status">Status</Label>
-                <Select value={editingCourse.status} onValueChange={(value) => setEditingCourse(prev => ({ ...prev, status: value }))}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="draft">Draft</SelectItem>
-                    <SelectItem value="published">Published</SelectItem>
-                    <SelectItem value="archived">Archived</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleEditCourse} disabled={updateCourse.isPending}>
-              {updateCourse.isPending ? 'Updating...' : 'Update Course'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <EditCourseDialog
+        isOpen={isEditDialogOpen}
+        onClose={() => setIsEditDialogOpen(false)}
+        editingCourse={editingCourse}
+        setEditingCourse={setEditingCourse}
+        onSubmit={handleEditCourse}
+        isLoading={updateCourse.isPending}
+      />
 
       {/* Course Preview Dialog */}
       {previewCourse && (
