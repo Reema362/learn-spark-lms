@@ -2,13 +2,15 @@
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
+import { useTheme } from '@/context/ThemeContext';
 import { Button } from '@/components/ui/button';
-import { BookOpen, Award, HelpCircle, LogOut, Menu, X, Trophy } from 'lucide-react';
+import { BookOpen, Award, HelpCircle, LogOut, Menu, X, Trophy, Sun, Moon } from 'lucide-react';
 import { useState } from 'react';
 import AIFloatingActions from '@/components/shared/AIFloatingActions';
 
 const LearnerLayout = ({ children }: { children: React.ReactNode }) => {
   const { user, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -42,7 +44,7 @@ const LearnerLayout = ({ children }: { children: React.ReactNode }) => {
           <div className="flex items-center space-x-2">
             <div className="w-10 h-10 bg-gradient-to-r from-primary to-accent rounded-full flex items-center justify-center">
               <img 
-                src="/lovable-uploads/c1be4ea5-1c8c-461b-a36c-a2dc54ee21bb.png" 
+                src="/lovable-uploads/e76b4cc8-215e-45ae-8c75-1851d6db6868.png" 
                 alt="AVO Automation Logo" 
                 className="h-7 w-7 object-contain"
               />
@@ -98,15 +100,26 @@ const LearnerLayout = ({ children }: { children: React.ReactNode }) => {
               </span>
             </div>
           </div>
-          <Button
-            onClick={logout}
-            variant="outline"
-            size="sm"
-            className="w-full justify-start hover:bg-destructive hover:text-destructive-foreground transition-colors"
-          >
-            <LogOut className="h-4 w-4 mr-2" />
-            Sign Out
-          </Button>
+          <div className="space-y-2">
+            <Button
+              onClick={toggleTheme}
+              variant="outline"
+              size="sm"
+              className="w-full justify-start"
+            >
+              {theme === 'light' ? <Moon className="h-4 w-4 mr-2" /> : <Sun className="h-4 w-4 mr-2" />}
+              {theme === 'light' ? 'Dark Mode' : 'Light Mode'}
+            </Button>
+            <Button
+              onClick={logout}
+              variant="outline"
+              size="sm"
+              className="w-full justify-start hover:bg-destructive hover:text-destructive-foreground transition-colors"
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              Sign Out
+            </Button>
+          </div>
         </div>
       </aside>
 
@@ -127,6 +140,14 @@ const LearnerLayout = ({ children }: { children: React.ReactNode }) => {
               {menuItems.find(item => isActive(item.path))?.label || 'Learning Portal'}
             </h1>
             <div className="flex items-center space-x-2">
+              <Button
+                onClick={toggleTheme}
+                variant="outline"
+                size="sm"
+                className="hidden sm:flex"
+              >
+                {theme === 'light' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+              </Button>
               <div className="hidden sm:block text-sm text-muted-foreground">
                 Welcome, {user?.name}
               </div>

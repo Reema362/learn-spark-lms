@@ -7,7 +7,7 @@ const LoginBranding: React.FC = () => {
       <div className="flex items-center justify-center lg:justify-start mb-6">
         <div className="w-20 h-20 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center mr-4 shadow-2xl">
           <img 
-            src="/lovable-uploads/c1be4ea5-1c8c-461b-a36c-a2dc54ee21bb.png" 
+            src="/lovable-uploads/e76b4cc8-215e-45ae-8c75-1851d6db6868.png" 
             alt="AVO Automation Logo" 
             className="h-14 w-14 object-contain"
           />

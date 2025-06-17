@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { MessageCircle, Bot } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import AvoBot from './AvoBot';
-import AvoAssistant from './AvoAssistant';
+import VoiceAvoAssistant from './VoiceAvoAssistant';
 
 interface AIFloatingActionsProps {
   userRole: 'admin' | 'learner';
@@ -20,7 +20,7 @@ const AIFloatingActions: React.FC<AIFloatingActionsProps> = ({ userRole }) => {
         <Button
           onClick={() => setAvoAssistantOpen(true)}
           className="w-14 h-14 rounded-full bg-gradient-to-r from-primary to-accent shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110"
-          title="AVO Assistant - AI Helper"
+          title="AVO Assistant - Voice AI Helper"
         >
           <MessageCircle className="h-6 w-6" />
         </Button>
@@ -40,8 +40,8 @@ const AIFloatingActions: React.FC<AIFloatingActionsProps> = ({ userRole }) => {
         onClose={() => setAvoBotOpen(false)}
       />
 
-      {/* AVO Assistant Modal */}
-      <AvoAssistant
+      {/* AVO Voice Assistant Modal */}
+      <VoiceAvoAssistant
         isOpen={avoAssistantOpen}
         onClose={() => setAvoAssistantOpen(false)}
       />

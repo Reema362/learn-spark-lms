@@ -2,6 +2,7 @@
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
+import { useTheme } from '@/context/ThemeContext';
 import { Button } from '@/components/ui/button';
 import { 
   LayoutDashboard, 
@@ -16,13 +17,16 @@ import {
   LogOut,
   Menu,
   X,
-  Trophy
+  Trophy,
+  Sun,
+  Moon
 } from 'lucide-react';
 import { useState } from 'react';
 import AIFloatingActions from '@/components/shared/AIFloatingActions';
 
 const AdminLayout = ({ children }: { children: React.ReactNode }) => {
   const { user, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -66,7 +70,7 @@ const AdminLayout = ({ children }: { children: React.ReactNode }) => {
           <div className="flex items-center space-x-2">
             <div className="w-8 h-8 bg-gradient-to-r from-primary to-accent rounded-full flex items-center justify-center">
               <img 
-                src="/lovable-uploads/69bbb4e9-b332-463e-8fc2-574961155f4a.png" 
+                src="/lovable-uploads/e76b4cc8-215e-45ae-8c75-1851d6db6868.png" 
                 alt="AVO Automation Logo" 
                 className="h-5 w-5 object-contain"
               />
@@ -122,15 +126,26 @@ const AdminLayout = ({ children }: { children: React.ReactNode }) => {
               </span>
             </div>
           </div>
-          <Button
-            onClick={handleSignOut}
-            variant="outline"
-            size="sm"
-            className="w-full justify-start hover:bg-destructive hover:text-destructive-foreground transition-colors"
-          >
-            <LogOut className="h-4 w-4 mr-2" />
-            Sign Out
-          </Button>
+          <div className="space-y-2">
+            <Button
+              onClick={toggleTheme}
+              variant="outline"
+              size="sm"
+              className="w-full justify-start"
+            >
+              {theme === 'light' ? <Moon className="h-4 w-4 mr-2" /> : <Sun className="h-4 w-4 mr-2" />}
+              {theme === 'light' ? 'Dark Mode' : 'Light Mode'}
+            </Button>
+            <Button
+              onClick={handleSignOut}
+              variant="outline"
+              size="sm"
+              className="w-full justify-start hover:bg-destructive hover:text-destructive-foreground transition-colors"
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              Sign Out
+            </Button>
+          </div>
         </div>
       </aside>
 
@@ -151,6 +166,14 @@ const AdminLayout = ({ children }: { children: React.ReactNode }) => {
               {menuItems.find(item => isActive(item.path))?.label || 'Admin Dashboard'}
             </h1>
             <div className="flex items-center space-x-2">
+              <Button
+                onClick={toggleTheme}
+                variant="outline"
+                size="sm"
+                className="hidden sm:flex"
+              >
+                {theme === 'light' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+              </Button>
               <div className="hidden sm:block text-sm text-muted-foreground">
                 Welcome back, {user?.name}
               </div>
