@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -34,15 +35,24 @@ const CourseViewer: React.FC<CourseViewerProps> = ({ course, isOpen, onClose }) 
 
   // Get current user - handle both auth and demo mode
   const getCurrentUser = () => {
-    // Try to get authenticated user first
-    const authUser = JSON.parse(localStorage.getItem('supabase.auth.token') || 'null');
-    if (authUser?.user) {
-      return authUser.user;
+    try {
+      // Try to get authenticated user first
+      const authUser = JSON.parse(localStorage.getItem('supabase.auth.token') || 'null');
+      if (authUser?.user) {
+        return authUser.user;
+      }
+    } catch (error) {
+      console.log('No auth user found');
     }
     
-    // Fall back to demo user
-    const demoUser = JSON.parse(localStorage.getItem('avocop_user') || 'null');
-    return demoUser;
+    try {
+      // Fall back to demo user
+      const demoUser = JSON.parse(localStorage.getItem('avocop_user') || 'null');
+      return demoUser;
+    } catch (error) {
+      console.log('No demo user found');
+      return null;
+    }
   };
 
   useEffect(() => {
@@ -57,10 +67,17 @@ const CourseViewer: React.FC<CourseViewerProps> = ({ course, isOpen, onClose }) 
         // Auto-enroll user when they open the course
         const user = getCurrentUser();
         if (user?.id) {
+          console.log('Auto-enrolling user:', user.id, 'in course:', course.id);
           enrollUser.mutate({ 
             courseId: course.id, 
             userId: user.id 
+          }, {
+            onError: (error) => {
+              console.error('Auto-enrollment failed:', error);
+            }
           });
+        } else {
+          console.log('No user found for auto-enrollment');
         }
       } catch (error: any) {
         console.error('Error getting video URL:', error);
@@ -68,7 +85,7 @@ const CourseViewer: React.FC<CourseViewerProps> = ({ course, isOpen, onClose }) 
         setVideoUrl(null);
       }
     }
-  }, [course?.video_url, isOpen]);
+  }, [course?.video_url, isOpen, enrollUser]);
 
   // Track video progress
   useEffect(() => {
@@ -90,25 +107,36 @@ const CourseViewer: React.FC<CourseViewerProps> = ({ course, isOpen, onClose }) 
               // Use course ID as lesson ID for video-based courses
               const videoLessonId = course.id;
               
+              console.log('Updating progress for user:', user.id, 'lesson:', videoLessonId, 'progress:', progress);
               updateProgress.mutate({
                 lessonId: videoLessonId,
                 userId: user.id,
                 progressPercentage: progress,
                 timeSpentMinutes: Math.round(video.currentTime / 60)
+              }, {
+                onError: (error) => {
+                  console.error('Progress update failed:', error);
+                }
               });
               
               setLastProgressUpdate(Date.now());
               
               // Check for course completion if video is finished
               if (progress >= 95) { // Consider 95% as complete to account for buffering
+                console.log('Course near completion, checking completion status');
                 checkCompletion.mutate({
                   courseId: course.id,
                   userId: user.id
-                });
-                
-                toast({
-                  title: "Course Completed!",
-                  description: `Congratulations! You've completed "${course.title}".`,
+                }, {
+                  onSuccess: () => {
+                    toast({
+                      title: "Course Completed!",
+                      description: `Congratulations! You've completed "${course.title}".`,
+                    });
+                  },
+                  onError: (error) => {
+                    console.error('Completion check failed:', error);
+                  }
                 });
               }
             }
@@ -126,7 +154,7 @@ const CourseViewer: React.FC<CourseViewerProps> = ({ course, isOpen, onClose }) 
         clearInterval(progressIntervalRef.current);
       }
     };
-  }, [isPlaying, watchProgress, lastProgressUpdate]);
+  }, [isPlaying, watchProgress, lastProgressUpdate, updateProgress, checkCompletion, course, toast]);
 
   const handleVideoError = (e: any) => {
     console.error('Video playback error:', e);
@@ -146,7 +174,9 @@ const CourseViewer: React.FC<CourseViewerProps> = ({ course, isOpen, onClose }) 
       if (isPlaying) {
         videoRef.current.pause();
       } else {
-        videoRef.current.play();
+        videoRef.current.play().catch((error) => {
+          console.error('Video play failed:', error);
+        });
       }
       setIsPlaying(!isPlaying);
     }

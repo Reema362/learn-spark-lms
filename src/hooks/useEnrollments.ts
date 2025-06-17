@@ -7,13 +7,22 @@ export const useEnrollUserInCourse = () => {
   
   return useMutation({
     mutationFn: async ({ courseId, userId }: { courseId: string; userId?: string }) => {
+      if (!userId) {
+        throw new Error('User ID is required for enrollment');
+      }
+
       // Check if user is already enrolled
-      const { data: existingEnrollment } = await supabase
+      const { data: existingEnrollment, error: checkError } = await supabase
         .from('course_enrollments')
         .select('id')
         .eq('course_id', courseId)
         .eq('user_id', userId)
-        .single();
+        .maybeSingle();
+
+      if (checkError) {
+        console.error('Error checking enrollment:', checkError);
+        throw checkError;
+      }
 
       if (existingEnrollment) {
         return existingEnrollment;
@@ -31,13 +40,19 @@ export const useEnrollUserInCourse = () => {
         .select()
         .single();
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error creating enrollment:', error);
+        throw error;
+      }
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['course-enrollments'] });
       queryClient.invalidateQueries({ queryKey: ['user-progress'] });
     },
+    onError: (error) => {
+      console.error('Enrollment failed:', error);
+    }
   });
 };
 
@@ -56,13 +71,22 @@ export const useUpdateLessonProgress = () => {
       progressPercentage: number; 
       timeSpentMinutes?: number; 
     }) => {
+      if (!userId || !lessonId) {
+        throw new Error('User ID and Lesson ID are required');
+      }
+
       // Check if progress record exists
-      const { data: existingProgress } = await supabase
+      const { data: existingProgress, error: checkError } = await supabase
         .from('lesson_progress')
         .select('*')
         .eq('lesson_id', lessonId)
         .eq('user_id', userId)
-        .single();
+        .maybeSingle();
+
+      if (checkError) {
+        console.error('Error checking lesson progress:', checkError);
+        throw checkError;
+      }
 
       if (existingProgress) {
         // Update existing progress
@@ -76,7 +100,10 @@ export const useUpdateLessonProgress = () => {
           .eq('lesson_id', lessonId)
           .eq('user_id', userId);
         
-        if (error) throw error;
+        if (error) {
+          console.error('Error updating lesson progress:', error);
+          throw error;
+        }
       } else {
         // Create new progress record
         const { error } = await supabase
@@ -89,13 +116,19 @@ export const useUpdateLessonProgress = () => {
             completed_at: progressPercentage >= 100 ? new Date().toISOString() : null
           });
         
-        if (error) throw error;
+        if (error) {
+          console.error('Error creating lesson progress:', error);
+          throw error;
+        }
       }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['lesson-progress'] });
       queryClient.invalidateQueries({ queryKey: ['course-enrollments'] });
     },
+    onError: (error) => {
+      console.error('Progress update failed:', error);
+    }
   });
 };
 
@@ -104,47 +137,92 @@ export const useCheckCourseCompletion = () => {
   
   return useMutation({
     mutationFn: async ({ courseId, userId }: { courseId: string; userId: string }) => {
-      // Get all lessons for the course
-      const { data: lessons } = await supabase
-        .from('lessons')
-        .select('id, is_required')
-        .eq('course_id', courseId);
+      if (!userId || !courseId) {
+        throw new Error('User ID and Course ID are required');
+      }
 
-      if (!lessons) return;
+      try {
+        // Get all lessons for the course
+        const { data: lessons, error: lessonsError } = await supabase
+          .from('lessons')
+          .select('id, is_required')
+          .eq('course_id', courseId);
 
-      const requiredLessons = lessons.filter(l => l.is_required);
-      
-      // Get completed lessons
-      const { data: completedLessons } = await supabase
-        .from('lesson_progress')
-        .select('lesson_id')
-        .eq('user_id', userId)
-        .gte('progress_percentage', 100)
-        .in('lesson_id', requiredLessons.map(l => l.id));
+        if (lessonsError) {
+          console.error('Error fetching lessons:', lessonsError);
+          throw lessonsError;
+        }
 
-      const completionPercentage = requiredLessons.length > 0 
-        ? Math.round((completedLessons?.length || 0) / requiredLessons.length * 100)
-        : 100;
+        if (!lessons || lessons.length === 0) {
+          // For video-based courses, consider the course itself as a lesson
+          const completionPercentage = 100;
 
-      // Update course enrollment
-      const { error } = await supabase
-        .from('course_enrollments')
-        .update({
-          progress_percentage: completionPercentage,
-          status: completionPercentage >= 100 ? 'completed' : 
-                  completionPercentage > 0 ? 'in_progress' : 'not_started',
-          started_at: completionPercentage > 0 ? new Date().toISOString() : null,
-          completed_at: completionPercentage >= 100 ? new Date().toISOString() : null
-        })
-        .eq('course_id', courseId)
-        .eq('user_id', userId);
-      
-      if (error) throw error;
+          const { error: updateError } = await supabase
+            .from('course_enrollments')
+            .update({
+              progress_percentage: completionPercentage,
+              status: 'completed',
+              started_at: new Date().toISOString(),
+              completed_at: new Date().toISOString()
+            })
+            .eq('course_id', courseId)
+            .eq('user_id', userId);
+          
+          if (updateError) {
+            console.error('Error updating course enrollment:', updateError);
+            throw updateError;
+          }
+          return;
+        }
+
+        const requiredLessons = lessons.filter(l => l.is_required);
+        
+        // Get completed lessons
+        const { data: completedLessons, error: progressError } = await supabase
+          .from('lesson_progress')
+          .select('lesson_id')
+          .eq('user_id', userId)
+          .gte('progress_percentage', 100)
+          .in('lesson_id', requiredLessons.map(l => l.id));
+
+        if (progressError) {
+          console.error('Error fetching lesson progress:', progressError);
+          throw progressError;
+        }
+
+        const completionPercentage = requiredLessons.length > 0 
+          ? Math.round((completedLessons?.length || 0) / requiredLessons.length * 100)
+          : 100;
+
+        // Update course enrollment
+        const { error: updateError } = await supabase
+          .from('course_enrollments')
+          .update({
+            progress_percentage: completionPercentage,
+            status: completionPercentage >= 100 ? 'completed' : 
+                    completionPercentage > 0 ? 'in_progress' : 'not_started',
+            started_at: completionPercentage > 0 ? new Date().toISOString() : null,
+            completed_at: completionPercentage >= 100 ? new Date().toISOString() : null
+          })
+          .eq('course_id', courseId)
+          .eq('user_id', userId);
+        
+        if (updateError) {
+          console.error('Error updating course enrollment:', updateError);
+          throw updateError;
+        }
+      } catch (error) {
+        console.error('Course completion check failed:', error);
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['course-enrollments'] });
       queryClient.invalidateQueries({ queryKey: ['analytics'] });
     },
+    onError: (error) => {
+      console.error('Course completion check failed:', error);
+    }
   });
 };
 
@@ -173,7 +251,10 @@ export const useCourseEnrollments = (userId?: string) => {
       }
       
       const { data, error } = await query;
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching course enrollments:', error);
+        throw error;
+      }
       return data;
     },
     enabled: !!userId,
@@ -205,7 +286,10 @@ export const useLessonProgress = (userId?: string, courseId?: string) => {
       }
       
       const { data, error } = await query;
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching lesson progress:', error);
+        throw error;
+      }
       return data;
     },
     enabled: !!userId,
