@@ -54,13 +54,13 @@ const CoursePreview: React.FC<CoursePreviewProps> = ({ course, isOpen, onClose }
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-2xl max-h-[90vh]">
+        <DialogContent className="max-w-2xl h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>{course.title}</DialogTitle>
             <DialogDescription>Course preview and details</DialogDescription>
           </DialogHeader>
           
-          <ScrollArea className="max-h-[70vh] pr-4">
+          <ScrollArea className="flex-1 pr-4">
             <div className="space-y-6">
               {/* Course Header */}
               <div className="flex justify-between items-start">
@@ -108,15 +108,21 @@ const CoursePreview: React.FC<CoursePreviewProps> = ({ course, isOpen, onClose }
                 </div>
               )}
 
-              {/* Description */}
+              {/* Description - Scrollable */}
               <div className="space-y-2">
                 <h3 className="font-semibold">Description</h3>
-                <p className="text-muted-foreground">
-                  {course.description || 'No description available'}
-                </p>
+                {course.description ? (
+                  <ScrollArea className="max-h-32 border rounded-lg p-3">
+                    <p className="text-muted-foreground text-sm whitespace-pre-wrap">
+                      {course.description}
+                    </p>
+                  </ScrollArea>
+                ) : (
+                  <p className="text-muted-foreground text-sm">No description available</p>
+                )}
               </div>
 
-              {/* Content */}
+              {/* Content - Scrollable */}
               {course.content && (
                 <div className="space-y-2">
                   <h3 className="font-semibold flex items-center gap-2">
@@ -163,6 +169,19 @@ const CoursePreview: React.FC<CoursePreviewProps> = ({ course, isOpen, onClose }
                   {!videoUrl && !course.thumbnail_url && (
                     <p className="text-sm text-muted-foreground">No media files uploaded</p>
                   )}
+                </div>
+              </div>
+
+              {/* Storage Information */}
+              <div className="space-y-2">
+                <h3 className="font-semibold">Storage Information</h3>
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <p className="text-sm text-blue-800">
+                    <strong>Video Storage:</strong> Supabase Storage - courses bucket
+                  </p>
+                  <p className="text-xs text-blue-600 mt-1">
+                    All course videos are securely stored in the dedicated courses bucket
+                  </p>
                 </div>
               </div>
 
@@ -219,6 +238,7 @@ const CoursePreview: React.FC<CoursePreviewProps> = ({ course, isOpen, onClose }
         <VideoPlayer
           videoUrl={course.video_url}
           title={course.title}
+          description={course.description || course.content}
           isOpen={videoPlayerOpen}
           onClose={() => setVideoPlayerOpen(false)}
         />

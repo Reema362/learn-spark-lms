@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 
 interface Course {
@@ -245,9 +244,15 @@ export class CourseService {
         .order('name');
       
       if (error) throw error;
-      return data || [];
+      
+      // Remove duplicates based on id to prevent repeated categories
+      const uniqueCategories = data ? data.filter((category, index, self) => 
+        index === self.findIndex(c => c.id === category.id)
+      ) : [];
+      
+      return uniqueCategories;
     } else {
-      // Return demo categories
+      // Return demo categories with deduplication
       const demoCategories = JSON.parse(localStorage.getItem('demo-categories') || '[]');
       if (demoCategories.length === 0) {
         // Create default categories for demo
@@ -259,7 +264,13 @@ export class CourseService {
         localStorage.setItem('demo-categories', JSON.stringify(defaultCategories));
         return defaultCategories;
       }
-      return demoCategories;
+      
+      // Remove duplicates from demo categories too
+      const uniqueCategories = demoCategories.filter((category: any, index: number, self: any[]) => 
+        index === self.findIndex(c => c.id === category.id)
+      );
+      
+      return uniqueCategories;
     }
   }
 

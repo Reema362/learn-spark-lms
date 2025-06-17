@@ -13,6 +13,16 @@ export const useCourseCategories = () => {
   return useQuery({
     queryKey: ['course-categories'],
     queryFn: DatabaseService.getCourseCategories,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    cacheTime: 10 * 60 * 1000, // 10 minutes
+    // Add deduplication at the hook level as well
+    select: (data) => {
+      if (!data) return [];
+      // Remove duplicates based on id
+      return data.filter((category: any, index: number, self: any[]) => 
+        index === self.findIndex((c: any) => c.id === category.id)
+      );
+    }
   });
 };
 

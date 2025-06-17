@@ -1,7 +1,7 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Play, Pause, Volume2, VolumeX, Maximize2, RotateCcw, AlertCircle, RefreshCw } from 'lucide-react';
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { StorageService } from '@/services/storageService';
@@ -9,11 +9,12 @@ import { StorageService } from '@/services/storageService';
 interface VideoPlayerProps {
   videoUrl: string;
   title: string;
+  description?: string;
   isOpen: boolean;
   onClose: () => void;
 }
 
-const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, title, isOpen, onClose }) => {
+const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, title, description, isOpen, onClose }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [hasError, setHasError] = useState(false);
@@ -176,7 +177,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, title, isOpen, onCl
   if (!publicVideoUrl) {
     return (
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-4xl w-full">
+        <DialogContent className="max-w-4xl w-full h-[80vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>{title}</DialogTitle>
           </DialogHeader>
@@ -190,127 +191,146 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, title, isOpen, onCl
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl w-full">
+      <DialogContent className="max-w-4xl w-full h-[80vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4">
-          <div className="relative bg-black rounded-lg overflow-hidden">
-            {/* Loading indicator */}
-            {isLoading && !hasError && (
-              <div className="absolute inset-0 flex items-center justify-center bg-black/80 z-10">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
-                <span className="ml-3 text-white">Loading video...</span>
-              </div>
-            )}
+        <div className="flex-1 flex flex-col space-y-4 min-h-0">
+          {/* Video Section */}
+          <div className="flex-shrink-0">
+            <div className="relative bg-black rounded-lg overflow-hidden">
+              {/* Loading indicator */}
+              {isLoading && !hasError && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/80 z-10">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
+                  <span className="ml-3 text-white">Loading video...</span>
+                </div>
+              )}
 
-            <video
-              ref={handleVideoEvents}
-              src={publicVideoUrl}
-              className="w-full h-auto max-h-96"
-              controls={false}
-              playsInline
-              preload="metadata"
-              crossOrigin="anonymous"
-            >
-              Your browser does not support the video tag.
-            </video>
-            
-            {/* Custom Controls Overlay */}
-            {!hasError && (
-              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handlePlayPause}
-                      className="text-white hover:bg-white/20"
-                      disabled={hasError}
-                    >
-                      {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                    </Button>
+              <video
+                ref={handleVideoEvents}
+                src={publicVideoUrl}
+                className="w-full h-auto max-h-96"
+                controls={false}
+                playsInline
+                preload="metadata"
+                crossOrigin="anonymous"
+              >
+                Your browser does not support the video tag.
+              </video>
+              
+              {/* Custom Controls Overlay */}
+              {!hasError && (
+                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handlePlayPause}
+                        className="text-white hover:bg-white/20"
+                        disabled={hasError}
+                      >
+                        {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                      </Button>
+                      
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleRestart}
+                        className="text-white hover:bg-white/20"
+                        disabled={hasError}
+                      >
+                        <RotateCcw className="h-4 w-4" />
+                      </Button>
+                    </div>
                     
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleRestart}
-                      className="text-white hover:bg-white/20"
-                      disabled={hasError}
-                    >
-                      <RotateCcw className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  
-                  <div className="flex items-center space-x-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleMuteToggle}
-                      className="text-white hover:bg-white/20"
-                      disabled={hasError}
-                    >
-                      {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-                    </Button>
-                    
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleFullscreen}
-                      className="text-white hover:bg-white/20"
-                      disabled={hasError}
-                    >
-                      <Maximize2 className="h-4 w-4" />
-                    </Button>
+                    <div className="flex items-center space-x-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleMuteToggle}
+                        className="text-white hover:bg-white/20"
+                        disabled={hasError}
+                      >
+                        {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                      </Button>
+                      
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleFullscreen}
+                        className="text-white hover:bg-white/20"
+                        disabled={hasError}
+                      >
+                        <Maximize2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
+
+          {/* Scrollable Description Section */}
+          {description && (
+            <div className="flex-1 min-h-0">
+              <h3 className="font-semibold mb-2">Description</h3>
+              <ScrollArea className="h-full border rounded-lg p-4">
+                <div className="text-sm text-muted-foreground whitespace-pre-wrap">
+                  {description}
+                </div>
+              </ScrollArea>
+            </div>
+          )}
           
           {/* Error display */}
           {hasError && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                <div className="space-y-2">
-                  <strong>Video playback error:</strong> {errorDetails}
-                  
-                  <div className="mt-3">
-                    <p className="text-sm">This might be due to:</p>
-                    <ul className="list-disc list-inside text-sm ml-2 space-y-1">
-                      <li>Invalid video file format (try MP4, WebM, or MOV)</li>
-                      <li>File not accessible in the storage bucket</li>
-                      <li>Network connectivity issues</li>
-                      <li>Corrupted or incomplete video file</li>
-                      <li>File name contains special characters</li>
-                    </ul>
+            <div className="flex-shrink-0">
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  <div className="space-y-2">
+                    <strong>Video playback error:</strong> {errorDetails}
+                    
+                    <div className="mt-3">
+                      <p className="text-sm">This might be due to:</p>
+                      <ul className="list-disc list-inside text-sm ml-2 space-y-1">
+                        <li>Invalid video file format (try MP4, WebM, or MOV)</li>
+                        <li>File not accessible in the storage bucket</li>
+                        <li>Network connectivity issues</li>
+                        <li>Corrupted or incomplete video file</li>
+                        <li>File name contains special characters</li>
+                      </ul>
+                    </div>
+                    
+                    <div className="flex items-center gap-2 mt-3">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleRetry}
+                        className="flex items-center gap-1"
+                      >
+                        <RefreshCw className="h-3 w-3" />
+                        Retry
+                      </Button>
+                    </div>
+                    
+                    <p className="text-xs mt-2 break-all opacity-75">
+                      <strong>Video URL:</strong> {publicVideoUrl}
+                    </p>
                   </div>
-                  
-                  <div className="flex items-center gap-2 mt-3">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleRetry}
-                      className="flex items-center gap-1"
-                    >
-                      <RefreshCw className="h-3 w-3" />
-                      Retry
-                    </Button>
-                  </div>
-                  
-                  <p className="text-xs mt-2 break-all opacity-75">
-                    <strong>Video URL:</strong> {publicVideoUrl}
-                  </p>
-                </div>
-              </AlertDescription>
-            </Alert>
+                </AlertDescription>
+              </Alert>
+            </div>
           )}
           
-          {/* Fallback message if video fails to load */}
+          {/* Storage Info */}
           {!hasError && (
-            <div className="text-center text-muted-foreground">
-              <p className="text-sm">If the video doesn't load, check the file format and storage accessibility.</p>
+            <div className="flex-shrink-0 text-center text-muted-foreground">
+              <p className="text-sm">
+                Videos are stored in Supabase Storage (courses bucket)
+              </p>
               <p className="text-xs mt-1 break-all opacity-75">Video URL: {publicVideoUrl}</p>
             </div>
           )}

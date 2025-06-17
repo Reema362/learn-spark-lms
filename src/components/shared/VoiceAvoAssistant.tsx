@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -33,7 +32,7 @@ const VoiceAvoAssistant: React.FC<VoiceAvoAssistantProps> = ({ isOpen, onClose }
   const [isListening, setIsListening] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const recognitionRef = useRef<any>(null);
 
   // Auto-scroll to bottom when new messages are added
   useEffect(() => {
@@ -47,7 +46,7 @@ const VoiceAvoAssistant: React.FC<VoiceAvoAssistantProps> = ({ isOpen, onClose }
 
   // Initialize speech recognition
   useEffect(() => {
-    if (typeof window !== 'undefined' && ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
+    if (typeof window !== 'undefined' && (window.webkitSpeechRecognition || window.SpeechRecognition)) {
       const SpeechRecognitionConstructor = window.SpeechRecognition || window.webkitSpeechRecognition;
       recognitionRef.current = new SpeechRecognitionConstructor();
       recognitionRef.current.continuous = true;
@@ -64,7 +63,7 @@ const VoiceAvoAssistant: React.FC<VoiceAvoAssistantProps> = ({ isOpen, onClose }
         setIsRecording(false);
       };
 
-      recognitionRef.current.onresult = (event) => {
+      recognitionRef.current.onresult = (event: any) => {
         let finalTranscript = '';
         for (let i = event.resultIndex; i < event.results.length; i++) {
           if (event.results[i].isFinal) {
@@ -76,7 +75,7 @@ const VoiceAvoAssistant: React.FC<VoiceAvoAssistantProps> = ({ isOpen, onClose }
         }
       };
 
-      recognitionRef.current.onerror = (event) => {
+      recognitionRef.current.onerror = (event: any) => {
         console.error('Speech recognition error:', event.error);
         setIsListening(false);
         setIsRecording(false);
@@ -92,7 +91,7 @@ const VoiceAvoAssistant: React.FC<VoiceAvoAssistantProps> = ({ isOpen, onClose }
       const utterance = new SpeechSynthesisUtterance(text);
       const voices = window.speechSynthesis.getVoices();
       
-      // Find a female voice (more comprehensive search)
+      // Find a female voice
       const femaleVoice = voices.find(voice => 
         voice.name.toLowerCase().includes('female') ||
         voice.name.toLowerCase().includes('woman') ||
