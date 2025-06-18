@@ -60,7 +60,7 @@ const CoursePreview: React.FC<CoursePreviewProps> = ({ course, isOpen, onClose }
             <DialogDescription>Course preview and details</DialogDescription>
           </DialogHeader>
           
-          <ScrollArea className="flex-1 pr-4">
+          <ScrollArea className="flex-1 pr-4 max-h-[calc(90vh-120px)]">
             <div className="space-y-6">
               {/* Course Header */}
               <div className="flex justify-between items-start">
@@ -108,11 +108,11 @@ const CoursePreview: React.FC<CoursePreviewProps> = ({ course, isOpen, onClose }
                 </div>
               )}
 
-              {/* Description - Scrollable */}
+              {/* Description */}
               <div className="space-y-2">
                 <h3 className="font-semibold">Description</h3>
                 {course.description ? (
-                  <div className="max-h-32 overflow-y-auto border rounded-lg p-3 bg-muted/30">
+                  <div className="p-3 bg-muted/30 rounded-lg">
                     <p className="text-muted-foreground text-sm whitespace-pre-wrap">
                       {course.description}
                     </p>
@@ -122,14 +122,14 @@ const CoursePreview: React.FC<CoursePreviewProps> = ({ course, isOpen, onClose }
                 )}
               </div>
 
-              {/* Content - Scrollable */}
+              {/* Content */}
               {course.content && (
                 <div className="space-y-2">
                   <h3 className="font-semibold flex items-center gap-2">
                     <FileText className="h-4 w-4" />
                     Course Content
                   </h3>
-                  <div className="bg-muted/50 p-4 rounded-lg max-h-40 overflow-y-auto">
+                  <div className="bg-muted/50 p-4 rounded-lg">
                     <p className="text-sm whitespace-pre-wrap">{course.content}</p>
                   </div>
                 </div>

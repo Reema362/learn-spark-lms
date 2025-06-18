@@ -6,7 +6,7 @@ export const createSampleCategories = async () => {
     // First check if categories already exist
     const existingCategories = await DatabaseService.getCourseCategories();
     
-    // If we already have 5 or more categories, don't create more
+    // If we already have sample categories, don't create more
     if (existingCategories && existingCategories.length >= 5) {
       console.log('Sample categories already exist, skipping creation');
       return;
@@ -23,12 +23,14 @@ export const createSampleCategories = async () => {
       { name: 'Mobile Security', color: '#06b6d4' }
     ];
 
-    // Get existing category names to avoid duplicates
-    const existingNames = new Set(existingCategories?.map(cat => cat.name.toLowerCase()) || []);
+    // Get existing category names to avoid duplicates (case-insensitive)
+    const existingNames = new Set(
+      (existingCategories || []).map(cat => cat.name.toLowerCase().trim())
+    );
 
     // Filter out categories that already exist
     const categoriesToCreate = sampleCategories.filter(
-      category => !existingNames.has(category.name.toLowerCase())
+      category => !existingNames.has(category.name.toLowerCase().trim())
     );
 
     if (categoriesToCreate.length === 0) {
@@ -41,8 +43,18 @@ export const createSampleCategories = async () => {
     // Create categories one by one to handle any individual failures
     for (const category of categoriesToCreate) {
       try {
-        await DatabaseService.createCourseCategory(category);
-        console.log(`Created category: ${category.name}`);
+        // Double-check before creating each one
+        const currentCategories = await DatabaseService.getCourseCategories();
+        const currentNames = new Set(
+          (currentCategories || []).map(cat => cat.name.toLowerCase().trim())
+        );
+        
+        if (!currentNames.has(category.name.toLowerCase().trim())) {
+          await DatabaseService.createCourseCategory(category);
+          console.log(`Created category: ${category.name}`);
+        } else {
+          console.log(`Category already exists, skipping: ${category.name}`);
+        }
       } catch (error) {
         console.warn(`Failed to create category ${category.name}:`, error);
         // Continue with other categories even if one fails

@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -177,7 +178,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, title, description,
   if (!publicVideoUrl) {
     return (
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-4xl w-full h-[80vh] flex flex-col">
+        <DialogContent className="max-w-4xl w-full max-h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>{title}</DialogTitle>
           </DialogHeader>
@@ -191,13 +192,14 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, title, description,
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl w-full h-[80vh] flex flex-col">
+      <DialogContent className="max-w-4xl w-full max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
-        <div className="flex-1 flex flex-col space-y-4 min-h-0">
-          {/* Video Section */}
-          <div className="flex-shrink-0">
+        
+        <ScrollArea className="flex-1 pr-4 max-h-[calc(90vh-120px)]">
+          <div className="space-y-4">
+            {/* Video Section */}
             <div className="relative bg-black rounded-lg overflow-hidden">
               {/* Loading indicator */}
               {isLoading && !hasError && (
@@ -270,23 +272,21 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, title, description,
                 </div>
               )}
             </div>
-          </div>
 
-          {/* Scrollable Description Section */}
-          {description && (
-            <div className="flex-1 min-h-0">
-              <h3 className="font-semibold mb-2">Description</h3>
-              <ScrollArea className="h-full border rounded-lg p-4">
-                <div className="text-sm text-muted-foreground whitespace-pre-wrap">
-                  {description}
+            {/* Description Section */}
+            {description && (
+              <div className="space-y-2">
+                <h3 className="font-semibold">Description</h3>
+                <div className="border rounded-lg p-4 bg-muted/30">
+                  <div className="text-sm text-muted-foreground whitespace-pre-wrap">
+                    {description}
+                  </div>
                 </div>
-              </ScrollArea>
-            </div>
-          )}
-          
-          {/* Error display */}
-          {hasError && (
-            <div className="flex-shrink-0">
+              </div>
+            )}
+            
+            {/* Error display */}
+            {hasError && (
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>
@@ -322,19 +322,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, title, description,
                   </div>
                 </AlertDescription>
               </Alert>
-            </div>
-          )}
-          
-          {/* Storage Info */}
-          {!hasError && (
-            <div className="flex-shrink-0 text-center text-muted-foreground">
-              <p className="text-sm">
-                Videos are stored in Supabase Storage (courses bucket)
-              </p>
-              <p className="text-xs mt-1 break-all opacity-75">Video URL: {publicVideoUrl}</p>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        </ScrollArea>
       </DialogContent>
     </Dialog>
   );

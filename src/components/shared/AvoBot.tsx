@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Mic, MicOff, Send, Volume2, VolumeX, MessageCircle, X } from 'lucide-react';
+import { Mic, MicOff, Send, Volume2, VolumeX, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface Message {
@@ -15,12 +15,16 @@ interface Message {
   timestamp: Date;
 }
 
-const AvoBot = () => {
-  const [isOpen, setIsOpen] = useState(false);
+interface AvoBotProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+const AvoBot: React.FC<AvoBotProps> = ({ isOpen, onClose }) => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      text: "Hi! I'm Avo, your AI security assistant. I can help you with information security topics, phishing awareness, compliance training, and answer questions about your learning platform. How can I assist you today?",
+      text: "Hi! I'm Avo Bot, your AI security assistant. I can help you with information security topics, phishing awareness, compliance training, and answer questions about your learning platform. How can I assist you today?",
       isUser: false,
       timestamp: new Date()
     }
@@ -90,7 +94,7 @@ const AvoBot = () => {
     
     // Greetings
     if (/^(hi|hello|hey|good morning|good afternoon|good evening)/.test(input)) {
-      return "Hello! I'm Avo, your cybersecurity assistant. I'm here to help you with information security topics, training questions, and platform guidance. What would you like to know?";
+      return "Hello! I'm Avo Bot, your cybersecurity assistant. I'm here to help you with information security topics, training questions, and platform guidance. What would you like to know?";
     }
     
     // Farewells
@@ -113,29 +117,9 @@ const AvoBot = () => {
       return "🔐 Strong password security is crucial! Best practices include:\n\n• Use unique, complex passwords for each account\n• Enable two-factor authentication (2FA) whenever possible\n• Consider using a password manager\n• Use passphrases with 12+ characters\n• Never share passwords or write them down insecurely\n• Change passwords if you suspect they're compromised\n\nRemember: Your password is your first line of defense!";
     }
 
-    // Data protection/privacy
-    if (input.includes('data protection') || input.includes('privacy') || input.includes('gdpr')) {
-      return "🛡️ Data protection is essential for maintaining privacy and compliance. Key principles:\n\n• Collect only necessary data\n• Secure data with encryption\n• Control access on a need-to-know basis\n• Regular backups and secure disposal\n• Comply with regulations like GDPR, CCPA\n• Report data breaches promptly\n\nAlways handle personal and sensitive data with care and follow your organization's data protection policies!";
-    }
-
-    // Incident response
-    if (input.includes('incident') || input.includes('breach') || input.includes('attack')) {
-      return "🚨 Security incident response is critical! If you suspect a security incident:\n\n1. **Contain** - Isolate affected systems\n2. **Assess** - Determine scope and impact\n3. **Report** - Notify your security team immediately\n4. **Document** - Record all details\n5. **Recover** - Restore systems safely\n6. **Learn** - Conduct post-incident analysis\n\nTime is crucial in incident response - report suspicious activity immediately!";
-    }
-
-    // Mobile security
-    if (input.includes('mobile') || input.includes('phone') || input.includes('smartphone')) {
-      return "📱 Mobile security tips to keep your devices safe:\n\n• Keep OS and apps updated\n• Use device locks (PIN, biometric)\n• Download apps only from official stores\n• Be cautious on public Wi-Fi\n• Enable remote wipe capabilities\n• Use mobile device management (MDM) if required\n• Don't jailbreak or root devices\n\nYour mobile device contains sensitive data - protect it like you would your computer!";
-    }
-
     // Learning platform help
     if (input.includes('course') || input.includes('training') || input.includes('learn')) {
       return "📚 I can help you navigate your learning platform! Here's what you can do:\n\n• **View Courses** - Browse available security training\n• **Track Progress** - Monitor your learning journey\n• **Take Assessments** - Test your knowledge\n• **Earn Certificates** - Complete courses for recognition\n• **Ask Questions** - Use the help section for support\n\nNeed help with a specific course or feature? Just let me know!";
-    }
-
-    // Compliance training
-    if (input.includes('compliance') || input.includes('regulation') || input.includes('audit')) {
-      return "📋 Compliance training ensures adherence to security standards and regulations:\n\n• **Required Training** - Complete mandatory courses on time\n• **Documentation** - Maintain training records\n• **Regular Updates** - Stay current with changing requirements\n• **Assessments** - Demonstrate understanding through tests\n• **Reporting** - Track completion rates and effectiveness\n\nCompliance isn't just about meeting requirements - it's about building a security-conscious culture!";
     }
 
     // General cybersecurity
@@ -143,13 +127,8 @@ const AvoBot = () => {
       return "🔒 Cybersecurity is everyone's responsibility! Key practices:\n\n• Stay informed about current threats\n• Keep software and systems updated\n• Use strong authentication methods\n• Be cautious with email attachments and links\n• Backup important data regularly\n• Report suspicious activities promptly\n• Follow your organization's security policies\n\nRemember: Security is a shared responsibility, and you play a crucial role!";
     }
 
-    // Help/support
-    if (input.includes('help') || input.includes('support') || input.includes('how to')) {
-      return "🤝 I'm here to help! I can assist you with:\n\n• **Security Topics** - Phishing, passwords, data protection\n• **Platform Navigation** - Courses, assessments, progress tracking\n• **Best Practices** - Cybersecurity tips and guidelines\n• **Compliance** - Training requirements and standards\n• **Incident Response** - What to do if something goes wrong\n\nJust ask me anything related to cybersecurity or your learning platform!";
-    }
-
     // Default response for unrecognized inputs
-    return "I understand you're asking about something, but I'd like to provide you with the most accurate information. Could you please rephrase your question or ask about specific topics like:\n\n• Phishing and email security\n• Password protection\n• Data privacy and protection\n• Mobile device security\n• Incident response\n• Compliance training\n• Platform navigation\n\nI'm here to help with all your cybersecurity and learning platform questions!";
+    return "I understand you're asking about something, but I'd like to provide you with the most accurate information. Could you please rephrase your question or ask about specific topics like:\n\n• Phishing and email security\n• Password protection\n• Data privacy and protection\n• Mobile device security\n• Compliance training\n• Platform navigation\n\nI'm here to help with all your cybersecurity and learning platform questions!";
   };
 
   const speakText = async (text: string) => {
@@ -157,7 +136,6 @@ const AvoBot = () => {
 
     synthRef.current.cancel();
     
-    // Wait for a moment to ensure cancellation is complete
     await new Promise(resolve => setTimeout(resolve, 100));
     
     const utterance = new SpeechSynthesisUtterance(text);
@@ -168,14 +146,12 @@ const AvoBot = () => {
       voice.name.toLowerCase().includes('female') || 
       voice.name.toLowerCase().includes('zira') ||
       voice.name.toLowerCase().includes('susan') ||
-      voice.name.toLowerCase().includes('hazel') ||
-      voice.gender === 'female'
+      voice.name.toLowerCase().includes('hazel')
     );
     
     if (femaleVoices.length > 0) {
       utterance.voice = femaleVoices[0];
     } else {
-      // Fallback to any English voice
       const englishVoices = voices.filter(voice => voice.lang.startsWith('en'));
       if (englishVoices.length > 0) {
         utterance.voice = englishVoices[0];
@@ -207,7 +183,6 @@ const AvoBot = () => {
     const userInput = inputText;
     setInputText('');
 
-    // Get Avo's response
     setTimeout(() => {
       const response = getAvoResponse(userInput);
       const botMessage: Message = {
@@ -219,7 +194,6 @@ const AvoBot = () => {
 
       setMessages(prev => [...prev, botMessage]);
       
-      // Speak the response if voice is enabled
       if (voiceEnabled) {
         speakText(response);
       }
@@ -254,17 +228,7 @@ const AvoBot = () => {
   };
 
   if (!isOpen) {
-    return (
-      <div className="fixed bottom-4 right-4 z-50">
-        <Button
-          onClick={() => setIsOpen(true)}
-          className="h-14 w-14 rounded-full shadow-lg bg-primary hover:bg-primary/90"
-          size="icon"
-        >
-          <MessageCircle className="h-6 w-6" />
-        </Button>
-      </div>
-    );
+    return null;
   }
 
   return (
@@ -273,7 +237,7 @@ const AvoBot = () => {
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <CardTitle className="text-lg">Avo Assistant</CardTitle>
+              <CardTitle className="text-lg">Avo Bot</CardTitle>
               <Badge variant="outline" className="text-xs">Online</Badge>
             </div>
             <div className="flex items-center gap-1">
@@ -288,7 +252,7 @@ const AvoBot = () => {
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => setIsOpen(false)}
+                onClick={onClose}
                 className="h-8 w-8"
               >
                 <X className="h-4 w-4" />
