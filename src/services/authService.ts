@@ -30,7 +30,7 @@ export const authenticateUser = async (
     let authSuccess = false;
     
     if (userType === 'admin' && password) {
-      // Demo admin credentials - updated to include all admin emails
+      // Demo admin credentials - all use admin123 password
       if ((sanitizedEmail === 'admin@avocop.com' || 
            sanitizedEmail === 'naveen.v1@slksoftware.com' || 
            sanitizedEmail === 'reema.jain@slksoftware.com') && 

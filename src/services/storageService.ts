@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { sanitizeFileName, generateUniqueFileName } from '@/utils/fileUtils';
 
@@ -51,23 +50,17 @@ export class StorageService {
         throw new Error('Permission denied: You must be logged in as an admin to upload files.');
       }
 
-      // For authenticated users (including demo), always try Supabase first
-      if (!isDemoMode) {
-        // Real Supabase user - upload directly
-        console.log('Attempting Supabase upload for authenticated user');
-        
-        const { data, error } = await supabase.storage
-          .from('courses')
-          .upload(finalPath, file, {
-            cacheControl: '3600',
-            upsert: true
-          });
+      // Always try Supabase first for authenticated users
+      console.log('Attempting Supabase upload to courses bucket');
+      
+      const { data, error } = await supabase.storage
+        .from('courses')
+        .upload(finalPath, file, {
+          cacheControl: '3600',
+          upsert: true
+        });
 
-        if (error) {
-          console.error('Storage upload error:', error);
-          throw new Error(`File upload failed: ${error.message}`);
-        }
-
+      if (!error && data) {
         console.log('File uploaded successfully to courses bucket:', data);
 
         const { data: publicUrl } = supabase.storage
@@ -79,35 +72,14 @@ export class StorageService {
         
         return finalUrl;
       } else {
-        // Demo mode - try Supabase first, fall back to demo if it fails
-        try {
-          console.log('Demo mode: Attempting Supabase upload first');
-          
-          const { data, error } = await supabase.storage
-            .from('courses')
-            .upload(finalPath, file, {
-              cacheControl: '3600',
-              upsert: true
-            });
-
-          if (!error && data) {
-            console.log('Demo mode: Supabase upload successful:', data);
-            
-            const { data: publicUrl } = supabase.storage
-              .from('courses')
-              .getPublicUrl(data.path);
-
-            const finalUrl = publicUrl.publicUrl;
-            console.log('Demo mode: Generated public URL from courses bucket:', finalUrl);
-            
-            return finalUrl;
-          } else {
-            console.log('Demo mode: Supabase upload failed, falling back to demo storage');
-            return this.handleDemoModeUpload(file, finalPath);
-          }
-        } catch (supabaseError) {
-          console.log('Demo mode: Supabase error, falling back to demo storage:', supabaseError);
+        console.log('Supabase upload failed, error:', error);
+        
+        // Only fall back to demo mode if user is in demo mode
+        if (isDemoMode) {
+          console.log('Demo mode: Falling back to demo storage');
           return this.handleDemoModeUpload(file, finalPath);
+        } else {
+          throw new Error(`File upload failed: ${error?.message || 'Unknown error'}`);
         }
       }
       

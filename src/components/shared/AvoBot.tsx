@@ -44,31 +44,35 @@ const AvoBot: React.FC<AvoBotProps> = ({ isOpen, onClose }) => {
       synthRef.current = window.speechSynthesis;
     }
 
-    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      recognitionRef.current = new SpeechRecognition();
-      recognitionRef.current.continuous = false;
-      recognitionRef.current.interimResults = false;
-      recognitionRef.current.lang = 'en-US';
+    // Check for speech recognition support with proper type checking
+    if (typeof window !== 'undefined') {
+      const SpeechRecognitionConstructor = window.SpeechRecognition || window.webkitSpeechRecognition;
+      
+      if (SpeechRecognitionConstructor) {
+        recognitionRef.current = new SpeechRecognitionConstructor();
+        recognitionRef.current.continuous = false;
+        recognitionRef.current.interimResults = false;
+        recognitionRef.current.lang = 'en-US';
 
-      recognitionRef.current.onresult = (event) => {
-        const transcript = event.results[0][0].transcript;
-        setInputText(transcript);
-        setIsListening(false);
-      };
+        recognitionRef.current.onresult = (event) => {
+          const transcript = event.results[0][0].transcript;
+          setInputText(transcript);
+          setIsListening(false);
+        };
 
-      recognitionRef.current.onerror = () => {
-        setIsListening(false);
-        toast({
-          title: "Voice Recognition Error",
-          description: "Could not process your voice input. Please try typing instead.",
-          variant: "destructive",
-        });
-      };
+        recognitionRef.current.onerror = () => {
+          setIsListening(false);
+          toast({
+            title: "Voice Recognition Error",
+            description: "Could not process your voice input. Please try typing instead.",
+            variant: "destructive",
+          });
+        };
 
-      recognitionRef.current.onend = () => {
-        setIsListening(false);
-      };
+        recognitionRef.current.onend = () => {
+          setIsListening(false);
+        };
+      }
     }
 
     return () => {
@@ -146,7 +150,8 @@ const AvoBot: React.FC<AvoBotProps> = ({ isOpen, onClose }) => {
       voice.name.toLowerCase().includes('female') || 
       voice.name.toLowerCase().includes('zira') ||
       voice.name.toLowerCase().includes('susan') ||
-      voice.name.toLowerCase().includes('hazel')
+      voice.name.toLowerCase().includes('hazel') ||
+      voice.name.toLowerCase().includes('samantha')
     );
     
     if (femaleVoices.length > 0) {
