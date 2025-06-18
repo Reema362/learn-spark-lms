@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { DatabaseService } from '@/services/database';
 
@@ -14,7 +13,7 @@ export const useCourseCategories = () => {
     queryKey: ['course-categories'],
     queryFn: DatabaseService.getCourseCategories,
     staleTime: 5 * 60 * 1000, // 5 minutes
-    cacheTime: 10 * 60 * 1000, // 10 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes (renamed from cacheTime)
     // Add deduplication at the hook level as well
     select: (data) => {
       if (!data) return [];
