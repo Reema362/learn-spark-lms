@@ -30,11 +30,11 @@ export const authenticateUser = async (
     let authSuccess = false;
     
     if (userType === 'admin' && password) {
-      // Demo admin credentials - all use admin123 password
+      // Demo admin credentials - all use AdminPass2024!Strong password
       if ((sanitizedEmail === 'admin@avocop.com' || 
            sanitizedEmail === 'naveen.v1@slksoftware.com' || 
            sanitizedEmail === 'reema.jain@slksoftware.com') && 
-          password === 'admin123') {
+          password === 'AdminPass2024!Strong') {
         
         const adminName = sanitizedEmail === 'reema.jain@slksoftware.com' ? 'Reema Jain' :
                          sanitizedEmail === 'naveen.v1@slksoftware.com' ? 'Naveen V' : 'Demo Admin';

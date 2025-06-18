@@ -236,9 +236,9 @@ const AvoBot: React.FC<AvoBotProps> = ({ isOpen, onClose }) => {
   }
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 w-80 h-96">
+    <div className="fixed bottom-4 right-4 z-50 w-80 h-[500px]">
       <Card className="h-full flex flex-col shadow-xl">
-        <CardHeader className="pb-2">
+        <CardHeader className="pb-2 flex-shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <CardTitle className="text-lg">Avo Bot</CardTitle>
@@ -265,9 +265,9 @@ const AvoBot: React.FC<AvoBotProps> = ({ isOpen, onClose }) => {
           </div>
         </CardHeader>
         
-        <CardContent className="flex-1 flex flex-col p-3">
-          <ScrollArea className="flex-1 pr-2">
-            <div className="space-y-3">
+        <CardContent className="flex-1 flex flex-col p-3 min-h-0">
+          <ScrollArea className="flex-1 w-full pr-2">
+            <div className="space-y-3 pb-2">
               {messages.map((message) => (
                 <div
                   key={message.id}
@@ -280,7 +280,7 @@ const AvoBot: React.FC<AvoBotProps> = ({ isOpen, onClose }) => {
                         : 'bg-muted mr-2'
                     }`}
                   >
-                    <p className="whitespace-pre-wrap">{message.text}</p>
+                    <p className="whitespace-pre-wrap break-words">{message.text}</p>
                     <p className="text-xs opacity-70 mt-1">
                       {message.timestamp.toLocaleTimeString([], { 
                         hour: '2-digit', 
@@ -294,7 +294,7 @@ const AvoBot: React.FC<AvoBotProps> = ({ isOpen, onClose }) => {
             </div>
           </ScrollArea>
           
-          <div className="flex gap-2 mt-3">
+          <div className="flex gap-2 mt-3 flex-shrink-0">
             <Input
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}

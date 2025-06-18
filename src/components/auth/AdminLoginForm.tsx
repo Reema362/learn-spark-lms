@@ -86,10 +86,10 @@ const AdminLoginForm = () => {
           <p className="text-sm font-medium mb-2">Demo Credentials:</p>
           <div className="space-y-1 text-xs">
             <p><strong>Email:</strong> naveen.v1@slksoftware.com</p>
-            <p><strong>Password:</strong> admin123</p>
+            <p><strong>Password:</strong> AdminPass2024!Strong</p>
             <hr className="my-2" />
             <p><strong>Email:</strong> reema.jain@slksoftware.com</p>
-            <p><strong>Password:</strong> admin123</p>
+            <p><strong>Password:</strong> AdminPass2024!Strong</p>
           </div>
         </div>
       </CardContent>
