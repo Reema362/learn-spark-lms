@@ -51,71 +51,91 @@ export class StorageService {
         throw new Error('Permission denied: You must be logged in as an admin to upload files.');
       }
 
-      if (isDemoMode) {
-        // For demo mode, simulate file upload by storing in localStorage
-        console.log('Demo mode: Simulating file upload');
+      // Always try to upload to Supabase first, fall back to demo mode only if needed
+      try {
+        console.log('Attempting Supabase upload to courses bucket');
         
-        // Create a proper demo URL that can be used for video playback
-        const fileUrl = URL.createObjectURL(file);
-        const demoUrl = `demo://${finalPath}`;
-        
-        // Store demo file info in localStorage with the actual blob URL
-        const demoFiles = JSON.parse(localStorage.getItem('demo-uploaded-files') || '[]');
-        const demoFile = {
-          path: finalPath,
-          url: demoUrl,
-          blobUrl: fileUrl, // Store the actual blob URL for playback
-          originalName: file.name,
-          uploadedAt: new Date().toISOString(),
-          size: file.size,
-          type: file.type
-        };
-        demoFiles.push(demoFile);
-        localStorage.setItem('demo-uploaded-files', JSON.stringify(demoFiles));
-        
-        console.log('Demo file upload simulated:', demoUrl);
-        return demoUrl;
-      }
+        // Upload to courses bucket with proper error handling
+        const { data, error } = await supabase.storage
+          .from('courses')
+          .upload(finalPath, file, {
+            cacheControl: '3600',
+            upsert: true
+          });
 
-      console.log('Real authentication verified, proceeding with Supabase upload');
-      
-      // Upload to courses bucket with proper error handling
-      const { data, error } = await supabase.storage
-        .from('courses')
-        .upload(finalPath, file, {
-          cacheControl: '3600',
-          upsert: true
-        });
-
-      if (error) {
-        console.error('Storage upload error:', error);
-        console.error('Error message:', error.message);
-        
-        // Provide more specific error messages
-        if (error.message.includes('row-level security') || error.message.includes('permission')) {
-          throw new Error('Permission denied: Admin access required to upload files to courses bucket. Please contact your administrator.');
-        } else if (error.message.includes('bucket')) {
-          throw new Error('Storage error: Courses bucket not found or not accessible.');
-        } else {
-          throw new Error(`File upload failed: ${error.message}`);
+        if (error) {
+          console.error('Storage upload error:', error);
+          console.error('Error message:', error.message);
+          
+          // If Supabase fails and we're in demo mode, fall back to local storage
+          if (isDemoMode) {
+            console.log('Supabase upload failed, falling back to demo mode');
+            return this.handleDemoModeUpload(file, finalPath);
+          }
+          
+          // Provide more specific error messages for real users
+          if (error.message.includes('row-level security') || error.message.includes('permission')) {
+            throw new Error('Permission denied: Admin access required to upload files to courses bucket. Please contact your administrator.');
+          } else if (error.message.includes('bucket')) {
+            throw new Error('Storage error: Courses bucket not found or not accessible.');
+          } else {
+            throw new Error(`File upload failed: ${error.message}`);
+          }
         }
+
+        console.log('File uploaded successfully to courses bucket:', data);
+
+        // Get the proper public URL for the uploaded file
+        const { data: publicUrl } = supabase.storage
+          .from('courses')
+          .getPublicUrl(data.path);
+
+        const finalUrl = publicUrl.publicUrl;
+        console.log('Generated public URL from courses bucket:', finalUrl);
+        
+        return finalUrl;
+        
+      } catch (supabaseError: any) {
+        console.error('Supabase upload attempt failed:', supabaseError);
+        
+        // Fall back to demo mode if available
+        if (isDemoMode) {
+          console.log('Falling back to demo mode upload');
+          return this.handleDemoModeUpload(file, finalPath);
+        }
+        
+        throw supabaseError;
       }
-
-      console.log('File uploaded successfully to courses bucket:', data);
-
-      // Get the proper public URL for the uploaded file
-      const { data: publicUrl } = supabase.storage
-        .from('courses')
-        .getPublicUrl(data.path);
-
-      const finalUrl = publicUrl.publicUrl;
-      console.log('Generated public URL from courses bucket:', finalUrl);
       
-      return finalUrl;
     } catch (error: any) {
       console.error('File upload failed:', error);
       throw new Error(`File upload failed: ${error.message}`);
     }
+  }
+
+  private static handleDemoModeUpload(file: File, finalPath: string): string {
+    console.log('Demo mode: Simulating file upload');
+    
+    // Create a proper demo URL that can be used for video playback
+    const fileUrl = URL.createObjectURL(file);
+    const demoUrl = `demo://${finalPath}`;
+    
+    // Store demo file info in localStorage with the actual blob URL
+    const demoFiles = JSON.parse(localStorage.getItem('demo-uploaded-files') || '[]');
+    const demoFile = {
+      path: finalPath,
+      url: demoUrl,
+      blobUrl: fileUrl, // Store the actual blob URL for playback
+      originalName: file.name,
+      uploadedAt: new Date().toISOString(),
+      size: file.size,
+      type: file.type
+    };
+    demoFiles.push(demoFile);
+    localStorage.setItem('demo-uploaded-files', JSON.stringify(demoFiles));
+    
+    console.log('Demo file upload simulated:', demoUrl);
+    return demoUrl;
   }
 
   static async deleteFile(path: string) {
