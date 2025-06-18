@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Send, Bot, Volume2, VolumeX } from 'lucide-react';
+import { Send, Bot } from 'lucide-react';
 
 interface AvoBotProps {
   isOpen: boolean;
@@ -22,14 +22,13 @@ const AvoBot: React.FC<AvoBotProps> = ({ isOpen, onClose }) => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      text: "Hello! I'm AVO Bot, your information security expert. How can I help you stay secure today?",
+      text: "Hello! I'm AVO Bot, your AI assistant for the Learning Management System. I can help you with LMS tasks like uploading content, managing courses, and understanding platform features. I also provide guidance on information security topics. How can I assist you today?",
       sender: 'bot',
       timestamp: new Date()
     }
   ]);
   const [inputMessage, setInputMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-  const [speechEnabled, setSpeechEnabled] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to bottom when new messages are added
@@ -42,46 +41,44 @@ const AvoBot: React.FC<AvoBotProps> = ({ isOpen, onClose }) => {
     }
   }, [messages]);
 
-  const speak = (text: string) => {
-    if (speechEnabled && 'speechSynthesis' in window) {
-      const utterance = new SpeechSynthesisUtterance(text);
-      const voices = window.speechSynthesis.getVoices();
-      
-      // Find a female voice
-      const femaleVoice = voices.find(voice => 
-        voice.name.toLowerCase().includes('female') ||
-        voice.name.toLowerCase().includes('woman') ||
-        voice.name.toLowerCase().includes('samantha') ||
-        voice.name.toLowerCase().includes('karen') ||
-        voice.name.toLowerCase().includes('victoria') ||
-        voice.name.toLowerCase().includes('zira')
-      );
-      
-      if (femaleVoice) {
-        utterance.voice = femaleVoice;
-      }
-      
-      utterance.rate = 0.9;
-      utterance.pitch = 1.1;
-      window.speechSynthesis.speak(utterance);
-    }
-  };
-
-  const getSecurityResponse = (userMessage: string): string => {
+  const getLMSAndSecurityResponse = (userMessage: string): string => {
     const lowerMessage = userMessage.toLowerCase();
     
-    if (lowerMessage.includes('password')) {
-      return "Strong passwords are crucial! Use at least 12 characters with a mix of uppercase, lowercase, numbers, and symbols. Consider using a password manager for unique passwords across all accounts.";
-    } else if (lowerMessage.includes('phishing')) {
-      return "Great question about phishing! Always verify sender authenticity, check URLs carefully, never click suspicious links, and when in doubt, contact the sender through a different channel.";
-    } else if (lowerMessage.includes('2fa') || lowerMessage.includes('two factor')) {
-      return "Two-factor authentication adds an extra security layer! Enable it on all important accounts using authenticator apps, SMS, or hardware keys. It significantly reduces the risk of unauthorized access.";
+    // LMS-related responses
+    if (lowerMessage.includes('upload') && lowerMessage.includes('video')) {
+      return "To upload a video: 1) Go to Course Management in the admin panel, 2) Click 'Create Course' or edit an existing course, 3) In the course form, look for the 'Upload Video' section, 4) Select your video file (MP4 recommended), 5) Wait for upload to complete, 6) Save your course. The video will be stored securely in our system.";
+    } else if (lowerMessage.includes('publish') && (lowerMessage.includes('course') || lowerMessage.includes('draft'))) {
+      return "To publish a course: 1) Navigate to Course Management, 2) Find your draft course, 3) Click the 'Edit' button, 4) Change the status from 'Draft' to 'Published', 5) Click 'Save Changes'. Published courses will be visible to learners immediately.";
+    } else if (lowerMessage.includes('video') && (lowerMessage.includes('not playing') || lowerMessage.includes('won\'t play'))) {
+      return "If videos aren't playing: 1) Check your internet connection, 2) Try refreshing the page, 3) Ensure you're using a supported browser (Chrome, Firefox, Safari), 4) Clear your browser cache, 5) If the issue persists, the video might still be processing - wait a few minutes and try again.";
+    } else if (lowerMessage.includes('published courses') || lowerMessage.includes('my courses')) {
+      return "To view your courses: For Admins - Go to 'Course Management' in the admin dashboard to see all courses you've created. For Learners - Visit 'My Courses' in the learner dashboard to see enrolled courses and track your progress.";
+    } else if (lowerMessage.includes('reset password') || lowerMessage.includes('forgot password')) {
+      return "To reset your password: 1) Go to the login page, 2) Click 'Forgot Password?', 3) Enter your email address, 4) Check your email for reset instructions, 5) Follow the link in the email to create a new password. Contact support if you don't receive the email.";
+    } else if (lowerMessage.includes('progress') || lowerMessage.includes('completion')) {
+      return "To check course progress: 1) Go to 'My Courses' in the learner dashboard, 2) Each course shows your completion percentage, 3) Click on a course to see detailed progress, 4) Completed sections are marked with checkmarks. Admins can view all learner progress in the Analytics section.";
+    } else if (lowerMessage.includes('navigate') || lowerMessage.includes('how to use')) {
+      return "Platform navigation tips: Use the sidebar menu to access different sections. Admins have access to Course Management, User Management, and Analytics. Learners can access My Courses, Certifications, and Help. The search function helps you find specific content quickly.";
+    }
+    
+    // Security-related responses
+    else if (lowerMessage.includes('phishing')) {
+      return "Phishing is a cybercrime where attackers impersonate legitimate organizations to steal sensitive information like passwords or credit card details. Signs of phishing: suspicious email addresses, urgent language, requests for personal information, suspicious links. Always verify sender authenticity and never click suspicious links.";
+    } else if (lowerMessage.includes('social engineering')) {
+      return "Social engineering is the psychological manipulation of people to divulge confidential information or perform actions that compromise security. Common tactics include pretexting (creating fake scenarios), baiting (offering something enticing), and tailgating (following someone into secure areas). Always verify identities before sharing information.";
+    } else if (lowerMessage.includes('password') && !lowerMessage.includes('reset')) {
+      return "Strong password best practices: Use at least 12 characters with a mix of uppercase, lowercase, numbers, and symbols. Avoid dictionary words and personal information. Use unique passwords for each account. Consider using a password manager to generate and store complex passwords securely.";
     } else if (lowerMessage.includes('malware') || lowerMessage.includes('virus')) {
-      return "To protect against malware: keep software updated, use reputable antivirus, avoid suspicious downloads, and regularly backup your data. Be cautious with email attachments and USB devices.";
-    } else if (lowerMessage.includes('wifi') || lowerMessage.includes('network')) {
-      return "For secure WiFi: use WPA3 encryption, avoid public WiFi for sensitive tasks, use VPN when needed, and change default router passwords. Never auto-connect to unknown networks.";
-    } else {
-      return "I'm here to help with information security! Ask me about passwords, phishing, malware, network security, data protection, or any other cybersecurity topics you'd like to learn about.";
+      return "Malware is malicious software designed to harm computers or steal data. Protection methods: Keep software updated, use reputable antivirus, avoid suspicious downloads, be cautious with email attachments, regularly backup data, and scan USB devices before use.";
+    } else if (lowerMessage.includes('wifi') || lowerMessage.includes('network security')) {
+      return "WiFi security tips: Use WPA3 encryption, avoid public WiFi for sensitive tasks, use VPN when needed, change default router passwords, disable WPS, and never auto-connect to unknown networks. For sensitive work, prefer wired connections when possible.";
+    } else if (lowerMessage.includes('two factor') || lowerMessage.includes('2fa') || lowerMessage.includes('mfa')) {
+      return "Two-Factor Authentication (2FA) adds an extra security layer beyond passwords. Enable 2FA on all important accounts using authenticator apps (Google Authenticator, Authy), SMS codes, or hardware keys. This significantly reduces the risk of unauthorized access even if passwords are compromised.";
+    }
+    
+    // General help
+    else {
+      return "I'm here to help with both LMS tasks and information security! For LMS help, ask about uploading videos, publishing courses, checking progress, or navigating the platform. For security guidance, ask about phishing, passwords, malware, or other cybersecurity topics. What specific area can I assist you with?";
     }
   };
 
@@ -103,14 +100,13 @@ const AvoBot: React.FC<AvoBotProps> = ({ isOpen, onClose }) => {
     setTimeout(() => {
       const botResponse: Message = {
         id: (Date.now() + 1).toString(),
-        text: getSecurityResponse(inputMessage),
+        text: getLMSAndSecurityResponse(inputMessage),
         sender: 'bot',
         timestamp: new Date()
       };
 
       setMessages(prev => [...prev, botResponse]);
       setIsTyping(false);
-      speak(botResponse.text);
     }, 1000 + Math.random() * 1000);
   };
 
@@ -127,22 +123,11 @@ const AvoBot: React.FC<AvoBotProps> = ({ isOpen, onClose }) => {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Bot className="h-5 w-5 text-primary" />
-            AVO Bot - Security Expert
+            AVO Bot - LMS Chat Assistant
           </DialogTitle>
           <DialogDescription>
-            Your personal information security assistant
+            Your AI assistant for Learning Management System and Information Security
           </DialogDescription>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setSpeechEnabled(!speechEnabled)}
-              className="flex items-center gap-2"
-            >
-              {speechEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
-              {speechEnabled ? 'Voice On' : 'Voice Off'}
-            </Button>
-          </div>
         </DialogHeader>
 
         <div className="flex-1 flex flex-col min-h-0">
@@ -186,7 +171,7 @@ const AvoBot: React.FC<AvoBotProps> = ({ isOpen, onClose }) => {
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
               onKeyPress={handleKeyPress}
-              placeholder="Ask me about security..."
+              placeholder="Ask me about LMS tasks or security concepts..."
               className="flex-1"
             />
             <Button onClick={handleSendMessage} disabled={!inputMessage.trim()}>

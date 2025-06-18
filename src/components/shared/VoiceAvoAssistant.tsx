@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -21,7 +22,7 @@ const VoiceAvoAssistant: React.FC<VoiceAvoAssistantProps> = ({ isOpen, onClose }
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      text: "Hi there! I'm AVO Assistant, your intelligent voice companion. You can speak to me or type your questions. How can I help you today?",
+      text: "Hi there! I'm AVO Assistant, your voice-enabled AI guide for the Learning Management System. I can help you navigate courses, upload content, and understand security concepts - all hands-free! You can speak to me or type your questions. What can I help you with today?",
       sender: 'assistant',
       timestamp: new Date()
     }
@@ -149,23 +150,42 @@ const VoiceAvoAssistant: React.FC<VoiceAvoAssistantProps> = ({ isOpen, onClose }
     }
   };
 
-  const getAssistantResponse = (userMessage: string): string => {
+  const getLMSAndSecurityVoiceResponse = (userMessage: string): string => {
     const lowerMessage = userMessage.toLowerCase();
     
-    if (lowerMessage.includes('course') || lowerMessage.includes('learn')) {
-      return "I can help you find and navigate courses! You can browse available courses, track your progress, and access video content. Would you like me to guide you through any specific course features?";
-    } else if (lowerMessage.includes('video') || lowerMessage.includes('play')) {
-      return "For video playback, simply click on any course with video content. The videos are stored securely and should load smoothly. If you're having trouble, try refreshing the page or checking your internet connection.";
-    } else if (lowerMessage.includes('help') || lowerMessage.includes('how')) {
-      return "I'm here to help! You can ask me about navigating the platform, understanding features, troubleshooting issues, or getting the most out of your learning experience. What specific area would you like help with?";
-    } else if (lowerMessage.includes('certificate') || lowerMessage.includes('badge')) {
-      return "Certificates and badges are earned by completing courses and achieving specific milestones. Check your progress in the Certifications section to see what you've earned and what's available to unlock!";
-    } else if (lowerMessage.includes('profile') || lowerMessage.includes('account')) {
-      return "You can manage your profile settings and view your learning progress from your account section. This includes updating personal information, viewing completed courses, and tracking achievements.";
-    } else if (lowerMessage.includes('voice') || lowerMessage.includes('speak')) {
-      return "I'm your voice-enabled assistant! You can speak to me by clicking the microphone button, and I'll respond with voice. I'm designed to help you navigate the platform hands-free.";
-    } else {
-      return "I'm here to assist you with anything related to the platform! Feel free to ask me about courses, features, navigation, or any questions you might have about your learning journey. You can speak to me or type your questions.";
+    // LMS-related voice responses (shorter for voice)
+    if (lowerMessage.includes('upload') && lowerMessage.includes('video')) {
+      return "To upload a video, go to Course Management, click Create Course or edit existing, then select Upload Video and choose your file. Wait for upload to complete and save.";
+    } else if (lowerMessage.includes('publish') && (lowerMessage.includes('course') || lowerMessage.includes('draft'))) {
+      return "To publish a course, go to Course Management, find your draft, click Edit, change status to Published, then save changes.";
+    } else if (lowerMessage.includes('video') && (lowerMessage.includes('not playing') || lowerMessage.includes('won\'t play'))) {
+      return "If videos won't play, check your internet connection, refresh the page, and make sure you're using Chrome, Firefox, or Safari. Try clearing your browser cache if needed.";
+    } else if (lowerMessage.includes('available courses') || lowerMessage.includes('my courses')) {
+      return "For your courses, admins can check Course Management in the dashboard. Learners should visit My Courses to see enrolled courses and track progress.";
+    } else if (lowerMessage.includes('reset password') || lowerMessage.includes('forgot password')) {
+      return "To reset your password, go to the login page, click Forgot Password, enter your email, and follow the instructions sent to your email.";
+    } else if (lowerMessage.includes('progress') || lowerMessage.includes('completion')) {
+      return "Check course progress in My Courses section. Each course shows completion percentage. Click on courses for detailed progress tracking.";
+    }
+    
+    // Security-related voice responses (concise for voice)
+    else if (lowerMessage.includes('phishing')) {
+      return "Phishing is when criminals fake legitimate messages to steal your information. Watch for suspicious emails, urgent language, and requests for personal data. Always verify the sender first.";
+    } else if (lowerMessage.includes('social engineering')) {
+      return "Social engineering is psychological manipulation to trick people into sharing confidential information. Common tactics include fake scenarios and following people into secure areas. Always verify identities.";
+    } else if (lowerMessage.includes('password') && !lowerMessage.includes('reset')) {
+      return "Use strong passwords with at least twelve characters, mixing uppercase, lowercase, numbers, and symbols. Use unique passwords for each account and consider a password manager.";
+    } else if (lowerMessage.includes('malware') || lowerMessage.includes('virus')) {
+      return "Malware is harmful software. Protect yourself by keeping software updated, using antivirus, avoiding suspicious downloads, and scanning attachments before opening.";
+    } else if (lowerMessage.includes('wifi') || lowerMessage.includes('network security')) {
+      return "For WiFi security, use WPA3 encryption, avoid public WiFi for sensitive tasks, use VPN when needed, and change default router passwords.";
+    } else if (lowerMessage.includes('two factor') || lowerMessage.includes('2fa')) {
+      return "Two-factor authentication adds extra security beyond passwords. Enable it on important accounts using authenticator apps, SMS, or hardware keys for better protection.";
+    }
+    
+    // General help
+    else {
+      return "I can help with LMS tasks like course management, video uploads, and progress tracking. I also provide security guidance on topics like phishing and passwords. What would you like to know about?";
     }
   };
 
@@ -176,7 +196,7 @@ const VoiceAvoAssistant: React.FC<VoiceAvoAssistantProps> = ({ isOpen, onClose }
     setTimeout(() => {
       const assistantResponse: Message = {
         id: (Date.now() + 1).toString(),
-        text: getAssistantResponse(message),
+        text: getLMSAndSecurityVoiceResponse(message),
         sender: 'assistant',
         timestamp: new Date()
       };
@@ -216,10 +236,10 @@ const VoiceAvoAssistant: React.FC<VoiceAvoAssistantProps> = ({ isOpen, onClose }
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <MessageCircle className="h-5 w-5 text-primary" />
-            AVO Assistant - Voice AI Helper
+            AVO Assistant - LMS Voice Guide
           </DialogTitle>
           <DialogDescription>
-            Your intelligent voice-enabled learning companion
+            Your voice-enabled AI guide for Learning Management System and Security
           </DialogDescription>
           <div className="flex items-center gap-2">
             <Button
@@ -284,7 +304,7 @@ const VoiceAvoAssistant: React.FC<VoiceAvoAssistantProps> = ({ isOpen, onClose }
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
               onKeyPress={handleKeyPress}
-              placeholder="Type your message or use voice input..."
+              placeholder="Type your message or use voice input for LMS and security help..."
               className="flex-1"
             />
             <Button onClick={handleSendMessage} disabled={!inputMessage.trim()}>
