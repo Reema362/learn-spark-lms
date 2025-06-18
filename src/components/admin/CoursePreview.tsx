@@ -54,7 +54,7 @@ const CoursePreview: React.FC<CoursePreviewProps> = ({ course, isOpen, onClose }
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-2xl h-[90vh] flex flex-col">
+        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>{course.title}</DialogTitle>
             <DialogDescription>Course preview and details</DialogDescription>
@@ -112,11 +112,11 @@ const CoursePreview: React.FC<CoursePreviewProps> = ({ course, isOpen, onClose }
               <div className="space-y-2">
                 <h3 className="font-semibold">Description</h3>
                 {course.description ? (
-                  <ScrollArea className="max-h-32 border rounded-lg p-3">
+                  <div className="max-h-32 overflow-y-auto border rounded-lg p-3 bg-muted/30">
                     <p className="text-muted-foreground text-sm whitespace-pre-wrap">
                       {course.description}
                     </p>
-                  </ScrollArea>
+                  </div>
                 ) : (
                   <p className="text-muted-foreground text-sm">No description available</p>
                 )}
@@ -129,9 +129,9 @@ const CoursePreview: React.FC<CoursePreviewProps> = ({ course, isOpen, onClose }
                     <FileText className="h-4 w-4" />
                     Course Content
                   </h3>
-                  <ScrollArea className="bg-muted/50 p-4 rounded-lg max-h-40">
+                  <div className="bg-muted/50 p-4 rounded-lg max-h-40 overflow-y-auto">
                     <p className="text-sm whitespace-pre-wrap">{course.content}</p>
-                  </ScrollArea>
+                  </div>
                 </div>
               )}
 
@@ -143,7 +143,7 @@ const CoursePreview: React.FC<CoursePreviewProps> = ({ course, isOpen, onClose }
                     <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                       <div className="flex items-center gap-2">
                         <Video className="h-4 w-4 text-blue-500" />
-                        <span className="text-sm">Video Content</span>
+                        <span className="text-sm">Video Content Available</span>
                       </div>
                       <Button 
                         variant="outline" 
@@ -169,19 +169,6 @@ const CoursePreview: React.FC<CoursePreviewProps> = ({ course, isOpen, onClose }
                   {!videoUrl && !course.thumbnail_url && (
                     <p className="text-sm text-muted-foreground">No media files uploaded</p>
                   )}
-                </div>
-              </div>
-
-              {/* Storage Information */}
-              <div className="space-y-2">
-                <h3 className="font-semibold">Storage Information</h3>
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                  <p className="text-sm text-blue-800">
-                    <strong>Video Storage:</strong> Supabase Storage - courses bucket
-                  </p>
-                  <p className="text-xs text-blue-600 mt-1">
-                    All course videos are securely stored in the dedicated courses bucket
-                  </p>
                 </div>
               </div>
 
@@ -217,17 +204,6 @@ const CoursePreview: React.FC<CoursePreviewProps> = ({ course, isOpen, onClose }
                   </div>
                 </div>
               </div>
-
-              {/* Debug Information */}
-              {videoUrl && (
-                <div className="space-y-2">
-                  <h3 className="font-semibold text-xs text-muted-foreground">Debug Info</h3>
-                  <div className="bg-muted/30 p-2 rounded text-xs font-mono break-all">
-                    <p><strong>Original Video URL:</strong> {course.video_url}</p>
-                    <p><strong>Public Video URL:</strong> {videoUrl}</p>
-                  </div>
-                </div>
-              )}
             </div>
           </ScrollArea>
         </DialogContent>

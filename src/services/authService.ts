@@ -30,12 +30,20 @@ export const authenticateUser = async (
     let authSuccess = false;
     
     if (userType === 'admin' && password) {
-      // Demo admin credentials
-      if (sanitizedEmail === 'admin@avocop.com' && password === 'admin123') {
+      // Demo admin credentials - updated to include both emails
+      if ((sanitizedEmail === 'admin@avocop.com' || 
+           sanitizedEmail === 'naveen.v1@slksoftware.com' || 
+           sanitizedEmail === 'reema.jain@slksoftware.com') && 
+          password === 'admin123') {
+        
+        const adminName = sanitizedEmail === 'reema.jain@slksoftware.com' ? 'Reema Jain' :
+                         sanitizedEmail === 'naveen.v1@slksoftware.com' ? 'Naveen V' : 'Demo Admin';
+        
         mockUser = {
-          id: '1',
+          id: sanitizedEmail === 'reema.jain@slksoftware.com' ? '2' :
+              sanitizedEmail === 'naveen.v1@slksoftware.com' ? '3' : '1',
           email: sanitizedEmail,
-          name: 'Demo Admin',
+          name: adminName,
           role: 'admin'
         };
         authSuccess = true;
