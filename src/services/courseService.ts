@@ -263,11 +263,11 @@ export class CourseService {
         return;
       }
 
-      // Create enrollments for all learners
+      // Create enrollments for all learners with proper typing
       const enrollments = learners.map(learner => ({
         user_id: learner.id,
         course_id: courseId,
-        status: 'not_started',
+        status: 'not_started' as const,
         progress_percentage: 0,
         enrolled_at: new Date().toISOString()
       }));

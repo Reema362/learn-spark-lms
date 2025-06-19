@@ -1,5 +1,5 @@
 
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
 export const useCourseEnrollments = (userId?: string) => {
@@ -106,5 +106,182 @@ export const useAutoEnrollInPublishedCourses = (userId?: string) => {
     },
     enabled: !!userId,
     staleTime: 30 * 1000, // Check every 30 seconds
+  });
+};
+
+// Add missing exports for CourseViewer
+export const useEnrollUserInCourse = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ userId, courseId }: { userId: string; courseId: string }) => {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session?.user) {
+        const { data, error } = await supabase
+          .from('course_enrollments')
+          .insert({
+            user_id: userId,
+            course_id: courseId,
+            status: 'not_started',
+            progress_percentage: 0,
+            enrolled_at: new Date().toISOString()
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
+        return data;
+      } else {
+        // Demo mode
+        const demoEnrollments = JSON.parse(localStorage.getItem('demo-enrollments') || '[]');
+        const newEnrollment = {
+          id: crypto.randomUUID(),
+          user_id: userId,
+          course_id: courseId,
+          status: 'not_started',
+          progress_percentage: 0,
+          enrolled_at: new Date().toISOString()
+        };
+        demoEnrollments.push(newEnrollment);
+        localStorage.setItem('demo-enrollments', JSON.stringify(demoEnrollments));
+        return newEnrollment;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['course-enrollments'] });
+    },
+  });
+};
+
+export const useUpdateLessonProgress = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ userId, lessonId, progress }: { userId: string; lessonId: string; progress: number }) => {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session?.user) {
+        const { data, error } = await supabase
+          .from('lesson_progress')
+          .upsert({
+            user_id: userId,
+            lesson_id: lessonId,
+            progress_percentage: progress,
+            completed_at: progress === 100 ? new Date().toISOString() : null
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
+        return data;
+      } else {
+        // Demo mode - store in localStorage
+        const demoProgress = JSON.parse(localStorage.getItem('demo-lesson-progress') || '[]');
+        const existingIndex = demoProgress.findIndex((p: any) => 
+          p.user_id === userId && p.lesson_id === lessonId
+        );
+        
+        const progressData = {
+          id: crypto.randomUUID(),
+          user_id: userId,
+          lesson_id: lessonId,
+          progress_percentage: progress,
+          completed_at: progress === 100 ? new Date().toISOString() : null,
+          created_at: new Date().toISOString()
+        };
+        
+        if (existingIndex >= 0) {
+          demoProgress[existingIndex] = { ...demoProgress[existingIndex], ...progressData };
+        } else {
+          demoProgress.push(progressData);
+        }
+        
+        localStorage.setItem('demo-lesson-progress', JSON.stringify(demoProgress));
+        return progressData;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['lesson-progress'] });
+      queryClient.invalidateQueries({ queryKey: ['course-enrollments'] });
+    },
+  });
+};
+
+export const useCheckCourseCompletion = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ userId, courseId }: { userId: string; courseId: string }) => {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session?.user) {
+        // Check if all lessons are completed
+        const { data: lessons } = await supabase
+          .from('lessons')
+          .select('id')
+          .eq('course_id', courseId);
+
+        const { data: progress } = await supabase
+          .from('lesson_progress')
+          .select('lesson_id')
+          .eq('user_id', userId)
+          .eq('progress_percentage', 100);
+
+        const allCompleted = lessons?.length === progress?.length;
+
+        if (allCompleted) {
+          const { data, error } = await supabase
+            .from('course_enrollments')
+            .update({
+              status: 'completed',
+              progress_percentage: 100,
+              completed_at: new Date().toISOString()
+            })
+            .eq('user_id', userId)
+            .eq('course_id', courseId)
+            .select()
+            .single();
+
+          if (error) throw error;
+          return data;
+        }
+      } else {
+        // Demo mode
+        const demoLessons = JSON.parse(localStorage.getItem('demo-lessons') || '[]');
+        const courseLessons = demoLessons.filter((l: any) => l.course_id === courseId);
+        
+        const demoProgress = JSON.parse(localStorage.getItem('demo-lesson-progress') || '[]');
+        const completedLessons = demoProgress.filter((p: any) => 
+          p.user_id === userId && p.progress_percentage === 100 &&
+          courseLessons.some((l: any) => l.id === p.lesson_id)
+        );
+
+        const allCompleted = courseLessons.length === completedLessons.length && courseLessons.length > 0;
+
+        if (allCompleted) {
+          const demoEnrollments = JSON.parse(localStorage.getItem('demo-enrollments') || '[]');
+          const enrollmentIndex = demoEnrollments.findIndex((e: any) => 
+            e.user_id === userId && e.course_id === courseId
+          );
+          
+          if (enrollmentIndex >= 0) {
+            demoEnrollments[enrollmentIndex] = {
+              ...demoEnrollments[enrollmentIndex],
+              status: 'completed',
+              progress_percentage: 100,
+              completed_at: new Date().toISOString()
+            };
+            localStorage.setItem('demo-enrollments', JSON.stringify(demoEnrollments));
+            return demoEnrollments[enrollmentIndex];
+          }
+        }
+      }
+      
+      return null;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['course-enrollments'] });
+    },
   });
 };
