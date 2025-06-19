@@ -15,20 +15,51 @@ const Courses = () => {
   const [selectedCourse, setSelectedCourse] = useState<any>(null);
   const [courseViewerOpen, setCourseViewerOpen] = useState(false);
 
-  // Get current user
+  // Get current user with improved fallback
   const getCurrentUser = () => {
-    const authUser = JSON.parse(localStorage.getItem('supabase.auth.token') || 'null');
-    if (authUser?.user) return authUser.user;
+    // First check for Supabase auth
+    const authToken = localStorage.getItem('supabase.auth.token');
+    if (authToken) {
+      try {
+        const parsedToken = JSON.parse(authToken);
+        if (parsedToken?.user) {
+          return parsedToken.user;
+        }
+      } catch (e) {
+        console.log('Error parsing supabase token:', e);
+      }
+    }
     
-    const demoUser = JSON.parse(localStorage.getItem('avocop_user') || 'null');
-    return demoUser;
+    // Then check for app session (demo mode)
+    const demoUser = localStorage.getItem('avocop_user');
+    if (demoUser) {
+      try {
+        const parsedUser = JSON.parse(demoUser);
+        if (parsedUser && parsedUser.id) {
+          return parsedUser;
+        }
+      } catch (e) {
+        console.log('Error parsing demo user:', e);
+      }
+    }
+    
+    return null;
   };
 
   const currentUser = getCurrentUser();
+  console.log('Current user in learner courses:', currentUser);
+  console.log('All courses:', courses);
+  
   const { data: enrollments } = useCourseEnrollments(currentUser?.id);
 
-  // Filter only published courses for learners
-  const publishedCourses = courses?.filter(course => course.status === 'published') || [];
+  // Filter only published courses for learners and log the filtering process
+  const publishedCourses = courses?.filter(course => {
+    const isPublished = course.status === 'published';
+    console.log(`Course "${course.title}" status: ${course.status}, published: ${isPublished}`);
+    return isPublished;
+  }) || [];
+
+  console.log('Published courses for learner:', publishedCourses);
 
   // Create a map of course enrollments for quick lookup
   const enrollmentMap = new Map();
@@ -131,17 +162,29 @@ const Courses = () => {
   }
 
   if (error) {
+    console.error('Error loading courses:', error);
     return (
       <div className="space-y-6 animate-fade-in">
         <div className="flex justify-center items-center min-h-[400px]">
           <div className="text-center">
             <p className="text-muted-foreground">Error loading courses</p>
             <p className="text-sm text-muted-foreground mt-2">{error.message}</p>
+            <Button 
+              onClick={() => window.location.reload()} 
+              className="mt-4"
+              variant="outline"
+            >
+              Refresh Page
+            </Button>
           </div>
         </div>
       </div>
     );
   }
+
+  // Debug output
+  console.log('Total courses:', courses?.length || 0);
+  console.log('Published courses:', publishedCourses.length);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -201,8 +244,18 @@ const Courses = () => {
         {publishedCourses.length === 0 ? (
           <div className="text-center py-8">
             <BookOpen className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No Courses Available</h3>
-            <p className="text-muted-foreground">Check back later for new courses.</p>
+            <h3 className="text-lg font-semibold mb-2">No Published Courses Available</h3>
+            <p className="text-muted-foreground">
+              {courses?.length > 0 
+                ? "Courses are available but not yet published. Contact your administrator." 
+                : "Check back later for new courses."
+              }
+            </p>
+            {courses?.length > 0 && (
+              <p className="text-sm text-muted-foreground mt-2">
+                Total courses in system: {courses.length}
+              </p>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-6">
