@@ -42,10 +42,31 @@ export class CourseService {
       return data;
     } else {
       console.log('No Supabase session, checking for demo mode');
-      // Return demo courses for app session users
-      const demoCourses = JSON.parse(localStorage.getItem('demo-courses') || '[]');
+      // Get user session for demo mode
+      const userSession = localStorage.getItem('avocop_user');
+      if (!userSession) {
+        console.log('No user session found');
+        return [];
+      }
+
+      const user = JSON.parse(userSession);
       
-      // If no demo courses exist, create some default published courses for testing
+      // Try to get courses from a shared demo storage first (for cross-device sync)
+      const sharedDemoCourses = localStorage.getItem('shared-demo-courses');
+      let demoCourses = sharedDemoCourses ? JSON.parse(sharedDemoCourses) : [];
+      
+      // If no shared courses exist, try user-specific courses and migrate them
+      if (demoCourses.length === 0) {
+        const userSpecificCourses = JSON.parse(localStorage.getItem('demo-courses') || '[]');
+        if (userSpecificCourses.length > 0) {
+          // Migrate user-specific courses to shared storage
+          localStorage.setItem('shared-demo-courses', JSON.stringify(userSpecificCourses));
+          demoCourses = userSpecificCourses;
+          console.log('Migrated user-specific courses to shared storage');
+        }
+      }
+      
+      // If still no demo courses exist, create some default published courses for testing
       if (demoCourses.length === 0) {
         console.log('No demo courses found, creating default courses');
         const defaultCourses = [
@@ -102,7 +123,7 @@ export class CourseService {
           }
         ];
         
-        localStorage.setItem('demo-courses', JSON.stringify(defaultCourses));
+        localStorage.setItem('shared-demo-courses', JSON.stringify(defaultCourses));
         console.log('Created default demo courses:', defaultCourses);
         return defaultCourses;
       }
@@ -185,9 +206,10 @@ export class CourseService {
         updated_at: new Date().toISOString()
       };
 
-      const demoCourses = JSON.parse(localStorage.getItem('demo-courses') || '[]');
+      // Use shared storage for cross-device sync
+      const demoCourses = JSON.parse(localStorage.getItem('shared-demo-courses') || '[]');
       demoCourses.push(newCourse);
-      localStorage.setItem('demo-courses', JSON.stringify(demoCourses));
+      localStorage.setItem('shared-demo-courses', JSON.stringify(demoCourses));
 
       return newCourse;
     }
@@ -229,16 +251,16 @@ export class CourseService {
       if (error) throw error;
       return data;
     } else {
-      // Update demo course
-      const demoCourses = JSON.parse(localStorage.getItem('demo-courses') || '[]');
+      // Update demo course in shared storage
+      const demoCourses = JSON.parse(localStorage.getItem('shared-demo-courses') || '[]');
       const courseIndex = demoCourses.findIndex((c: any) => c.id === id);
       
       if (courseIndex === -1) throw new Error('Course not found');
       
       demoCourses[courseIndex] = { ...demoCourses[courseIndex], ...updates, updated_at: new Date().toISOString() };
-      localStorage.setItem('demo-courses', JSON.stringify(demoCourses));
+      localStorage.setItem('shared-demo-courses', JSON.stringify(demoCourses));
       
-      console.log('Updated demo course:', demoCourses[courseIndex]);
+      console.log('Updated demo course in shared storage:', demoCourses[courseIndex]);
       return demoCourses[courseIndex];
     }
   }
@@ -254,10 +276,10 @@ export class CourseService {
 
       if (error) throw error;
     } else {
-      // Delete from demo courses
-      const demoCourses = JSON.parse(localStorage.getItem('demo-courses') || '[]');
+      // Delete from shared demo courses
+      const demoCourses = JSON.parse(localStorage.getItem('shared-demo-courses') || '[]');
       const updatedCourses = demoCourses.filter((c: any) => c.id !== id);
-      localStorage.setItem('demo-courses', JSON.stringify(updatedCourses));
+      localStorage.setItem('shared-demo-courses', JSON.stringify(updatedCourses));
     }
   }
 
@@ -284,7 +306,7 @@ export class CourseService {
       if (error) throw error;
       return data;
     } else {
-      // Create demo lesson
+      // Create demo lesson in shared storage
       const newLesson = {
         id: crypto.randomUUID(),
         title: lessonData.title,
@@ -300,9 +322,9 @@ export class CourseService {
         updated_at: new Date().toISOString()
       };
 
-      const demoLessons = JSON.parse(localStorage.getItem('demo-lessons') || '[]');
+      const demoLessons = JSON.parse(localStorage.getItem('shared-demo-lessons') || '[]');
       demoLessons.push(newLesson);
-      localStorage.setItem('demo-lessons', JSON.stringify(demoLessons));
+      localStorage.setItem('shared-demo-lessons', JSON.stringify(demoLessons));
 
       return newLesson;
     }
@@ -326,8 +348,8 @@ export class CourseService {
       
       return uniqueCategories;
     } else {
-      // Return demo categories with deduplication
-      const demoCategories = JSON.parse(localStorage.getItem('demo-categories') || '[]');
+      // Return demo categories with deduplication from shared storage
+      const demoCategories = JSON.parse(localStorage.getItem('shared-demo-categories') || '[]');
       if (demoCategories.length === 0) {
         // Create default categories for demo
         const defaultCategories = [
@@ -335,7 +357,7 @@ export class CourseService {
           { id: '2', name: 'Compliance', color: '#4ECDC4', description: 'Compliance training' },
           { id: '3', name: 'Data Protection', color: '#45B7D1', description: 'Data protection courses' }
         ];
-        localStorage.setItem('demo-categories', JSON.stringify(defaultCategories));
+        localStorage.setItem('shared-demo-categories', JSON.stringify(defaultCategories));
         return defaultCategories;
       }
       
@@ -365,7 +387,7 @@ export class CourseService {
       if (error) throw error;
       return data;
     } else {
-      // Create demo category
+      // Create demo category in shared storage
       const newCategory = {
         id: crypto.randomUUID(),
         name: category.name,
@@ -374,9 +396,9 @@ export class CourseService {
         created_at: new Date().toISOString()
       };
 
-      const demoCategories = JSON.parse(localStorage.getItem('demo-categories') || '[]');
+      const demoCategories = JSON.parse(localStorage.getItem('shared-demo-categories') || '[]');
       demoCategories.push(newCategory);
-      localStorage.setItem('demo-categories', JSON.stringify(demoCategories));
+      localStorage.setItem('shared-demo-categories', JSON.stringify(demoCategories));
 
       return newCategory;
     }

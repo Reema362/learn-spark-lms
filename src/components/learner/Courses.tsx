@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,7 +14,7 @@ const Courses = () => {
   const [selectedCourse, setSelectedCourse] = useState<any>(null);
   const [courseViewerOpen, setCourseViewerOpen] = useState(false);
 
-  // Get current user with improved fallback
+  // Get current user with improved fallback for cross-device sync
   const getCurrentUser = () => {
     // First check for Supabase auth
     const authToken = localStorage.getItem('supabase.auth.token');
@@ -30,12 +29,21 @@ const Courses = () => {
       }
     }
     
-    // Then check for app session (demo mode)
+    // Then check for app session (demo mode) - ensure cross-device consistency
     const demoUser = localStorage.getItem('avocop_user');
     if (demoUser) {
       try {
         const parsedUser = JSON.parse(demoUser);
         if (parsedUser && parsedUser.id) {
+          // Ensure user data is synced across devices for demo mode
+          const sharedUserData = localStorage.getItem(`shared-user-${parsedUser.email}`);
+          if (sharedUserData) {
+            const syncedUser = JSON.parse(sharedUserData);
+            return { ...parsedUser, ...syncedUser };
+          } else {
+            // Store user data for cross-device sync
+            localStorage.setItem(`shared-user-${parsedUser.email}`, JSON.stringify(parsedUser));
+          }
           return parsedUser;
         }
       } catch (e) {
@@ -61,11 +69,23 @@ const Courses = () => {
 
   console.log('Published courses for learner:', publishedCourses);
 
-  // Create a map of course enrollments for quick lookup
+  // Create a map of course enrollments for quick lookup with cross-device sync
   const enrollmentMap = new Map();
-  enrollments?.forEach(enrollment => {
-    enrollmentMap.set(enrollment.course_id, enrollment);
-  });
+  
+  // For demo mode, also check shared enrollment data
+  if (currentUser && !enrollments) {
+    const sharedEnrollments = localStorage.getItem(`shared-enrollments-${currentUser.email}`);
+    if (sharedEnrollments) {
+      const parsedEnrollments = JSON.parse(sharedEnrollments);
+      parsedEnrollments.forEach((enrollment: any) => {
+        enrollmentMap.set(enrollment.course_id, enrollment);
+      });
+    }
+  } else {
+    enrollments?.forEach(enrollment => {
+      enrollmentMap.set(enrollment.course_id, enrollment);
+    });
+  }
 
   const formatDuration = (durationHours: number) => {
     const totalMinutes = durationHours * 60;
@@ -146,10 +166,12 @@ const Courses = () => {
     );
   };
 
-  // Calculate summary statistics
-  const enrolledCourses = enrollments?.length || 0;
-  const completedCourses = enrollments?.filter(e => e.status === 'completed').length || 0;
-  const inProgressCourses = enrollments?.filter(e => e.status === 'in_progress').length || 0;
+  // Calculate summary statistics with cross-device sync
+  const enrolledCourses = enrollments?.length || enrollmentMap.size || 0;
+  const completedCourses = enrollments?.filter(e => e.status === 'completed').length || 
+    Array.from(enrollmentMap.values()).filter((e: any) => e.status === 'completed').length || 0;
+  const inProgressCourses = enrollments?.filter(e => e.status === 'in_progress').length || 
+    Array.from(enrollmentMap.values()).filter((e: any) => e.status === 'in_progress').length || 0;
 
   if (isLoading) {
     return (
@@ -204,7 +226,7 @@ const Courses = () => {
       <Card className="dashboard-card">
         <CardHeader>
           <CardTitle>My Learning Progress</CardTitle>
-          <CardDescription>Your learning journey across available courses</CardDescription>
+          <CardDescription>Your learning journey across available courses (synced across all devices)</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { sanitizeFileName, generateUniqueFileName } from '@/utils/fileUtils';
 
@@ -76,8 +77,8 @@ export class StorageService {
         
         // Only fall back to demo mode if user is in demo mode
         if (isDemoMode) {
-          console.log('Demo mode: Falling back to demo storage');
-          return this.handleDemoModeUpload(file, finalPath);
+          console.log('Demo mode: Falling back to persistent demo storage');
+          return this.handlePersistentDemoUpload(file, finalPath, user);
         } else {
           throw new Error(`File upload failed: ${error?.message || 'Unknown error'}`);
         }
@@ -89,29 +90,43 @@ export class StorageService {
     }
   }
 
-  private static handleDemoModeUpload(file: File, finalPath: string): string {
-    console.log('Demo mode: Simulating file upload');
+  private static handlePersistentDemoUpload(file: File, finalPath: string, user: any): string {
+    console.log('Demo mode: Creating persistent file reference');
     
-    // Create a proper demo URL that can be used for video playback
-    const fileUrl = URL.createObjectURL(file);
-    const demoUrl = `demo://${finalPath}`;
+    // Create a persistent demo URL that references the file path
+    const demoUrl = `demo-persistent://${finalPath}`;
     
-    // Store demo file info in localStorage with the actual blob URL
-    const demoFiles = JSON.parse(localStorage.getItem('demo-uploaded-files') || '[]');
-    const demoFile = {
-      path: finalPath,
-      url: demoUrl,
-      blobUrl: fileUrl, // Store the actual blob URL for playback
-      originalName: file.name,
-      uploadedAt: new Date().toISOString(),
-      size: file.size,
-      type: file.type
-    };
-    demoFiles.push(demoFile);
-    localStorage.setItem('demo-uploaded-files', JSON.stringify(demoFiles));
-    
-    console.log('Demo file upload simulated:', demoUrl);
-    return demoUrl;
+    // Convert file to base64 for persistent storage
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const base64Data = reader.result as string;
+        
+        // Store demo file info with base64 data for persistence
+        const demoFiles = JSON.parse(localStorage.getItem(`demo-uploaded-files-${user.id}`) || '[]');
+        const demoFile = {
+          path: finalPath,
+          url: demoUrl,
+          base64Data: base64Data,
+          originalName: file.name,
+          uploadedAt: new Date().toISOString(),
+          size: file.size,
+          type: file.type,
+          userId: user.id
+        };
+        
+        // Remove any existing file with the same path
+        const updatedFiles = demoFiles.filter((f: any) => f.path !== finalPath);
+        updatedFiles.push(demoFile);
+        
+        localStorage.setItem(`demo-uploaded-files-${user.id}`, JSON.stringify(updatedFiles));
+        
+        console.log('Demo file upload with persistence:', demoUrl);
+        resolve(demoUrl);
+      };
+      reader.onerror = () => reject(new Error('Failed to read file for demo storage'));
+      reader.readAsDataURL(file);
+    }) as any;
   }
 
   static async deleteFile(path: string) {
@@ -125,28 +140,41 @@ export class StorageService {
 
       if (error) throw error;
     } else {
-      // For demo mode, remove from local storage
-      const uploadedFiles = JSON.parse(localStorage.getItem('demo-uploaded-files') || '[]');
-      const updatedFiles = uploadedFiles.filter((file: any) => file.path !== path);
-      localStorage.setItem('demo-uploaded-files', JSON.stringify(updatedFiles));
+      // For demo mode, remove from user-specific storage
+      const userSession = localStorage.getItem('avocop_user');
+      if (userSession) {
+        const user = JSON.parse(userSession);
+        const uploadedFiles = JSON.parse(localStorage.getItem(`demo-uploaded-files-${user.id}`) || '[]');
+        const updatedFiles = uploadedFiles.filter((file: any) => file.path !== path);
+        localStorage.setItem(`demo-uploaded-files-${user.id}`, JSON.stringify(updatedFiles));
+      }
     }
   }
 
   // Helper method to get the correct public URL for a storage path
   static getPublicUrl(path: string): string {
     // Check if this is a demo mode URL
-    if (path.startsWith('demo://')) {
-      // Extract the path and find the blob URL from localStorage
-      const demoPath = path.replace('demo://', '');
-      const demoFiles = JSON.parse(localStorage.getItem('demo-uploaded-files') || '[]');
-      const demoFile = demoFiles.find((file: any) => file.path === demoPath);
-      
-      if (demoFile && demoFile.blobUrl) {
-        console.log('Using demo blob URL for video playback:', demoFile.blobUrl);
-        return demoFile.blobUrl;
+    if (path.startsWith('demo://') || path.startsWith('demo-persistent://')) {
+      // For persistent demo URLs, get the base64 data
+      const userSession = localStorage.getItem('avocop_user');
+      if (userSession) {
+        const user = JSON.parse(userSession);
+        const demoPath = path.replace(/^demo(-persistent)?:\/\//, '');
+        const demoFiles = JSON.parse(localStorage.getItem(`demo-uploaded-files-${user.id}`) || '[]');
+        const demoFile = demoFiles.find((file: any) => file.path === demoPath);
+        
+        if (demoFile) {
+          if (demoFile.base64Data) {
+            console.log('Using persistent demo base64 data for video playback');
+            return demoFile.base64Data;
+          } else if (demoFile.blobUrl) {
+            console.log('Using demo blob URL for video playback:', demoFile.blobUrl);
+            return demoFile.blobUrl;
+          }
+        }
       }
       
-      // Fallback for demo URLs without blob
+      // Fallback for demo URLs without data
       return path;
     }
     
@@ -170,7 +198,7 @@ export class StorageService {
     }
     
     // If it's a demo URL, handle it
-    if (videoUrl.startsWith('demo://')) {
+    if (videoUrl.startsWith('demo://') || videoUrl.startsWith('demo-persistent://')) {
       return this.getPublicUrl(videoUrl);
     }
     
@@ -182,9 +210,13 @@ export class StorageService {
   static async fileExists(path: string): Promise<boolean> {
     try {
       // Check demo mode first
-      const demoFiles = JSON.parse(localStorage.getItem('demo-uploaded-files') || '[]');
-      if (demoFiles.some((file: any) => file.path === path)) {
-        return true;
+      const userSession = localStorage.getItem('avocop_user');
+      if (userSession) {
+        const user = JSON.parse(userSession);
+        const demoFiles = JSON.parse(localStorage.getItem(`demo-uploaded-files-${user.id}`) || '[]');
+        if (demoFiles.some((file: any) => file.path === path)) {
+          return true;
+        }
       }
       
       const cleanPath = path.startsWith('/') ? path.slice(1) : path;
