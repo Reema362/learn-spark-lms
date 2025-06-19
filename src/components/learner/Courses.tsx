@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { BookOpen, Clock, Award, Play, CheckCircle, Video, Users } from 'lucide-react';
 import { useCourses } from '@/hooks/useCourses';
-import { useCourseEnrollments } from '@/hooks/useEnrollments';
+import { useCourseEnrollments, useAutoEnrollInPublishedCourses } from '@/hooks/useEnrollments';
 import CourseViewer from './CourseViewer';
 
 const Courses = () => {
@@ -15,28 +15,76 @@ const Courses = () => {
   const [selectedCourse, setSelectedCourse] = useState<any>(null);
   const [courseViewerOpen, setCourseViewerOpen] = useState(false);
 
-  // Get current user
+  // Get current user with improved detection
   const getCurrentUser = () => {
-    const authUser = JSON.parse(localStorage.getItem('supabase.auth.token') || 'null');
-    if (authUser?.user) return authUser.user;
+    // Try Supabase auth first
+    const authToken = localStorage.getItem('supabase.auth.token');
+    if (authToken) {
+      try {
+        const parsedToken = JSON.parse(authToken);
+        if (parsedToken?.user) {
+          return parsedToken.user;
+        }
+      } catch (e) {
+        console.log('Error parsing Supabase auth token');
+      }
+    }
     
-    const demoUser = JSON.parse(localStorage.getItem('avocop_user') || 'null');
-    return demoUser;
+    // Fall back to demo user
+    const demoUser = localStorage.getItem('avocop_user');
+    if (demoUser) {
+      try {
+        return JSON.parse(demoUser);
+      } catch (e) {
+        console.log('Error parsing demo user');
+      }
+    }
+    
+    return null;
   };
 
   const currentUser = getCurrentUser();
-  const { data: enrollments } = useCourseEnrollments(currentUser?.id);
+  const { data: enrollments, refetch: refetchEnrollments } = useCourseEnrollments(currentUser?.id);
+  
+  // Auto-enroll in published courses
+  const { data: autoEnrolledCourses } = useAutoEnrollInPublishedCourses(currentUser?.id);
 
-  // Filter only published courses for learners
-  const publishedCourses = courses?.filter(course => course.status === 'published') || [];
+  // Refresh enrollments when auto-enrollment happens
+  useEffect(() => {
+    if (autoEnrolledCourses && autoEnrolledCourses.length > 0) {
+      refetchEnrollments();
+    }
+  }, [autoEnrolledCourses, refetchEnrollments]);
+
+  // Filter published courses and ensure proper data structure
+  const publishedCourses = React.useMemo(() => {
+    if (!courses) return [];
+    
+    const published = courses.filter(course => {
+      // Ensure course has required properties
+      if (!course || !course.id || !course.title) {
+        console.warn('Invalid course data:', course);
+        return false;
+      }
+      
+      return course.status === 'published';
+    });
+    
+    console.log('Published courses for learners:', published);
+    return published;
+  }, [courses]);
 
   // Create a map of course enrollments for quick lookup
   const enrollmentMap = new Map();
-  enrollments?.forEach(enrollment => {
-    enrollmentMap.set(enrollment.course_id, enrollment);
-  });
+  if (enrollments) {
+    enrollments.forEach(enrollment => {
+      enrollmentMap.set(enrollment.course_id, enrollment);
+    });
+  }
 
   const formatDuration = (durationHours: number) => {
+    if (!durationHours || durationHours <= 0) return '30 min';
+    
     const totalMinutes = durationHours * 60;
     if (totalMinutes < 60) {
       return `${totalMinutes} min`;
@@ -137,6 +185,24 @@ const Courses = () => {
           <div className="text-center">
             <p className="text-muted-foreground">Error loading courses</p>
             <p className="text-sm text-muted-foreground mt-2">{error.message}</p>
+            <Button onClick={() => window.location.reload()} className="mt-4">
+              Retry
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!currentUser) {
+    return (
+      <div className="space-y-6 animate-fade-in">
+        <div className="flex justify-center items-center min-h-[400px]">
+          <div className="text-center">
+            <p className="text-muted-foreground">Please log in to view courses</p>
+            <Button onClick={() => window.location.href = '/login'} className="mt-4">
+              Go to Login
+            </Button>
           </div>
         </div>
       </div>

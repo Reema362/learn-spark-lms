@@ -30,11 +30,58 @@ export class CourseService {
         `)
         .order('created_at', { ascending: false });
       
-      if (error) throw error;
-      return data;
+      if (error) {
+        console.error('Error fetching courses from Supabase:', error);
+        throw error;
+      }
+      return data || [];
     } else {
-      // Return demo courses for app session users
+      // Return demo courses for app session users - always check localStorage
       const demoCourses = JSON.parse(localStorage.getItem('demo-courses') || '[]');
+      console.log('Loaded demo courses from localStorage:', demoCourses);
+      
+      // If no courses exist, create some default published courses for demo
+      if (demoCourses.length === 0) {
+        const defaultCourses = [
+          {
+            id: 'demo-course-1',
+            title: 'Security Awareness Training',
+            description: 'Learn the fundamentals of information security and best practices.',
+            content: 'This course covers essential security topics including password management, phishing awareness, and data protection.',
+            category_id: '1',
+            duration_hours: 2,
+            difficulty_level: 'beginner',
+            is_mandatory: true,
+            thumbnail_url: null,
+            video_url: null,
+            status: 'published',
+            created_by: 'demo-admin',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          },
+          {
+            id: 'demo-course-2',
+            title: 'Data Privacy Essentials',
+            description: 'Understanding data privacy regulations and compliance requirements.',
+            content: 'Comprehensive overview of GDPR, data handling, and privacy protection measures.',
+            category_id: '3',
+            duration_hours: 1.5,
+            difficulty_level: 'intermediate',
+            is_mandatory: false,
+            thumbnail_url: null,
+            video_url: null,
+            status: 'published',
+            created_by: 'demo-admin',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }
+        ];
+        
+        localStorage.setItem('demo-courses', JSON.stringify(defaultCourses));
+        console.log('Created default demo courses');
+        return defaultCourses;
+      }
+      
       return demoCourses;
     }
   }
@@ -115,6 +162,7 @@ export class CourseService {
       const demoCourses = JSON.parse(localStorage.getItem('demo-courses') || '[]');
       demoCourses.push(newCourse);
       localStorage.setItem('demo-courses', JSON.stringify(demoCourses));
+      console.log('Created new demo course:', newCourse);
 
       return newCourse;
     }
@@ -154,6 +202,12 @@ export class CourseService {
         .single();
 
       if (error) throw error;
+
+      // If course is being published, automatically create enrollments for all learners
+      if (updates.status === 'published') {
+        await this.autoEnrollLearnersInCourse(id);
+      }
+
       return data;
     } else {
       // Update demo course
@@ -162,10 +216,17 @@ export class CourseService {
       
       if (courseIndex === -1) throw new Error('Course not found');
       
-      demoCourses[courseIndex] = { ...demoCourses[courseIndex], ...updates, updated_at: new Date().toISOString() };
+      const updatedCourse = { ...demoCourses[courseIndex], ...updates, updated_at: new Date().toISOString() };
+      demoCourses[courseIndex] = updatedCourse;
       localStorage.setItem('demo-courses', JSON.stringify(demoCourses));
+      console.log('Updated demo course:', updatedCourse);
+
+      // If course is being published, automatically create demo enrollments
+      if (updates.status === 'published') {
+        await this.autoEnrollDemoLearnersInCourse(id);
+      }
       
-      return demoCourses[courseIndex];
+      return updatedCourse;
     }
   }
 
@@ -184,6 +245,83 @@ export class CourseService {
       const demoCourses = JSON.parse(localStorage.getItem('demo-courses') || '[]');
       const updatedCourses = demoCourses.filter((c: any) => c.id !== id);
       localStorage.setItem('demo-courses', JSON.stringify(updatedCourses));
+      console.log('Deleted demo course:', id);
+    }
+  }
+
+  // Auto-enroll learners when course is published
+  private static async autoEnrollLearnersInCourse(courseId: string) {
+    try {
+      // Get all users with learner role
+      const { data: learners, error: learnersError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('role', 'user'); // 'user' role represents learners
+
+      if (learnersError || !learners) {
+        console.error('Error fetching learners:', learnersError);
+        return;
+      }
+
+      // Create enrollments for all learners
+      const enrollments = learners.map(learner => ({
+        user_id: learner.id,
+        course_id: courseId,
+        status: 'not_started',
+        progress_percentage: 0,
+        enrolled_at: new Date().toISOString()
+      }));
+
+      const { error: enrollmentError } = await supabase
+        .from('course_enrollments')
+        .insert(enrollments);
+
+      if (enrollmentError) {
+        console.error('Error creating auto-enrollments:', enrollmentError);
+      } else {
+        console.log(`Auto-enrolled ${learners.length} learners in course ${courseId}`);
+      }
+    } catch (error) {
+      console.error('Error in auto-enrollment process:', error);
+    }
+  }
+
+  // Auto-enroll demo learners when course is published
+  private static async autoEnrollDemoLearnersInCourse(courseId: string) {
+    try {
+      // Get existing demo enrollments
+      const demoEnrollments = JSON.parse(localStorage.getItem('demo-enrollments') || '[]');
+      
+      // Create demo learners if they don't exist
+      const demoLearners = [
+        { id: 'demo-learner-1', email: 'learner1@demo.com', role: 'user' },
+        { id: 'demo-learner-2', email: 'learner2@demo.com', role: 'user' },
+        { id: 'demo-learner-3', email: 'learner3@demo.com', role: 'user' }
+      ];
+
+      // Create enrollments for demo learners
+      demoLearners.forEach(learner => {
+        // Check if enrollment already exists
+        const existingEnrollment = demoEnrollments.find((e: any) => 
+          e.user_id === learner.id && e.course_id === courseId
+        );
+
+        if (!existingEnrollment) {
+          demoEnrollments.push({
+            id: crypto.randomUUID(),
+            user_id: learner.id,
+            course_id: courseId,
+            status: 'not_started',
+            progress_percentage: 0,
+            enrolled_at: new Date().toISOString()
+          });
+        }
+      });
+
+      localStorage.setItem('demo-enrollments', JSON.stringify(demoEnrollments));
+      console.log(`Auto-enrolled demo learners in course ${courseId}`);
+    } catch (error) {
+      console.error('Error in demo auto-enrollment process:', error);
     }
   }
 

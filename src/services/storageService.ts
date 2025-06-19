@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { sanitizeFileName, generateUniqueFileName } from '@/utils/fileUtils';
 
@@ -51,36 +52,39 @@ export class StorageService {
       }
 
       // Always try Supabase first for authenticated users
-      console.log('Attempting Supabase upload to courses bucket');
-      
-      const { data, error } = await supabase.storage
-        .from('courses')
-        .upload(finalPath, file, {
-          cacheControl: '3600',
-          upsert: true
-        });
-
-      if (!error && data) {
-        console.log('File uploaded successfully to courses bucket:', data);
-
-        const { data: publicUrl } = supabase.storage
+      if (!isDemoMode) {
+        console.log('Attempting Supabase upload to courses bucket');
+        
+        const { data, error } = await supabase.storage
           .from('courses')
-          .getPublicUrl(data.path);
+          .upload(finalPath, file, {
+            cacheControl: '3600',
+            upsert: true
+          });
 
-        const finalUrl = publicUrl.publicUrl;
-        console.log('Generated public URL from courses bucket:', finalUrl);
-        
-        return finalUrl;
-      } else {
-        console.log('Supabase upload failed, error:', error);
-        
-        // Only fall back to demo mode if user is in demo mode
-        if (isDemoMode) {
-          console.log('Demo mode: Falling back to demo storage');
-          return this.handleDemoModeUpload(file, finalPath);
+        if (!error && data) {
+          console.log('File uploaded successfully to courses bucket:', data);
+
+          const { data: publicUrl } = supabase.storage
+            .from('courses')
+            .getPublicUrl(data.path);
+
+          const finalUrl = publicUrl.publicUrl;
+          console.log('Generated public URL from courses bucket:', finalUrl);
+          
+          return finalUrl;
         } else {
-          throw new Error(`File upload failed: ${error?.message || 'Unknown error'}`);
+          console.log('Supabase upload failed, falling back to demo mode:', error);
+          isDemoMode = true;
         }
+      }
+      
+      // Demo mode or Supabase fallback
+      if (isDemoMode) {
+        console.log('Demo mode: Using persistent file storage');
+        return this.handleDemoModeUpload(file, finalPath);
+      } else {
+        throw new Error(`File upload failed: ${error?.message || 'Unknown error'}`);
       }
       
     } catch (error: any) {
@@ -89,29 +93,65 @@ export class StorageService {
     }
   }
 
-  private static handleDemoModeUpload(file: File, finalPath: string): string {
-    console.log('Demo mode: Simulating file upload');
-    
-    // Create a proper demo URL that can be used for video playback
-    const fileUrl = URL.createObjectURL(file);
-    const demoUrl = `demo://${finalPath}`;
-    
-    // Store demo file info in localStorage with the actual blob URL
-    const demoFiles = JSON.parse(localStorage.getItem('demo-uploaded-files') || '[]');
-    const demoFile = {
-      path: finalPath,
-      url: demoUrl,
-      blobUrl: fileUrl, // Store the actual blob URL for playback
-      originalName: file.name,
-      uploadedAt: new Date().toISOString(),
-      size: file.size,
-      type: file.type
-    };
-    demoFiles.push(demoFile);
-    localStorage.setItem('demo-uploaded-files', JSON.stringify(demoFiles));
-    
-    console.log('Demo file upload simulated:', demoUrl);
-    return demoUrl;
+  private static handleDemoModeUpload(file: File, finalPath: string): Promise<string> {
+    return new Promise((resolve, reject) => {
+      console.log('Demo mode: Converting file to persistent base64 storage');
+      
+      const reader = new FileReader();
+      
+      reader.onload = () => {
+        try {
+          const base64Data = reader.result as string;
+          const demoUrl = `demo://${finalPath}`;
+          
+          // Store file persistently as base64 in localStorage
+          const persistentFiles = JSON.parse(localStorage.getItem('demo-persistent-files') || '{}');
+          persistentFiles[finalPath] = {
+            data: base64Data,
+            type: file.type,
+            name: file.name,
+            size: file.size,
+            uploadedAt: new Date().toISOString(),
+            url: demoUrl
+          };
+          
+          localStorage.setItem('demo-persistent-files', JSON.stringify(persistentFiles));
+          
+          // Also update the old demo-uploaded-files for backward compatibility
+          const demoFiles = JSON.parse(localStorage.getItem('demo-uploaded-files') || '[]');
+          const existingFileIndex = demoFiles.findIndex((f: any) => f.path === finalPath);
+          
+          const fileInfo = {
+            path: finalPath,
+            url: demoUrl,
+            data: base64Data, // Store base64 data directly
+            originalName: file.name,
+            uploadedAt: new Date().toISOString(),
+            size: file.size,
+            type: file.type
+          };
+          
+          if (existingFileIndex >= 0) {
+            demoFiles[existingFileIndex] = fileInfo;
+          } else {
+            demoFiles.push(fileInfo);
+          }
+          
+          localStorage.setItem('demo-uploaded-files', JSON.stringify(demoFiles));
+          
+          console.log('Demo file stored persistently:', demoUrl);
+          resolve(demoUrl);
+        } catch (error) {
+          reject(new Error('Failed to process file for demo storage'));
+        }
+      };
+      
+      reader.onerror = () => {
+        reject(new Error('Failed to read file for demo storage'));
+      };
+      
+      reader.readAsDataURL(file);
+    });
   }
 
   static async deleteFile(path: string) {
@@ -125,10 +165,15 @@ export class StorageService {
 
       if (error) throw error;
     } else {
-      // For demo mode, remove from local storage
+      // For demo mode, remove from both storage locations
       const uploadedFiles = JSON.parse(localStorage.getItem('demo-uploaded-files') || '[]');
       const updatedFiles = uploadedFiles.filter((file: any) => file.path !== path);
       localStorage.setItem('demo-uploaded-files', JSON.stringify(updatedFiles));
+      
+      // Also remove from persistent storage
+      const persistentFiles = JSON.parse(localStorage.getItem('demo-persistent-files') || '{}');
+      delete persistentFiles[path];
+      localStorage.setItem('demo-persistent-files', JSON.stringify(persistentFiles));
     }
   }
 
@@ -136,17 +181,32 @@ export class StorageService {
   static getPublicUrl(path: string): string {
     // Check if this is a demo mode URL
     if (path.startsWith('demo://')) {
-      // Extract the path and find the blob URL from localStorage
+      // Extract the path and find the file data
       const demoPath = path.replace('demo://', '');
+      
+      // Try persistent storage first
+      const persistentFiles = JSON.parse(localStorage.getItem('demo-persistent-files') || '{}');
+      if (persistentFiles[demoPath]) {
+        console.log('Using persistent demo file:', demoPath);
+        return persistentFiles[demoPath].data; // Return base64 data directly
+      }
+      
+      // Fall back to old storage method
       const demoFiles = JSON.parse(localStorage.getItem('demo-uploaded-files') || '[]');
       const demoFile = demoFiles.find((file: any) => file.path === demoPath);
       
+      if (demoFile && demoFile.data) {
+        console.log('Using demo file data for:', demoPath);
+        return demoFile.data; // Return base64 data directly
+      }
+      
+      // Final fallback for old blob URLs (may not work after page refresh)
       if (demoFile && demoFile.blobUrl) {
-        console.log('Using demo blob URL for video playback:', demoFile.blobUrl);
+        console.log('Using demo blob URL (may be temporary):', demoFile.blobUrl);
         return demoFile.blobUrl;
       }
       
-      // Fallback for demo URLs without blob
+      console.warn('Demo file not found:', demoPath);
       return path;
     }
     
@@ -181,7 +241,13 @@ export class StorageService {
   // Helper method to check if a file exists in storage
   static async fileExists(path: string): Promise<boolean> {
     try {
-      // Check demo mode first
+      // Check persistent demo storage first
+      const persistentFiles = JSON.parse(localStorage.getItem('demo-persistent-files') || '{}');
+      if (persistentFiles[path]) {
+        return true;
+      }
+      
+      // Check demo mode files
       const demoFiles = JSON.parse(localStorage.getItem('demo-uploaded-files') || '[]');
       if (demoFiles.some((file: any) => file.path === path)) {
         return true;
