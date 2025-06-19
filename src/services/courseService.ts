@@ -16,13 +16,10 @@ interface Course {
 
 export class CourseService {
   static async getCourses() {
-    console.log('CourseService.getCourses() called');
-    
     // Check authentication
     const { data: { session } } = await supabase.auth.getSession();
     
     if (session?.user) {
-      console.log('User authenticated with Supabase, fetching from database');
       // Use Supabase if authenticated
       const { data, error } = await supabase
         .from('courses')
@@ -33,81 +30,11 @@ export class CourseService {
         `)
         .order('created_at', { ascending: false });
       
-      if (error) {
-        console.error('Error fetching courses from Supabase:', error);
-        throw error;
-      }
-      
-      console.log('Fetched courses from Supabase:', data);
+      if (error) throw error;
       return data;
     } else {
-      console.log('No Supabase session, checking for demo mode');
       // Return demo courses for app session users
       const demoCourses = JSON.parse(localStorage.getItem('demo-courses') || '[]');
-      
-      // If no demo courses exist, create some default published courses for testing
-      if (demoCourses.length === 0) {
-        console.log('No demo courses found, creating default courses');
-        const defaultCourses = [
-          {
-            id: crypto.randomUUID(),
-            title: 'Information Security Fundamentals',
-            description: 'Learn the basics of information security and cybersecurity best practices.',
-            content: 'This course covers fundamental concepts in information security...',
-            category_id: '1',
-            duration_hours: 2,
-            difficulty_level: 'beginner',
-            is_mandatory: true,
-            thumbnail_url: null,
-            video_url: null,
-            status: 'published',
-            created_by: 'system',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            course_categories: { name: 'Security', color: '#FF6B6B' }
-          },
-          {
-            id: crypto.randomUUID(),
-            title: 'Data Protection and Privacy',
-            description: 'Understanding data protection laws and privacy regulations.',
-            content: 'This course explores data protection principles...',
-            category_id: '3',
-            duration_hours: 1.5,
-            difficulty_level: 'intermediate',
-            is_mandatory: false,
-            thumbnail_url: null,
-            video_url: null,
-            status: 'published',
-            created_by: 'system',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            course_categories: { name: 'Data Protection', color: '#45B7D1' }
-          },
-          {
-            id: crypto.randomUUID(),
-            title: 'Compliance Training',
-            description: 'Essential compliance training for all employees.',
-            content: 'This course covers compliance requirements...',
-            category_id: '2',
-            duration_hours: 1,
-            difficulty_level: 'beginner',
-            is_mandatory: true,
-            thumbnail_url: null,
-            video_url: null,
-            status: 'published',
-            created_by: 'system',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            course_categories: { name: 'Compliance', color: '#4ECDC4' }
-          }
-        ];
-        
-        localStorage.setItem('demo-courses', JSON.stringify(defaultCourses));
-        console.log('Created default demo courses:', defaultCourses);
-        return defaultCourses;
-      }
-      
-      console.log('Returning existing demo courses:', demoCourses);
       return demoCourses;
     }
   }
@@ -238,7 +165,6 @@ export class CourseService {
       demoCourses[courseIndex] = { ...demoCourses[courseIndex], ...updates, updated_at: new Date().toISOString() };
       localStorage.setItem('demo-courses', JSON.stringify(demoCourses));
       
-      console.log('Updated demo course:', demoCourses[courseIndex]);
       return demoCourses[courseIndex];
     }
   }
