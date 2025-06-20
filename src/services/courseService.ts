@@ -20,21 +20,50 @@ export class CourseService {
     const { data: { session } } = await supabase.auth.getSession();
     
     if (session?.user) {
-      // Use Supabase if authenticated
-      const { data, error } = await supabase
+      // Use Supabase if authenticated - fetch courses and categories separately
+      const { data: courses, error: coursesError } = await supabase
         .from('courses')
-        .select(`
-          *,
-          course_categories(name, color),
-          profiles(first_name, last_name)
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
       
-      if (error) {
-        console.error('Error fetching courses from Supabase:', error);
-        throw error;
+      if (coursesError) {
+        console.error('Error fetching courses from Supabase:', coursesError);
+        throw coursesError;
       }
-      return data || [];
+
+      // Fetch categories separately
+      const { data: categories, error: categoriesError } = await supabase
+        .from('course_categories')
+        .select('*');
+      
+      if (categoriesError) {
+        console.error('Error fetching categories from Supabase:', categoriesError);
+        // Don't throw error for categories, just continue without them
+      }
+
+      // Fetch profiles separately for created_by information
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name');
+      
+      if (profilesError) {
+        console.error('Error fetching profiles from Supabase:', profilesError);
+        // Don't throw error for profiles, just continue without them
+      }
+
+      // Merge the data manually
+      const coursesWithRelations = courses?.map(course => {
+        const category = categories?.find(cat => cat.id === course.category_id);
+        const profile = profiles?.find(prof => prof.id === course.created_by);
+        
+        return {
+          ...course,
+          course_categories: category ? { name: category.name, color: category.color } : null,
+          profiles: profile ? { first_name: profile.first_name, last_name: profile.last_name } : null
+        };
+      }) || [];
+      
+      return coursesWithRelations;
     } else {
       // Return demo courses for app session users - check localStorage
       const demoCourses = JSON.parse(localStorage.getItem('demo-courses') || '[]');
