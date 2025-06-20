@@ -1,7 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { sanitizeFileName, generateUniqueFileName } from '@/utils/fileUtils';
-import { DemoStorageService } from './demoStorageService';
 
 export class FileUploadService {
   static async uploadFile(file: File, path: string) {
@@ -19,42 +18,17 @@ export class FileUploadService {
       console.log('Original filename:', file.name);
       console.log('Sanitized filename:', cleanFileName);
       
-      // Check authentication status - prioritize Supabase session
-      const { data: { session } } = await supabase.auth.getSession();
-      let isAuthenticated = false;
-      let user = null;
-      let isDemoMode = false;
+      // Check Supabase authentication status first
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError) {
+        console.error('Error getting session:', sessionError);
+        throw new Error('Authentication error: Unable to verify session');
+      }
 
       if (session?.user) {
-        // User is authenticated with Supabase - this is the preferred mode
-        isAuthenticated = true;
-        user = session.user;
-        isDemoMode = false;
-        console.log('User authenticated with Supabase:', user.email);
-      } else {
-        // Check for app session (demo mode) only if no Supabase session
-        const userSession = localStorage.getItem('avocop_user');
-        if (userSession) {
-          try {
-            const parsedSession = JSON.parse(userSession);
-            if (parsedSession && parsedSession.id && parsedSession.email && parsedSession.role === 'admin') {
-              isAuthenticated = true;
-              user = parsedSession;
-              isDemoMode = true;
-              console.log('User authenticated with demo mode:', user.email);
-            }
-          } catch (parseError) {
-            console.log('Error parsing user session:', parseError);
-          }
-        }
-      }
-
-      if (!isAuthenticated || !user) {
-        throw new Error('Permission denied: You must be logged in as an admin to upload files.');
-      }
-
-      // For Supabase-authenticated users, always upload to Supabase storage
-      if (!isDemoMode) {
+        // User is authenticated with Supabase - upload to Supabase storage
+        console.log('User authenticated with Supabase:', session.user.email);
         console.log('Uploading to Supabase courses bucket...');
         
         const { data, error } = await supabase.storage
@@ -66,7 +40,7 @@ export class FileUploadService {
 
         if (error) {
           console.error('Supabase upload failed:', error);
-          throw new Error(`Supabase upload failed: ${error.message || 'Unknown error'}`);
+          throw new Error(`Upload failed: ${error.message}. Please ensure you're logged in as an admin and the storage bucket is properly configured.`);
         }
 
         if (data) {
@@ -84,9 +58,21 @@ export class FileUploadService {
           throw new Error('Upload failed: No data returned from Supabase storage');
         }
       } else {
-        // Demo mode fallback - only for users without Supabase session
-        console.log('Demo mode: Using persistent file storage');
-        return DemoStorageService.handleDemoModeUpload(file, finalPath);
+        // No Supabase session - check for admin credentials in localStorage as fallback
+        const userSession = localStorage.getItem('avocop_user');
+        if (userSession) {
+          try {
+            const parsedSession = JSON.parse(userSession);
+            if (parsedSession && parsedSession.role === 'admin') {
+              console.warn('Demo mode: User not authenticated with Supabase but has admin session');
+              throw new Error('Please log out and log back in with your admin credentials to upload files to persistent storage.');
+            }
+          } catch (parseError) {
+            console.log('Error parsing user session:', parseError);
+          }
+        }
+        
+        throw new Error('Authentication required: Please log in as an admin to upload files.');
       }
       
     } catch (uploadError: any) {
@@ -106,18 +92,12 @@ export class FileUploadService {
 
       if (error) throw error;
     } else {
-      // For demo mode, remove from both storage locations
-      DemoStorageService.deleteDemoFile(path);
+      throw new Error('Authentication required to delete files');
     }
   }
 
   static async fileExists(path: string): Promise<boolean> {
     try {
-      // Check demo mode files first
-      if (DemoStorageService.demoFileExists(path)) {
-        return true;
-      }
-      
       const cleanPath = path.startsWith('/') ? path.slice(1) : path;
       const pathParts = cleanPath.split('/');
       const fileName = pathParts.pop();

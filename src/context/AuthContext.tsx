@@ -48,6 +48,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             };
             setUser(userData);
             saveUserSession(userData);
+            // Clear any old app sessions when Supabase session is active
+            localStorage.removeItem('avocop_user');
           }
         } else {
           // Only check app session if no Supabase session exists
@@ -89,6 +91,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             };
             setUser(userData);
             saveUserSession(userData);
+            // Clear any old app sessions when Supabase session is active
+            localStorage.removeItem('avocop_user');
           }
         } catch (error) {
           console.error('Error fetching profile:', error);
@@ -163,17 +167,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         if (adminUser) {
           try {
-            // Try to sign in with Supabase first with correct temp password
+            // Try to sign in with Supabase first
             const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
               email,
-              password: 'TempPassword123!' // Use the correct temp password that matches AuthService
+              password: 'TempPassword123!'
             });
 
             if (signInError && signInError.message.includes('Invalid login credentials')) {
               // User doesn't exist in Supabase, try to sign them up
               const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
                 email,
-                password: 'TempPassword123!', // Use consistent temp password
+                password: 'TempPassword123!',
                 options: {
                   data: {
                     first_name: adminUser.name.split(' ')[0],
@@ -183,9 +187,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               });
 
               if (signUpError) {
-                console.log('Supabase signup failed, using app session:', signUpError);
-                // Fall back to app session
-                throw new Error('Use app session');
+                console.log('Supabase signup failed:', signUpError);
+                throw new Error('Failed to create admin account in Supabase');
               }
 
               // Try to sign in again after signup
@@ -195,43 +198,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               });
 
               if (retryError) {
-                throw new Error('Use app session');
+                throw new Error('Failed to sign in after account creation');
               }
             }
 
             // Create or update admin profile in database
             await createOrUpdateAdminProfile(adminUser.email, adminUser.name);
 
-            // Clear any app session since we now have Supabase session
-            localStorage.removeItem('avocop_user');
-
             toast({
               title: "Welcome back!",
-              description: `Successfully logged in as ${adminUser.name} with Supabase`,
+              description: `Successfully logged in as ${adminUser.name}`,
             });
             
             return true;
-          } catch (supabaseError) {
-            console.log('Using app session for admin:', supabaseError);
-            
-            // Fallback to app session for demo purposes
-            const userData: User = {
-              id: crypto.randomUUID(),
-              email: adminUser.email,
-              name: adminUser.name,
-              role: 'admin'
-            };
-
-            setUser(userData);
-            saveUserSession(userData);
-            logAuditEvent(`User ${userData.email} (admin) logged in via app session`);
-            
+          } catch (supabaseError: any) {
+            console.error('Supabase login failed:', supabaseError);
             toast({
-              title: "Demo Mode",
-              description: `Logged in as ${adminUser.name} (demo mode - uploads will be limited)`,
+              title: "Login Failed",
+              description: `Failed to authenticate with Supabase: ${supabaseError.message}`,
+              variant: "destructive",
             });
-            
-            return true;
+            return false;
           }
         } else {
           toast({
