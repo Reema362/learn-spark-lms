@@ -83,13 +83,10 @@ const AdminLoginForm = () => {
         </form>
         
         <div className="mt-4 p-3 bg-muted rounded-lg">
-          <p className="text-sm font-medium mb-2">Demo Credentials:</p>
+          <p className="text-sm font-medium mb-2">Admin Access:</p>
           <div className="space-y-1 text-xs">
-            <p><strong>Email:</strong> naveen.v1@slksoftware.com</p>
-            <p><strong>Password:</strong> AdminPass2024!Strong</p>
-            <hr className="my-2" />
-            <p><strong>Email:</strong> reema.jain@slksoftware.com</p>
-            <p><strong>Password:</strong> AdminPass2024!Strong</p>
+            <p>Use your assigned admin credentials to access the system.</p>
+            <p className="text-muted-foreground">Contact your system administrator if you need account setup.</p>
           </div>
         </div>
       </CardContent>
