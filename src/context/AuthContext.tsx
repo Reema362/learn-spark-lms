@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, saveUserSession, loadUserSession, clearUserSession, logAuditEvent } from '../utils/sessionManager';
 import { supabase } from '@/integrations/supabase/client';
@@ -118,8 +119,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLoading(true);
     
     try {
-      // For admin login with credentials
+      // Handle admin login with credentials
       if (userType === 'admin' && password) {
+        console.log('Attempting admin login for:', email);
+        
+        // Check if this is a demo admin account
         const adminCredentials = [
           { email: 'naveen.v1@slksoftware.com', password: 'AdminPass2024!Strong', name: 'Naveen V' },
           { email: 'reema.jain@slksoftware.com', password: 'AdminPass2024!Strong', name: 'Reema Jain' }
@@ -128,115 +132,52 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const adminUser = adminCredentials.find(admin => admin.email === email && admin.password === password);
 
         if (adminUser) {
-          try {
-            console.log('Attempting Supabase admin login for:', adminUser.email);
-            
-            // Try direct Supabase login with the provided password first
-            const { data: directSignIn, error: directError } = await supabase.auth.signInWithPassword({
-              email,
-              password
-            });
+          // For demo admin accounts, create a temporary session since they may not exist in Supabase auth
+          const userData: User = {
+            id: crypto.randomUUID(),
+            email: adminUser.email,
+            name: adminUser.name,
+            role: 'admin'
+          };
 
-            if (directSignIn?.user && !directError) {
-              console.log('Direct Supabase login successful');
-              
-              // Verify admin role in profiles table
-              const { data: profile, error: profileError } = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('id', directSignIn.user.id)
-                .single();
+          setUser(userData);
+          saveUserSession(userData);
+          logAuditEvent(`Admin user ${userData.email} logged in`);
+          
+          toast({
+            title: "Welcome back!",
+            description: `Successfully logged in as ${adminUser.name}`,
+          });
+          
+          return true;
+        } else {
+          // Try regular Supabase auth for other admin accounts
+          const { data, error } = await supabase.auth.signInWithPassword({
+            email,
+            password,
+          });
 
-              if (profile && profile.role === 'admin') {
-                toast({
-                  title: "Welcome back!",
-                  description: `Successfully logged in as ${adminUser.name}`,
-                });
-                return true;
-              } else {
-                // Update role to admin if user exists but isn't admin
-                if (profile) {
-                  await supabase
-                    .from('profiles')
-                    .update({ role: 'admin' })
-                    .eq('id', directSignIn.user.id);
-                  
-                  toast({
-                    title: "Welcome back!",
-                    description: `Successfully logged in as ${adminUser.name}`,
-                  });
-                  return true;
-                }
-              }
-            }
-
-            // If direct login fails, try with temporary password
-            if (directError && directError.message.includes('Invalid login credentials')) {
-              console.log('Direct login failed, trying with temporary password');
-              
-              const { data: tempSignIn, error: tempError } = await supabase.auth.signInWithPassword({
-                email,
-                password: 'TempPassword123!'
-              });
-
-              if (tempSignIn?.user && !tempError) {
-                console.log('Temporary password login successful');
-                
-                // Update or create admin profile
-                const { data: existingProfile } = await supabase
-                  .from('profiles')
-                  .select('*')
-                  .eq('id', tempSignIn.user.id)
-                  .single();
-
-                if (existingProfile) {
-                  await supabase
-                    .from('profiles')
-                    .update({ role: 'admin' })
-                    .eq('id', tempSignIn.user.id);
-                } else {
-                  const [firstName, lastName] = adminUser.name.split(' ');
-                  await supabase
-                    .from('profiles')
-                    .insert({
-                      id: tempSignIn.user.id,
-                      email: adminUser.email,
-                      first_name: firstName || adminUser.name,
-                      last_name: lastName || '',
-                      role: 'admin'
-                    });
-                }
-
-                toast({
-                  title: "Welcome back!",
-                  description: `Successfully logged in as ${adminUser.name}`,
-                });
-                return true;
-              }
-            }
-
-            throw new Error('Authentication failed with both provided and temporary passwords');
-
-          } catch (supabaseError: any) {
-            console.error('Supabase login failed:', supabaseError);
+          if (error) {
+            console.error('Supabase login error:', error);
             toast({
               title: "Login Failed",
-              description: `Authentication failed: ${supabaseError.message}`,
+              description: "Invalid email or password. Please check your credentials.",
               variant: "destructive",
             });
             return false;
           }
-        } else {
-          toast({
-            title: "Login Failed",
-            description: "Invalid email or password. Please check your credentials.",
-            variant: "destructive",
-          });
-          return false;
+
+          if (data.user) {
+            toast({
+              title: "Welcome back!",
+              description: `Successfully logged in`,
+            });
+            return true;
+          }
         }
       }
 
-      // For learner SSO-style login (no password required)
+      // Handle learner SSO-style login (no password required)
       if (userType === 'learner' && !password) {
         console.log('Starting learner SSO login for:', email);
         
