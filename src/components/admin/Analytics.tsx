@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -18,25 +17,34 @@ const Analytics = () => {
   const { data: analyticsData, isLoading } = useQuery({
     queryKey: ['course-analytics', selectedTimeRange],
     queryFn: async () => {
-      // Get course completion stats
+      // Get course completion stats - fetch data separately to avoid schema cache issues
       const { data: enrollments, error: enrollmentError } = await supabase
         .from('course_enrollments')
-        .select(`
-          *,
-          courses(
-            id,
-            title,
-            course_categories(name, color)
-          ),
-          profiles(
-            first_name,
-            last_name,
-            department
-          )
-        `)
+        .select('*')
         .gte('enrolled_at', new Date(Date.now() - parseInt(selectedTimeRange) * 24 * 60 * 60 * 1000).toISOString());
 
       if (enrollmentError) throw enrollmentError;
+
+      // Fetch courses separately
+      const { data: courses, error: coursesError } = await supabase
+        .from('courses')
+        .select('id, title, category_id');
+
+      if (coursesError) throw coursesError;
+
+      // Fetch categories separately
+      const { data: categories, error: categoriesError } = await supabase
+        .from('course_categories')
+        .select('id, name, color');
+
+      if (categoriesError) throw categoriesError;
+
+      // Fetch profiles separately
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name, department');
+
+      if (profilesError) throw profilesError;
 
       // Get lesson progress data
       const { data: progress, error: progressError } = await supabase
@@ -45,33 +53,51 @@ const Analytics = () => {
           *,
           lessons(
             id,
-            course_id,
-            courses(title)
+            course_id
           )
         `)
         .gte('created_at', new Date(Date.now() - parseInt(selectedTimeRange) * 24 * 60 * 60 * 1000).toISOString());
 
       if (progressError) throw progressError;
 
-      // Process the data
-      const totalEnrollments = enrollments?.length || 0;
-      const completedCourses = enrollments?.filter(e => e.status === 'completed').length || 0;
-      const inProgress = enrollments?.filter(e => e.status === 'in_progress').length || 0;
-      const notStarted = enrollments?.filter(e => e.status === 'not_started').length || 0;
+      // Process the data by merging manually
+      const enrichedEnrollments = enrollments?.map(enrollment => {
+        const course = courses?.find(c => c.id === enrollment.course_id);
+        const category = course ? categories?.find(cat => cat.id === course.category_id) : null;
+        const profile = profiles?.find(p => p.id === enrollment.user_id);
+        
+        return {
+          ...enrollment,
+          courses: course ? {
+            ...course,
+            course_categories: category ? { name: category.name, color: category.color } : null
+          } : null,
+          profiles: profile ? {
+            first_name: profile.first_name,
+            last_name: profile.last_name,
+            department: profile.department
+          } : null
+        };
+      }) || [];
+
+      const totalEnrollments = enrichedEnrollments.length;
+      const completedCourses = enrichedEnrollments.filter(e => e.status === 'completed').length;
+      const inProgress = enrichedEnrollments.filter(e => e.status === 'in_progress').length;
+      const notStarted = enrichedEnrollments.filter(e => e.status === 'not_started').length;
       
       // Calculate completion rate
       const completionRate = totalEnrollments > 0 ? Math.round((completedCourses / totalEnrollments) * 100) : 0;
       
       // Get unique courses and users
-      const uniqueCourses = new Set(enrollments?.map(e => e.course_id)).size;
-      const uniqueUsers = new Set(enrollments?.map(e => e.user_id)).size;
+      const uniqueCourses = new Set(enrichedEnrollments.map(e => e.course_id)).size;
+      const uniqueUsers = new Set(enrichedEnrollments.map(e => e.user_id)).size;
       
       // Calculate average time spent
       const totalTimeSpent = progress?.reduce((sum, p) => sum + (p.time_spent_minutes || 0), 0) || 0;
       const avgTimePerUser = uniqueUsers > 0 ? Math.round(totalTimeSpent / uniqueUsers) : 0;
 
       // Course completion by category
-      const categoryStats = enrollments?.reduce((acc: any, enrollment: any) => {
+      const categoryStats = enrichedEnrollments.reduce((acc: any, enrollment: any) => {
         const category = enrollment.courses?.course_categories?.name || 'Uncategorized';
         if (!acc[category]) {
           acc[category] = { total: 0, completed: 0 };
@@ -81,7 +107,7 @@ const Analytics = () => {
           acc[category].completed++;
         }
         return acc;
-      }, {}) || {};
+      }, {});
 
       const categoryChartData = Object.entries(categoryStats).map(([name, stats]: [string, any]) => ({
         name,
@@ -91,7 +117,7 @@ const Analytics = () => {
       }));
 
       // Department analytics
-      const departmentStats = enrollments?.reduce((acc: any, enrollment: any) => {
+      const departmentStats = enrichedEnrollments.reduce((acc: any, enrollment: any) => {
         const dept = enrollment.profiles?.department || 'Unknown';
         if (!acc[dept]) {
           acc[dept] = { enrolled: 0, completed: 0 };
@@ -101,7 +127,7 @@ const Analytics = () => {
           acc[dept].completed++;
         }
         return acc;
-      }, {}) || {};
+      }, {});
 
       // Status distribution for pie chart
       const statusData = [
@@ -118,9 +144,9 @@ const Analytics = () => {
       });
 
       const dailyCompletions = last7Days.map(date => {
-        const completions = enrollments?.filter(e => 
+        const completions = enrichedEnrollments.filter(e => 
           e.completed_at && e.completed_at.startsWith(date)
-        ).length || 0;
+        ).length;
         return {
           date: new Date(date).toLocaleDateString('en-US', { weekday: 'short' }),
           completions
@@ -140,7 +166,7 @@ const Analytics = () => {
         departmentStats,
         statusData,
         dailyCompletions,
-        recentEnrollments: enrollments?.slice(0, 10) || []
+        recentEnrollments: enrichedEnrollments.slice(0, 10)
       };
     },
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
