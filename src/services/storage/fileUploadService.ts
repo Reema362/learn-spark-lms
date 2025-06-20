@@ -18,7 +18,7 @@ export class FileUploadService {
       console.log('Original filename:', file.name);
       console.log('Sanitized filename:', cleanFileName);
       
-      // Check Supabase authentication status first
+      // Check authentication status
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
       if (sessionError) {
@@ -26,9 +26,28 @@ export class FileUploadService {
         throw new Error('Authentication error: Unable to verify session');
       }
 
+      // Check if user is authenticated with Supabase
       if (session?.user) {
-        // User is authenticated with Supabase - upload to Supabase storage
         console.log('User authenticated with Supabase:', session.user.email);
+        
+        // Verify admin role from profiles table
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', session.user.id)
+          .single();
+
+        if (profileError) {
+          console.error('Error fetching user profile:', profileError);
+          throw new Error('Unable to verify admin privileges. Please contact support.');
+        }
+
+        if (!profile || profile.role !== 'admin') {
+          console.error('User does not have admin role:', profile);
+          throw new Error('Admin privileges required. You must be logged in as an administrator to upload files.');
+        }
+
+        console.log('Admin privileges verified for user:', session.user.email);
         console.log('Uploading to Supabase courses bucket...');
         
         const { data, error } = await supabase.storage
@@ -40,7 +59,7 @@ export class FileUploadService {
 
         if (error) {
           console.error('Supabase upload failed:', error);
-          throw new Error(`Upload failed: ${error.message}. Please ensure you're logged in as an admin and the storage bucket is properly configured.`);
+          throw new Error(`Upload failed: ${error.message}. Please ensure the storage bucket is properly configured.`);
         }
 
         if (data) {
@@ -58,14 +77,16 @@ export class FileUploadService {
           throw new Error('Upload failed: No data returned from Supabase storage');
         }
       } else {
-        // No Supabase session - check for admin credentials in localStorage as fallback
+        // No Supabase session - check for any fallback admin session
+        console.log('No Supabase session found');
         const userSession = localStorage.getItem('avocop_user');
+        
         if (userSession) {
           try {
             const parsedSession = JSON.parse(userSession);
             if (parsedSession && parsedSession.role === 'admin') {
-              console.warn('Demo mode: User not authenticated with Supabase but has admin session');
-              throw new Error('Please log out and log back in with your admin credentials to upload files to persistent storage.');
+              console.warn('Found admin session in localStorage but no Supabase session');
+              throw new Error('Please log out and log back in with your admin credentials to enable persistent file storage.');
             }
           } catch (parseError) {
             console.log('Error parsing user session:', parseError);

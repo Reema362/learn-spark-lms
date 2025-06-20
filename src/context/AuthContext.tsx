@@ -32,6 +32,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
+          console.log('Found Supabase session for:', session.user.email);
+          
           // Get user profile
           const { data: profile } = await supabase
             .from('profiles')
@@ -46,15 +48,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.email,
               role: profile.role === 'admin' ? 'admin' : 'learner'
             };
+            console.log('Setting user from Supabase profile:', userData);
             setUser(userData);
             saveUserSession(userData);
             // Clear any old app sessions when Supabase session is active
             localStorage.removeItem('avocop_user');
           }
         } else {
+          console.log('No Supabase session found, checking localStorage');
           // Only check app session if no Supabase session exists
           const appSession = loadUserSession();
           if (appSession) {
+            console.log('Found app session:', appSession);
             setUser(appSession);
           }
         }
@@ -74,6 +79,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth state changed:', event, session?.user?.email);
+      
       if (event === 'SIGNED_IN' && session?.user) {
         try {
           const { data: profile } = await supabase
@@ -89,15 +96,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.email,
               role: profile.role === 'admin' ? 'admin' : 'learner'
             };
+            console.log('Auth state change - setting user:', userData);
             setUser(userData);
             saveUserSession(userData);
             // Clear any old app sessions when Supabase session is active
             localStorage.removeItem('avocop_user');
           }
         } catch (error) {
-          console.error('Error fetching profile:', error);
+          console.error('Error fetching profile on auth change:', error);
         }
       } else if (event === 'SIGNED_OUT') {
+        console.log('User signed out');
         setUser(null);
         clearUserSession();
       }
@@ -167,13 +176,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         if (adminUser) {
           try {
-            // Try to sign in with Supabase first
+            console.log('Attempting Supabase admin login for:', adminUser.email);
+            
+            // Try to sign in with Supabase using the correct temp password
             const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
               email,
               password: 'TempPassword123!'
             });
 
             if (signInError && signInError.message.includes('Invalid login credentials')) {
+              console.log('Admin not found in Supabase, creating account...');
+              
               // User doesn't exist in Supabase, try to sign them up
               const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
                 email,
@@ -187,7 +200,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               });
 
               if (signUpError) {
-                console.log('Supabase signup failed:', signUpError);
+                console.error('Supabase signup failed:', signUpError);
                 throw new Error('Failed to create admin account in Supabase');
               }
 
