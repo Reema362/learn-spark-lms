@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 
 interface Course {
@@ -234,18 +235,82 @@ export class CourseService {
     const { data: { session } } = await supabase.auth.getSession();
     
     if (session?.user) {
+      // Delete from Supabase - this will cascade delete related data
       const { error } = await supabase
         .from('courses')
         .delete()
         .eq('id', id);
 
       if (error) throw error;
+      console.log('Course deleted from Supabase:', id);
     } else {
-      // Delete from demo courses
+      // Delete from demo courses with comprehensive cleanup
       const demoCourses = JSON.parse(localStorage.getItem('demo-courses') || '[]');
-      const updatedCourses = demoCourses.filter((c: any) => c.id !== id);
-      localStorage.setItem('demo-courses', JSON.stringify(updatedCourses));
-      console.log('Deleted demo course:', id);
+      const courseToDelete = demoCourses.find((c: any) => c.id === id);
+      
+      if (courseToDelete) {
+        // Remove course from courses list
+        const updatedCourses = demoCourses.filter((c: any) => c.id !== id);
+        localStorage.setItem('demo-courses', JSON.stringify(updatedCourses));
+        console.log('Deleted demo course from courses list:', id);
+
+        // Remove related enrollments
+        const demoEnrollments = JSON.parse(localStorage.getItem('demo-enrollments') || '[]');
+        const updatedEnrollments = demoEnrollments.filter((e: any) => e.course_id !== id);
+        localStorage.setItem('demo-enrollments', JSON.stringify(updatedEnrollments));
+        console.log('Deleted related enrollments for course:', id);
+
+        // Remove related lessons
+        const demoLessons = JSON.parse(localStorage.getItem('demo-lessons') || '[]');
+        const courseLessons = demoLessons.filter((l: any) => l.course_id === id);
+        const updatedLessons = demoLessons.filter((l: any) => l.course_id !== id);
+        localStorage.setItem('demo-lessons', JSON.stringify(updatedLessons));
+        console.log('Deleted related lessons for course:', id);
+
+        // Remove lesson progress for deleted lessons
+        const demoProgress = JSON.parse(localStorage.getItem('demo-lesson-progress') || '[]');
+        const deletedLessonIds = courseLessons.map((l: any) => l.id);
+        const updatedProgress = demoProgress.filter((p: any) => !deletedLessonIds.includes(p.lesson_id));
+        localStorage.setItem('demo-lesson-progress', JSON.stringify(updatedProgress));
+        console.log('Deleted related lesson progress for course:', id);
+
+        // Remove uploaded files associated with the course (videos, thumbnails, etc.)
+        if (courseToDelete.video_url && courseToDelete.video_url.startsWith('demo://')) {
+          const videoPath = courseToDelete.video_url.replace('demo://', '');
+          
+          // Remove from demo-uploaded-files
+          const demoFiles = JSON.parse(localStorage.getItem('demo-uploaded-files') || '[]');
+          const updatedFiles = demoFiles.filter((f: any) => f.path !== videoPath);
+          localStorage.setItem('demo-uploaded-files', JSON.stringify(updatedFiles));
+          
+          // Remove from demo-persistent-files
+          const persistentFiles = JSON.parse(localStorage.getItem('demo-persistent-files') || '{}');
+          delete persistentFiles[videoPath];
+          localStorage.setItem('demo-persistent-files', JSON.stringify(persistentFiles));
+          
+          console.log('Deleted associated video file:', videoPath);
+        }
+
+        if (courseToDelete.thumbnail_url && courseToDelete.thumbnail_url.startsWith('demo://')) {
+          const thumbnailPath = courseToDelete.thumbnail_url.replace('demo://', '');
+          
+          // Remove from demo-uploaded-files
+          const demoFiles = JSON.parse(localStorage.getItem('demo-uploaded-files') || '[]');
+          const updatedFiles = demoFiles.filter((f: any) => f.path !== thumbnailPath);
+          localStorage.setItem('demo-uploaded-files', JSON.stringify(updatedFiles));
+          
+          // Remove from demo-persistent-files
+          const persistentFiles = JSON.parse(localStorage.getItem('demo-persistent-files') || '{}');
+          delete persistentFiles[thumbnailPath];
+          localStorage.setItem('demo-persistent-files', JSON.stringify(persistentFiles));
+          
+          console.log('Deleted associated thumbnail file:', thumbnailPath);
+        }
+
+        console.log('Comprehensive deletion completed for demo course:', id);
+      } else {
+        console.warn('Course not found for deletion:', id);
+      }
     }
   }
 

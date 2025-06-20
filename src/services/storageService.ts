@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { sanitizeFileName, generateUniqueFileName } from '@/utils/fileUtils';
 
@@ -140,7 +141,7 @@ export class StorageService {
           
           console.log('Demo file stored persistently:', demoUrl);
           resolve(demoUrl);
-        } catch (error) {
+        } catch (storageError) {
           reject(new Error('Failed to process file for demo storage'));
         }
       };
