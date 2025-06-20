@@ -119,68 +119,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLoading(true);
     
     try {
-      // Handle admin login with credentials
+      // Handle admin login with credentials - ALL admin accounts now use Supabase auth
       if (userType === 'admin' && password) {
         console.log('Attempting admin login for:', email);
         
-        // Check if this is a demo admin account
-        const adminCredentials = [
-          { email: 'naveen.v1@slksoftware.com', password: 'AdminPass2024!Strong', name: 'Naveen V' },
-          { email: 'reema.jain@slksoftware.com', password: 'AdminPass2024!Strong', name: 'Reema Jain' }
-        ];
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
 
-        const adminUser = adminCredentials.find(admin => admin.email === email && admin.password === password);
+        if (error) {
+          console.error('Supabase admin login error:', error);
+          toast({
+            title: "Login Failed",
+            description: "Invalid email or password. Please check your credentials.",
+            variant: "destructive",
+          });
+          return false;
+        }
 
-        if (adminUser) {
-          // For demo admin accounts, create a temporary session
-          const userData: User = {
-            id: crypto.randomUUID(),
-            email: adminUser.email,
-            name: adminUser.name,
-            role: 'admin'
-          };
-
-          // Clear any existing demo courses to prevent reappearance
-          console.log('Clearing existing demo courses for fresh start');
-          localStorage.removeItem('demo-courses');
-          localStorage.removeItem('demo-enrollments');
-          localStorage.removeItem('demo-lessons');
-          localStorage.removeItem('demo-lesson-progress');
-
-          setUser(userData);
-          saveUserSession(userData);
-          logAuditEvent(`Admin user ${userData.email} logged in`);
-          
+        if (data.user) {
           toast({
             title: "Welcome back!",
-            description: `Successfully logged in as ${adminUser.name}`,
+            description: `Successfully logged in as admin`,
           });
-          
           return true;
-        } else {
-          // Try regular Supabase auth for other admin accounts
-          const { data, error } = await supabase.auth.signInWithPassword({
-            email,
-            password,
-          });
-
-          if (error) {
-            console.error('Supabase login error:', error);
-            toast({
-              title: "Login Failed",
-              description: "Invalid email or password. Please check your credentials.",
-              variant: "destructive",
-            });
-            return false;
-          }
-
-          if (data.user) {
-            toast({
-              title: "Welcome back!",
-              description: `Successfully logged in`,
-            });
-            return true;
-          }
         }
       }
 
