@@ -8,12 +8,11 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { BookOpen, Clock, Award, Play, CheckCircle, Video, Users } from 'lucide-react';
 import { useCourses } from '@/hooks/useCourses';
 import { useCourseEnrollments, useAutoEnrollInPublishedCourses } from '@/hooks/useEnrollments';
-import CourseViewer from './CourseViewer';
+import { useNavigate } from 'react-router-dom';
 
 const Courses = () => {
+  const navigate = useNavigate();
   const { data: courses, isLoading, error } = useCourses();
-  const [selectedCourse, setSelectedCourse] = useState<any>(null);
-  const [courseViewerOpen, setCourseViewerOpen] = useState(false);
 
   // Get current user with improved detection
   const getCurrentUser = () => {
@@ -96,8 +95,7 @@ const Courses = () => {
   };
 
   const handleViewCourse = (course: any) => {
-    setSelectedCourse(course);
-    setCourseViewerOpen(true);
+    navigate(`/learner/courses/${course.id}`);
   };
 
   const getEnrollmentStatus = (course: any) => {
@@ -355,18 +353,6 @@ const Courses = () => {
           </div>
         )}
       </ScrollArea>
-
-      {/* Course Viewer Modal */}
-      {selectedCourse && (
-        <CourseViewer
-          course={selectedCourse}
-          isOpen={courseViewerOpen}
-          onClose={() => {
-            setCourseViewerOpen(false);
-            setSelectedCourse(null);
-          }}
-        />
-      )}
     </div>
   );
 };
