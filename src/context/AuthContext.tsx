@@ -132,13 +132,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const adminUser = adminCredentials.find(admin => admin.email === email && admin.password === password);
 
         if (adminUser) {
-          // For demo admin accounts, create a temporary session since they may not exist in Supabase auth
+          // For demo admin accounts, create a temporary session
           const userData: User = {
             id: crypto.randomUUID(),
             email: adminUser.email,
             name: adminUser.name,
             role: 'admin'
           };
+
+          // Clear any existing demo courses to prevent reappearance
+          console.log('Clearing existing demo courses for fresh start');
+          localStorage.removeItem('demo-courses');
+          localStorage.removeItem('demo-enrollments');
+          localStorage.removeItem('demo-lessons');
+          localStorage.removeItem('demo-lesson-progress');
 
           setUser(userData);
           saveUserSession(userData);
@@ -300,6 +307,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (user) {
       logAuditEvent(`User ${user.email} (${user.role}) logged out`);
     }
+    
+    // Clear demo courses and related data on logout
+    console.log('Clearing demo data on logout');
+    localStorage.removeItem('demo-courses');
+    localStorage.removeItem('demo-enrollments');
+    localStorage.removeItem('demo-lessons');
+    localStorage.removeItem('demo-lesson-progress');
+    localStorage.removeItem('demo-uploaded-files');
+    localStorage.removeItem('demo-persistent-files');
     
     // Try to sign out from Supabase
     try {

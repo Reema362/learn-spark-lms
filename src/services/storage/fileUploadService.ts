@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { sanitizeFileName, generateUniqueFileName } from '@/utils/fileUtils';
 
@@ -81,24 +82,25 @@ export class FileUploadService {
         const userSession = localStorage.getItem('avocop_user');
         
         if (userSession) {
+          let parsedSession;
           try {
-            const parsedSession = JSON.parse(userSession);
-            if (parsedSession && parsedSession.role === 'admin') {
-              console.log('Found admin session in localStorage for:', parsedSession.email);
-              
-              // For demo admin accounts, use localStorage-based file storage
-              // Import the demo storage service
-              const { DemoStorageService } = await import('./demoStorageService');
-              const demoUrl = await DemoStorageService.handleDemoModeUpload(file, finalPath);
-              
-              console.log('File uploaded successfully in demo mode:', demoUrl);
-              return demoUrl;
-            } else {
-              throw new Error('Admin privileges required. Please log in as an administrator to upload files.');
-            }
+            parsedSession = JSON.parse(userSession);
           } catch (parseError) {
             console.error('Error parsing user session:', parseError);
             throw new Error('Invalid session data. Please log out and log back in.');
+          }
+          
+          if (parsedSession && parsedSession.role === 'admin') {
+            console.log('Found admin session in localStorage for:', parsedSession.email);
+            
+            // For demo admin accounts, use localStorage-based file storage
+            const { DemoStorageService } = await import('./demoStorageService');
+            const demoUrl = await DemoStorageService.handleDemoModeUpload(file, finalPath);
+            
+            console.log('File uploaded successfully in demo mode:', demoUrl);
+            return demoUrl;
+          } else {
+            throw new Error('Admin privileges required. Please log in as an administrator to upload files.');
           }
         } else {
           throw new Error('Authentication required: Please log in as an admin to upload files.');

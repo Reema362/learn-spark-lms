@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 
 interface Course {
@@ -37,52 +36,11 @@ export class CourseService {
       }
       return data || [];
     } else {
-      // Return demo courses for app session users - always check localStorage
+      // Return demo courses for app session users - check localStorage
       const demoCourses = JSON.parse(localStorage.getItem('demo-courses') || '[]');
       console.log('Loaded demo courses from localStorage:', demoCourses);
       
-      // If no courses exist, create some default published courses for demo
-      if (demoCourses.length === 0) {
-        const defaultCourses = [
-          {
-            id: 'demo-course-1',
-            title: 'Security Awareness Training',
-            description: 'Learn the fundamentals of information security and best practices.',
-            content: 'This course covers essential security topics including password management, phishing awareness, and data protection.',
-            category_id: '1',
-            duration_hours: 2,
-            difficulty_level: 'beginner',
-            is_mandatory: true,
-            thumbnail_url: null,
-            video_url: null,
-            status: 'published',
-            created_by: 'demo-admin',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          },
-          {
-            id: 'demo-course-2',
-            title: 'Data Privacy Essentials',
-            description: 'Understanding data privacy regulations and compliance requirements.',
-            content: 'Comprehensive overview of GDPR, data handling, and privacy protection measures.',
-            category_id: '3',
-            duration_hours: 1.5,
-            difficulty_level: 'intermediate',
-            is_mandatory: false,
-            thumbnail_url: null,
-            video_url: null,
-            status: 'published',
-            created_by: 'demo-admin',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          }
-        ];
-        
-        localStorage.setItem('demo-courses', JSON.stringify(defaultCourses));
-        console.log('Created default demo courses');
-        return defaultCourses;
-      }
-      
+      // Return existing courses without creating default ones
       return demoCourses;
     }
   }
