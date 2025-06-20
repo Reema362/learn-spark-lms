@@ -19,19 +19,20 @@ export class FileUploadService {
       console.log('Original filename:', file.name);
       console.log('Sanitized filename:', cleanFileName);
       
-      // Check authentication status
+      // Check authentication status - prioritize Supabase session
       const { data: { session } } = await supabase.auth.getSession();
       let isAuthenticated = false;
       let user = null;
       let isDemoMode = false;
 
       if (session?.user) {
-        // User is authenticated with Supabase
+        // User is authenticated with Supabase - this is the preferred mode
         isAuthenticated = true;
         user = session.user;
+        isDemoMode = false;
         console.log('User authenticated with Supabase:', user.email);
       } else {
-        // Check for app session (demo mode)
+        // Check for app session (demo mode) only if no Supabase session
         const userSession = localStorage.getItem('avocop_user');
         if (userSession) {
           try {
@@ -52,9 +53,9 @@ export class FileUploadService {
         throw new Error('Permission denied: You must be logged in as an admin to upload files.');
       }
 
-      // Always try Supabase first for authenticated users
+      // For Supabase-authenticated users, always upload to Supabase storage
       if (!isDemoMode) {
-        console.log('Attempting Supabase upload to courses bucket');
+        console.log('Uploading to Supabase courses bucket...');
         
         const { data, error } = await supabase.storage
           .from('courses')
@@ -63,7 +64,12 @@ export class FileUploadService {
             upsert: true
           });
 
-        if (!error && data) {
+        if (error) {
+          console.error('Supabase upload failed:', error);
+          throw new Error(`Supabase upload failed: ${error.message || 'Unknown error'}`);
+        }
+
+        if (data) {
           console.log('File uploaded successfully to courses bucket:', data);
 
           const { data: publicUrlData } = supabase.storage
@@ -75,11 +81,10 @@ export class FileUploadService {
           
           return finalUrl;
         } else {
-          console.log('Supabase upload failed, error:', error);
-          throw new Error(`Supabase upload failed: ${error?.message || 'Unknown error'}`);
+          throw new Error('Upload failed: No data returned from Supabase storage');
         }
       } else {
-        // Demo mode fallback
+        // Demo mode fallback - only for users without Supabase session
         console.log('Demo mode: Using persistent file storage');
         return DemoStorageService.handleDemoModeUpload(file, finalPath);
       }

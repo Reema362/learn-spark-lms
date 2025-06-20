@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, saveUserSession, loadUserSession, clearUserSession, logAuditEvent } from '../utils/sessionManager';
 import { supabase } from '@/integrations/supabase/client';
@@ -49,7 +50,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             saveUserSession(userData);
           }
         } else {
-          // Check for app session (demo mode)
+          // Only check app session if no Supabase session exists
           const appSession = loadUserSession();
           if (appSession) {
             setUser(appSession);
@@ -162,17 +163,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         if (adminUser) {
           try {
-            // Try to sign in with Supabase first
+            // Try to sign in with Supabase first with correct temp password
             const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
               email,
-              password: 'defaultpassword123' // Use a default password for demo
+              password: 'TempPassword123!' // Use the correct temp password that matches AuthService
             });
 
             if (signInError && signInError.message.includes('Invalid login credentials')) {
               // User doesn't exist in Supabase, try to sign them up
               const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
                 email,
-                password: 'defaultpassword123',
+                password: 'TempPassword123!', // Use consistent temp password
                 options: {
                   data: {
                     first_name: adminUser.name.split(' ')[0],
@@ -186,15 +187,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 // Fall back to app session
                 throw new Error('Use app session');
               }
+
+              // Try to sign in again after signup
+              const { data: retrySignIn, error: retryError } = await supabase.auth.signInWithPassword({
+                email,
+                password: 'TempPassword123!'
+              });
+
+              if (retryError) {
+                throw new Error('Use app session');
+              }
             }
 
             // Create or update admin profile in database
             await createOrUpdateAdminProfile(adminUser.email, adminUser.name);
 
-            // The auth state change listener will handle the rest
+            // Clear any app session since we now have Supabase session
+            localStorage.removeItem('avocop_user');
+
             toast({
               title: "Welcome back!",
-              description: `Successfully logged in as ${adminUser.name}`,
+              description: `Successfully logged in as ${adminUser.name} with Supabase`,
             });
             
             return true;
@@ -214,8 +227,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             logAuditEvent(`User ${userData.email} (admin) logged in via app session`);
             
             toast({
-              title: "Welcome back!",
-              description: `Successfully logged in as ${adminUser.name}`,
+              title: "Demo Mode",
+              description: `Logged in as ${adminUser.name} (demo mode - uploads will be limited)`,
             });
             
             return true;
