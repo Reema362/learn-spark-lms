@@ -21,7 +21,7 @@ export class AuthService {
           const created = await CourseMigrationUtility.createAdminUserForDemo(email);
           
           if (created) {
-            // Try logging in again
+            // Try logging in again with the temp password
             const retryResult = await supabase.auth.signInWithPassword({
               email,
               password: 'TempPassword123!'

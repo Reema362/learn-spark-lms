@@ -75,17 +75,13 @@ export class FileUploadService {
           
           return finalUrl;
         } else {
-          console.log('Supabase upload failed, falling back to demo mode:', error);
-          isDemoMode = true;
+          console.log('Supabase upload failed, error:', error);
+          throw new Error(`Supabase upload failed: ${error?.message || 'Unknown error'}`);
         }
-      }
-      
-      // Demo mode or Supabase fallback
-      if (isDemoMode) {
+      } else {
+        // Demo mode fallback
         console.log('Demo mode: Using persistent file storage');
         return DemoStorageService.handleDemoModeUpload(file, finalPath);
-      } else {
-        throw new Error(`File upload failed: ${error?.message || 'Unknown error'}`);
       }
       
     } catch (uploadError: any) {

@@ -124,6 +124,8 @@ export class CourseMigrationUtility {
 
   static async createAdminUserForDemo(email: string, password: string = 'TempPassword123!'): Promise<boolean> {
     try {
+      console.log('Creating admin user in Supabase:', email);
+      
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
