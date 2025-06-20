@@ -66,11 +66,11 @@ export class FileUploadService {
         if (!error && data) {
           console.log('File uploaded successfully to courses bucket:', data);
 
-          const { data: publicUrl } = supabase.storage
+          const { data: publicUrlData } = supabase.storage
             .from('courses')
             .getPublicUrl(data.path);
 
-          const finalUrl = publicUrl.publicUrl;
+          const finalUrl = publicUrlData.publicUrl;
           console.log('Generated public URL from courses bucket:', finalUrl);
           
           return finalUrl;

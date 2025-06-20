@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -13,6 +12,7 @@ import CourseFilters from './courses/CourseFilters';
 import CourseList from './courses/CourseList';
 import CreateCourseDialog from './courses/CreateCourseDialog';
 import EditCourseDialog from './courses/EditCourseDialog';
+import { CourseMigrationUtility } from '@/utils/courseMigration';
 
 const CourseManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -21,6 +21,7 @@ const CourseManagement = () => {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [previewCourse, setPreviewCourse] = useState<any>(null);
   const [editingCourse, setEditingCourse] = useState<any>(null);
+  const [isMigrating, setIsMigrating] = useState(false);
   const [newCourse, setNewCourse] = useState({
     title: '',
     description: '',
@@ -39,6 +40,24 @@ const CourseManagement = () => {
   const uploadFile = useUploadFile();
   const { toast } = useToast();
 
+  // Check for demo data migration on component mount
+  useEffect(() => {
+    const checkForDemoData = async () => {
+      const demoCourses = JSON.parse(localStorage.getItem('demo-courses') || '[]');
+      const isAuthenticated = await CourseMigrationUtility.ensureSupabaseAuthentication();
+      
+      if (demoCourses.length > 0 && isAuthenticated) {
+        toast({
+          title: "Demo Data Found",
+          description: `Found ${demoCourses.length} courses in demo storage. Click "Migrate Demo Data" to move them to Supabase.`,
+          variant: "default",
+        });
+      }
+    };
+
+    checkForDemoData();
+  }, [toast]);
+
   // Initialize sample categories on component mount
   useEffect(() => {
     if (categories.length === 0) {
@@ -54,6 +73,36 @@ const CourseManagement = () => {
 
     return () => clearInterval(interval);
   }, [refetchCourses]);
+
+  const handleMigrateDemoData = async () => {
+    setIsMigrating(true);
+    try {
+      const result = await CourseMigrationUtility.migrateDemoCoursesToSupabase();
+      
+      if (result.success) {
+        toast({
+          title: "Migration Successful",
+          description: `Successfully migrated ${result.migratedCount} courses to Supabase. All learners can now access them globally.`,
+        });
+        refetchCourses();
+      } else {
+        toast({
+          title: "Migration Issues",
+          description: `Migrated ${result.migratedCount} courses, but encountered ${result.errors.length} errors. Check console for details.`,
+          variant: "destructive",
+        });
+        console.error('Migration errors:', result.errors);
+      }
+    } catch (error: any) {
+      toast({
+        title: "Migration Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsMigrating(false);
+    }
+  };
 
   const filteredCourses = courses.filter((course: any) => {
     const matchesSearch = course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -169,6 +218,18 @@ const CourseManagement = () => {
           <p className="text-muted-foreground">Create and manage learning content</p>
         </div>
         <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            onClick={handleMigrateDemoData}
+            disabled={isMigrating}
+          >
+            {isMigrating ? (
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></div>
+            ) : (
+              <RefreshCw className="h-4 w-4 mr-2" />
+            )}
+            Migrate Demo Data
+          </Button>
           <Button variant="outline" onClick={() => refetchCourses()}>
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh Courses
