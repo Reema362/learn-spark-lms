@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, saveUserSession, loadUserSession, clearUserSession, logAuditEvent } from '../utils/sessionManager';
 import { supabase } from '@/integrations/supabase/client';
@@ -115,57 +114,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => subscription.unsubscribe();
   }, []);
 
-  const createOrUpdateAdminProfile = async (email: string, name: string) => {
-    try {
-      // Check if profile exists
-      const { data: existingProfile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('email', email)
-        .single();
-
-      if (existingProfile) {
-        // Update existing profile to admin
-        const { data: updatedProfile, error: updateError } = await supabase
-          .from('profiles')
-          .update({ role: 'admin' })
-          .eq('email', email)
-          .select()
-          .single();
-
-        if (updateError) throw updateError;
-        return updatedProfile;
-      } else {
-        // Create new admin profile
-        const adminId = crypto.randomUUID();
-        const [firstName, lastName] = name.split(' ');
-        
-        const { data: newProfile, error: insertError } = await supabase
-          .from('profiles')
-          .insert({
-            id: adminId,
-            email: email,
-            first_name: firstName || name,
-            last_name: lastName || '',
-            role: 'admin'
-          })
-          .select()
-          .single();
-
-        if (insertError) throw insertError;
-        return newProfile;
-      }
-    } catch (error) {
-      console.error('Error creating/updating admin profile:', error);
-      throw error;
-    }
-  };
-
   const login = async (email: string, password?: string, userType?: 'admin' | 'learner'): Promise<boolean> => {
     setLoading(true);
     
     try {
-      // For admin login with predefined credentials
+      // For admin login with credentials
       if (userType === 'admin' && password) {
         const adminCredentials = [
           { email: 'naveen.v1@slksoftware.com', password: 'AdminPass2024!Strong', name: 'Naveen V' },
@@ -178,57 +131,97 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           try {
             console.log('Attempting Supabase admin login for:', adminUser.email);
             
-            // Try to sign in with Supabase using the correct temp password
-            const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+            // Try direct Supabase login with the provided password first
+            const { data: directSignIn, error: directError } = await supabase.auth.signInWithPassword({
               email,
-              password: 'TempPassword123!'
+              password
             });
 
-            if (signInError && signInError.message.includes('Invalid login credentials')) {
-              console.log('Admin not found in Supabase, creating account...');
+            if (directSignIn?.user && !directError) {
+              console.log('Direct Supabase login successful');
               
-              // User doesn't exist in Supabase, try to sign them up
-              const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-                email,
-                password: 'TempPassword123!',
-                options: {
-                  data: {
-                    first_name: adminUser.name.split(' ')[0],
-                    last_name: adminUser.name.split(' ')[1] || ''
-                  }
+              // Verify admin role in profiles table
+              const { data: profile, error: profileError } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', directSignIn.user.id)
+                .single();
+
+              if (profile && profile.role === 'admin') {
+                toast({
+                  title: "Welcome back!",
+                  description: `Successfully logged in as ${adminUser.name}`,
+                });
+                return true;
+              } else {
+                // Update role to admin if user exists but isn't admin
+                if (profile) {
+                  await supabase
+                    .from('profiles')
+                    .update({ role: 'admin' })
+                    .eq('id', directSignIn.user.id);
+                  
+                  toast({
+                    title: "Welcome back!",
+                    description: `Successfully logged in as ${adminUser.name}`,
+                  });
+                  return true;
                 }
-              });
-
-              if (signUpError) {
-                console.error('Supabase signup failed:', signUpError);
-                throw new Error('Failed to create admin account in Supabase');
               }
+            }
 
-              // Try to sign in again after signup
-              const { data: retrySignIn, error: retryError } = await supabase.auth.signInWithPassword({
+            // If direct login fails, try with temporary password
+            if (directError && directError.message.includes('Invalid login credentials')) {
+              console.log('Direct login failed, trying with temporary password');
+              
+              const { data: tempSignIn, error: tempError } = await supabase.auth.signInWithPassword({
                 email,
                 password: 'TempPassword123!'
               });
 
-              if (retryError) {
-                throw new Error('Failed to sign in after account creation');
+              if (tempSignIn?.user && !tempError) {
+                console.log('Temporary password login successful');
+                
+                // Update or create admin profile
+                const { data: existingProfile } = await supabase
+                  .from('profiles')
+                  .select('*')
+                  .eq('id', tempSignIn.user.id)
+                  .single();
+
+                if (existingProfile) {
+                  await supabase
+                    .from('profiles')
+                    .update({ role: 'admin' })
+                    .eq('id', tempSignIn.user.id);
+                } else {
+                  const [firstName, lastName] = adminUser.name.split(' ');
+                  await supabase
+                    .from('profiles')
+                    .insert({
+                      id: tempSignIn.user.id,
+                      email: adminUser.email,
+                      first_name: firstName || adminUser.name,
+                      last_name: lastName || '',
+                      role: 'admin'
+                    });
+                }
+
+                toast({
+                  title: "Welcome back!",
+                  description: `Successfully logged in as ${adminUser.name}`,
+                });
+                return true;
               }
             }
 
-            // Create or update admin profile in database
-            await createOrUpdateAdminProfile(adminUser.email, adminUser.name);
+            throw new Error('Authentication failed with both provided and temporary passwords');
 
-            toast({
-              title: "Welcome back!",
-              description: `Successfully logged in as ${adminUser.name}`,
-            });
-            
-            return true;
           } catch (supabaseError: any) {
             console.error('Supabase login failed:', supabaseError);
             toast({
               title: "Login Failed",
-              description: `Failed to authenticate with Supabase: ${supabaseError.message}`,
+              description: `Authentication failed: ${supabaseError.message}`,
               variant: "destructive",
             });
             return false;
