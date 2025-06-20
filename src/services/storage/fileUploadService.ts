@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { sanitizeFileName, generateUniqueFileName } from '@/utils/fileUtils';
 
@@ -77,23 +76,33 @@ export class FileUploadService {
           throw new Error('Upload failed: No data returned from Supabase storage');
         }
       } else {
-        // No Supabase session - check for any fallback admin session
-        console.log('No Supabase session found');
+        // No Supabase session - check for localStorage admin session
+        console.log('No Supabase session found, checking localStorage for admin session');
         const userSession = localStorage.getItem('avocop_user');
         
         if (userSession) {
           try {
             const parsedSession = JSON.parse(userSession);
             if (parsedSession && parsedSession.role === 'admin') {
-              console.warn('Found admin session in localStorage but no Supabase session');
-              throw new Error('Please log out and log back in with your admin credentials to enable persistent file storage.');
+              console.log('Found admin session in localStorage for:', parsedSession.email);
+              
+              // For demo admin accounts, use localStorage-based file storage
+              // Import the demo storage service
+              const { DemoStorageService } = await import('./demoStorageService');
+              const demoUrl = await DemoStorageService.handleDemoModeUpload(file, finalPath);
+              
+              console.log('File uploaded successfully in demo mode:', demoUrl);
+              return demoUrl;
+            } else {
+              throw new Error('Admin privileges required. Please log in as an administrator to upload files.');
             }
           } catch (parseError) {
-            console.log('Error parsing user session:', parseError);
+            console.error('Error parsing user session:', parseError);
+            throw new Error('Invalid session data. Please log out and log back in.');
           }
+        } else {
+          throw new Error('Authentication required: Please log in as an admin to upload files.');
         }
-        
-        throw new Error('Authentication required: Please log in as an admin to upload files.');
       }
       
     } catch (uploadError: any) {
