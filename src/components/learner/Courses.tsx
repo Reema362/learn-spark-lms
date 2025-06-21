@@ -5,18 +5,22 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { BookOpen, Clock, Award, Play, CheckCircle, Video, Users } from 'lucide-react';
+import { BookOpen, Clock, Award, Play, CheckCircle, Video, Users, AlertCircle } from 'lucide-react';
 import { useCourses } from '@/hooks/useCourses';
 import { useCourseEnrollments, useAutoEnrollInPublishedCourses } from '@/hooks/useEnrollments';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
+import { useAuthDebug } from '@/hooks/useAuthDebug';
 
 const Courses = () => {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
-  console.log('Courses component - user:', user, 'loading:', loading);
+  const authDebug = useAuthDebug();
   
-  const { data: courses, isLoading: coursesLoading, error } = useCourses();
+  console.log('🎯 Courses component - Auth Context:', { user, loading });
+  console.log('🎯 Courses component - Auth Debug:', authDebug);
+  
+  const { data: courses, isLoading: coursesLoading, error, refetch: refetchCourses } = useCourses();
   console.log('🔍 RAW COURSES DATA:', courses);
   console.log('🔍 COURSES LOADING:', coursesLoading);
   console.log('🔍 COURSES ERROR:', error);
@@ -173,6 +177,11 @@ const Courses = () => {
     );
   };
 
+  const handleRetryFetch = () => {
+    console.log('🔄 Manual retry triggered');
+    refetchCourses();
+  };
+
   // Calculate summary statistics
   const enrolledCourses = enrollments?.length || 0;
   const completedCourses = enrollments?.filter(e => e.status === 'completed').length || 0;
@@ -204,9 +213,10 @@ const Courses = () => {
       <div className="space-y-6 animate-fade-in">
         <div className="flex justify-center items-center min-h-[400px]">
           <div className="text-center">
+            <AlertCircle className="h-12 w-12 mx-auto text-red-500 mb-4" />
             <p className="text-muted-foreground">Error loading courses</p>
             <p className="text-sm text-muted-foreground mt-2">{error.message}</p>
-            <Button onClick={() => window.location.reload()} className="mt-4">
+            <Button onClick={handleRetryFetch} className="mt-4">
               Retry
             </Button>
           </div>
@@ -284,17 +294,26 @@ const Courses = () => {
         </CardContent>
       </Card>
 
-      {/* Debug Information */}
+      {/* Enhanced Debug Information */}
       <Card className="p-4 bg-blue-50 border-blue-200">
-        <h3 className="font-bold mb-2 text-blue-800">Debug Information:</h3>
+        <h3 className="font-bold mb-2 text-blue-800">Enhanced Debug Information:</h3>
         <div className="text-sm text-blue-700 space-y-1">
-          <p><strong>User ID:</strong> {user?.id}</p>
+          <p><strong>Auth Context - User ID:</strong> {user?.id}</p>
+          <p><strong>Auth Context - User Email:</strong> {user?.email}</p>
+          <p><strong>Auth Debug - Has Session:</strong> {authDebug.hasSession ? 'Yes' : 'No'}</p>
+          <p><strong>Auth Debug - Has User:</strong> {authDebug.hasUser ? 'Yes' : 'No'}</p>
+          <p><strong>Auth Debug - Session Valid:</strong> {authDebug.sessionValid ? 'Yes' : 'No'}</p>
+          <p><strong>Auth Debug - Error:</strong> {authDebug.error || 'None'}</p>
           <p><strong>Raw Courses:</strong> {courses?.length || 0} total</p>
           <p><strong>Published Courses:</strong> {publishedCourses.length}</p>
           <p><strong>Raw Enrollments:</strong> {enrollments?.length || 0}</p>
           <p><strong>Enrollment Map Size:</strong> {enrollmentMap.size}</p>
           <p><strong>Auto-enroll Success:</strong> {autoEnrollSuccess ? 'Yes' : 'No'}</p>
           <p><strong>Auto-enrolled Courses:</strong> {autoEnrolledCourses?.length || 0}</p>
+          <p><strong>Courses Loading:</strong> {coursesLoading ? 'Yes' : 'No'}</p>
+          <p><strong>Error Present:</strong> {error ? 'Yes' : 'No'}</p>
+          {error && <p><strong>Error Message:</strong> {error.message}</p>}
+          
           {courses && courses.length > 0 && (
             <div className="mt-2">
               <p><strong>Course Details:</strong></p>
@@ -305,6 +324,12 @@ const Courses = () => {
               ))}
             </div>
           )}
+          
+          <div className="mt-2">
+            <Button onClick={handleRetryFetch} size="sm" className="bg-blue-600 hover:bg-blue-700">
+              🔄 Force Refresh Courses
+            </Button>
+          </div>
         </div>
       </Card>
 
@@ -319,11 +344,17 @@ const Courses = () => {
               <p className="text-sm text-yellow-700">
                 <strong>Debug Info:</strong> Total courses in system: {courses?.length || 0} | 
                 Published: {publishedCourses.length} | 
-                Courses loading: {coursesLoading ? 'Yes' : 'No'}
+                Courses loading: {coursesLoading ? 'Yes' : 'No'} |
+                Auth Session Valid: {authDebug.sessionValid ? 'Yes' : 'No'}
               </p>
               {courses && courses.length > 0 && (
                 <p className="text-xs text-yellow-600 mt-2">
                   Available courses: {courses.map(c => `"${c?.title}" (${c?.status})`).join(', ')}
+                </p>
+              )}
+              {authDebug.error && (
+                <p className="text-xs text-red-600 mt-2">
+                  Auth Error: {authDebug.error}
                 </p>
               )}
             </div>

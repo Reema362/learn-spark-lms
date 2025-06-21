@@ -16,91 +16,129 @@ interface Course {
 
 export class CourseService {
   static async getCourses() {
-    // Check authentication
-    const { data: { session } } = await supabase.auth.getSession();
+    console.log('🔄 CourseService.getCourses() - Starting course fetch');
     
-    if (session?.user) {
-      // Use Supabase if authenticated - fetch courses with proper joins
-      console.log('Fetching courses from Supabase for authenticated user');
+    try {
+      // Check authentication with detailed logging
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      console.log('🔍 Session check result:', { 
+        hasSession: !!session, 
+        hasUser: !!session?.user,
+        userId: session?.user?.id,
+        userEmail: session?.user?.email,
+        sessionError: sessionError 
+      });
       
-      const { data: courses, error: coursesError } = await supabase
-        .from('courses')
-        .select(`
-          id,
-          title,
-          description,
-          content,
-          category_id,
-          duration_hours,
-          difficulty_level,
-          is_mandatory,
-          thumbnail_url,
-          video_url,
-          status,
-          created_at,
-          updated_at,
-          created_by,
-          course_categories (
-            id,
-            name,
-            color
-          ),
-          profiles:created_by (
-            id,
-            first_name,
-            last_name
-          )
-        `)
-        .order('created_at', { ascending: false });
-      
-      if (coursesError) {
-        console.error('Error fetching courses from Supabase:', coursesError);
-        throw coursesError;
+      if (sessionError) {
+        console.error('❌ Session error:', sessionError);
+        throw sessionError;
       }
-
-      console.log('Raw courses from Supabase:', courses);
-
-      // Transform the data to match expected structure and ensure status field is preserved
-      const transformedCourses = courses?.map(course => {
-        console.log(`Course ${course.title} - Status: ${course.status}, ID: ${course.id}`);
-        return {
-          id: course.id,
-          title: course.title,
-          description: course.description,
-          content: course.content,
-          category_id: course.category_id,
-          duration_hours: course.duration_hours,
-          difficulty_level: course.difficulty_level,
-          is_mandatory: course.is_mandatory,
-          thumbnail_url: course.thumbnail_url,
-          video_url: course.video_url,
-          status: course.status, // Ensure status is preserved
-          created_at: course.created_at,
-          updated_at: course.updated_at,
-          created_by: course.created_by,
-          course_categories: course.course_categories ? {
-            id: course.course_categories.id,
-            name: course.course_categories.name,
-            color: course.course_categories.color
-          } : null,
-          profiles: course.profiles ? {
-            id: course.profiles.id,
-            first_name: course.profiles.first_name,
-            last_name: course.profiles.last_name
-          } : null
-        };
-      }) || [];
       
-      console.log('Transformed courses:', transformedCourses);
-      console.log('Published courses count:', transformedCourses.filter(c => c.status === 'published').length);
-      return transformedCourses;
-    } else {
-      // Return demo courses for app session users - check localStorage
-      const demoCourses = JSON.parse(localStorage.getItem('demo-courses') || '[]');
-      console.log('Loaded demo courses from localStorage:', demoCourses);
+      if (session?.user) {
+        // Use Supabase if authenticated - fetch courses with proper joins
+        console.log('✅ Authenticated user detected, fetching from Supabase');
+        console.log('📡 Executing Supabase query for courses...');
+        
+        const { data: courses, error: coursesError } = await supabase
+          .from('courses')
+          .select(`
+            id,
+            title,
+            description,
+            content,
+            category_id,
+            duration_hours,
+            difficulty_level,
+            is_mandatory,
+            thumbnail_url,
+            video_url,
+            status,
+            created_at,
+            updated_at,
+            created_by,
+            course_categories (
+              id,
+              name,
+              color
+            ),
+            profiles:created_by (
+              id,
+              first_name,
+              last_name
+            )
+          `)
+          .order('created_at', { ascending: false });
+        
+        console.log('📊 Supabase query result:', { 
+          coursesCount: courses?.length || 0,
+          coursesError: coursesError,
+          rawData: courses 
+        });
+        
+        if (coursesError) {
+          console.error('❌ Error fetching courses from Supabase:', coursesError);
+          throw coursesError;
+        }
+
+        console.log('🔍 Raw courses from Supabase:', courses);
+
+        // Transform the data to match expected structure and ensure status field is preserved
+        const transformedCourses = courses?.map(course => {
+          console.log(`📚 Processing course: "${course.title}" - Status: ${course.status}, ID: ${course.id}`);
+          return {
+            id: course.id,
+            title: course.title,
+            description: course.description,
+            content: course.content,
+            category_id: course.category_id,
+            duration_hours: course.duration_hours,
+            difficulty_level: course.difficulty_level,
+            is_mandatory: course.is_mandatory,
+            thumbnail_url: course.thumbnail_url,
+            video_url: course.video_url,
+            status: course.status, // Ensure status is preserved
+            created_at: course.created_at,
+            updated_at: course.updated_at,
+            created_by: course.created_by,
+            course_categories: course.course_categories ? {
+              id: course.course_categories.id,
+              name: course.course_categories.name,
+              color: course.course_categories.color
+            } : null,
+            profiles: course.profiles ? {
+              id: course.profiles.id,
+              first_name: course.profiles.first_name,
+              last_name: course.profiles.last_name
+            } : null
+          };
+        }) || [];
+        
+        console.log('✅ Transformed courses:', transformedCourses);
+        console.log(`📈 Published courses count: ${transformedCourses.filter(c => c.status === 'published').length}`);
+        console.log('📋 Course statuses:', transformedCourses.map(c => ({ title: c.title, status: c.status })));
+        
+        return transformedCourses;
+      } else {
+        // No authenticated session - check for demo courses
+        console.log('🔓 No authenticated session, checking for demo courses');
+        const demoCourses = JSON.parse(localStorage.getItem('demo-courses') || '[]');
+        console.log('💾 Demo courses from localStorage:', demoCourses);
+        
+        return demoCourses;
+      }
+    } catch (error: any) {
+      console.error('💥 Fatal error in CourseService.getCourses():', error);
+      console.error('📍 Error details:', { 
+        message: error.message, 
+        code: error.code, 
+        details: error.details,
+        hint: error.hint,
+        stack: error.stack 
+      });
       
-      // Return existing courses without creating default ones
-      return demoCourses;
+      // Return empty array instead of throwing to prevent app crash
+      console.log('🛡️ Returning empty array due to error');
+      return [];
     }
   }
 
