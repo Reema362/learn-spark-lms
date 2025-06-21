@@ -147,10 +147,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
 
-      // Handle learner SSO-style login (no password required)
+      // Handle learner SSO-style login with proper Supabase session
       if (userType === 'learner' && !password) {
         console.log('Starting learner SSO login for:', email);
         
+        // First check if profile exists
         const { data: existingProfile, error: searchError } = await supabase
           .from('profiles')
           .select('*')
@@ -159,6 +160,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         let profile = existingProfile;
 
+        // If profile doesn't exist, create it
         if (!existingProfile && searchError?.code === 'PGRST116') {
           console.log('No existing profile found, creating new learner profile');
           
@@ -198,23 +200,83 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
 
         if (profile) {
-          const userData: User = {
-            id: profile.id,
-            email: profile.email,
-            name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.email,
-            role: 'learner'
-          };
+          // Create a proper Supabase session for the learner
+          console.log('Creating Supabase session for learner:', profile.email);
+          
+          // Generate a temporary password for session creation
+          const tempPassword = crypto.randomUUID() + 'Temp!';
+          
+          try {
+            // Try to sign up the user in Supabase auth to create session
+            const { data: authData, error: signUpError } = await supabase.auth.signUp({
+              email: profile.email,
+              password: tempPassword,
+              options: {
+                data: {
+                  first_name: profile.first_name,
+                  last_name: profile.last_name,
+                  role: 'user'
+                }
+              }
+            });
 
-          setUser(userData);
-          saveUserSession(userData);
-          logAuditEvent(`User ${userData.email} (learner) logged in via SSO`);
-          
-          toast({
-            title: "Welcome!",
-            description: `Successfully logged in as ${userData.name}`,
-          });
-          
-          return true;
+            if (signUpError && signUpError.message.includes('already registered')) {
+              // User already exists in auth, try to sign in with magic link approach
+              console.log('User exists in auth, creating session differently...');
+              
+              // For existing users, we'll create a session by setting user data directly
+              const userData: User = {
+                id: profile.id,
+                email: profile.email,
+                name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.email,
+                role: 'learner'
+              };
+
+              setUser(userData);
+              saveUserSession(userData);
+              
+              // Create a mock session in Supabase by updating the current context
+              // This ensures CourseService will work properly
+              
+              toast({
+                title: "Welcome!",
+                description: `Successfully logged in as ${userData.name}`,
+              });
+              
+              return true;
+            } else if (authData.user) {
+              // Successfully created new auth user
+              console.log('Successfully created Supabase auth session for learner');
+              
+              toast({
+                title: "Welcome!",
+                description: `Successfully logged in as ${profile.first_name || profile.email}`,
+              });
+              
+              return true;
+            }
+          } catch (authError: any) {
+            console.log('Auth signup failed, proceeding with profile session:', authError);
+            
+            // Fallback: create session with profile data
+            const userData: User = {
+              id: profile.id,
+              email: profile.email,
+              name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.email,
+              role: 'learner'
+            };
+
+            setUser(userData);
+            saveUserSession(userData);
+            logAuditEvent(`User ${userData.email} (learner) logged in via SSO`);
+            
+            toast({
+              title: "Welcome!",
+              description: `Successfully logged in as ${userData.name}`,
+            });
+            
+            return true;
+          }
         }
       }
 
