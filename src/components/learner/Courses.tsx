@@ -17,14 +17,16 @@ const Courses = () => {
   console.log('Courses component - user:', user, 'loading:', loading);
   
   const { data: courses, isLoading: coursesLoading, error } = useCourses();
-  console.log('Courses data:', courses, 'loading:', coursesLoading, 'error:', error);
+  console.log('🔍 RAW COURSES DATA:', courses);
+  console.log('🔍 COURSES LOADING:', coursesLoading);
+  console.log('🔍 COURSES ERROR:', error);
 
   const { data: enrollments, refetch: refetchEnrollments } = useCourseEnrollments(user?.id);
-  console.log('Enrollments data:', enrollments);
+  console.log('🔍 RAW ENROLLMENTS DATA:', enrollments);
   
   // Auto-enroll in published courses
   const { data: autoEnrolledCourses, isSuccess: autoEnrollSuccess } = useAutoEnrollInPublishedCourses(user?.id);
-  console.log('Auto-enrolled courses:', autoEnrolledCourses, 'success:', autoEnrollSuccess);
+  console.log('🔍 AUTO-ENROLLED COURSES:', autoEnrolledCourses, 'success:', autoEnrollSuccess);
 
   // Refresh enrollments when auto-enrollment happens
   useEffect(() => {
@@ -36,39 +38,53 @@ const Courses = () => {
 
   // Filter published courses and ensure proper data structure
   const publishedCourses = React.useMemo(() => {
-    if (!courses) {
-      console.log('No courses data available');
+    console.log('🔍 PROCESSING COURSES FOR FILTERING...');
+    
+    if (!courses || !Array.isArray(courses)) {
+      console.log('❌ No courses data available or not an array:', courses);
       return [];
     }
     
-    console.log('Processing courses for published filter:', courses);
+    console.log(`🔍 Total courses received: ${courses.length}`);
+    courses.forEach((course, index) => {
+      console.log(`🔍 Course ${index + 1}:`, {
+        id: course?.id,
+        title: course?.title,
+        status: course?.status,
+        hasRequiredFields: !!(course?.id && course?.title)
+      });
+    });
     
     const published = courses.filter(course => {
       // Ensure course has required properties
       if (!course || !course.id || !course.title) {
-        console.warn('Invalid course data:', course);
+        console.warn('❌ Invalid course data (missing id or title):', course);
         return false;
       }
       
       const isPublished = course.status === 'published';
-      console.log(`Course ${course.title} (${course.id}) - Status: ${course.status}, Published: ${isPublished}`);
+      console.log(`📚 Course "${course.title}" (${course.id}) - Status: "${course.status}", Published: ${isPublished}`);
       return isPublished;
     });
     
-    console.log('Final published courses for learners:', published);
+    console.log(`✅ Final published courses for learners: ${published.length}`, published);
     return published;
   }, [courses]);
 
   // Create a map of course enrollments for quick lookup
   const enrollmentMap = new Map();
-  if (enrollments) {
+  if (enrollments && Array.isArray(enrollments)) {
     enrollments.forEach(enrollment => {
-      if (enrollment.courses) {
+      if (enrollment?.courses?.id) {
         enrollmentMap.set(enrollment.courses.id, enrollment);
+        console.log(`📝 Mapped enrollment for course ${enrollment.courses.id}:`, enrollment);
+      } else {
+        console.warn('❌ Invalid enrollment data (missing course ID):', enrollment);
       }
     });
   }
-  console.log('Enrollment map:', Array.from(enrollmentMap.entries()));
+  console.log('🗂️ Enrollment map size:', enrollmentMap.size);
+  console.log('🗂️ Enrollment map entries:', Array.from(enrollmentMap.entries()));
 
   const formatDuration = (durationHours: number) => {
     if (!durationHours || durationHours <= 0) return '30 min';
@@ -89,12 +105,19 @@ const Courses = () => {
 
   const getEnrollmentStatus = (course: any) => {
     const enrollment = enrollmentMap.get(course.id);
-    if (!enrollment) return { status: 'not_enrolled', progress: 0 };
+    console.log(`🎯 Getting enrollment status for course ${course.id}:`, enrollment);
     
-    return {
-      status: enrollment.status,
+    if (!enrollment) {
+      console.log(`❌ No enrollment found for course ${course.id}`);
+      return { status: 'not_enrolled', progress: 0 };
+    }
+    
+    const result = {
+      status: enrollment.status || 'not_started',
       progress: enrollment.progress_percentage || 0
     };
+    console.log(`✅ Enrollment status for course ${course.id}:`, result);
+    return result;
   };
 
   const getStatusBadge = (course: any) => {
@@ -262,27 +285,48 @@ const Courses = () => {
       </Card>
 
       {/* Debug Information */}
-      <div className="p-4 bg-gray-100 rounded-lg text-sm">
-        <h3 className="font-bold mb-2">Debug Information:</h3>
-        <p>User ID: {user?.id}</p>
-        <p>Total Courses: {courses?.length || 0}</p>
-        <p>Published Courses: {publishedCourses.length}</p>
-        <p>Total Enrollments: {enrollments?.length || 0}</p>
-        <p>Auto-enroll Success: {autoEnrollSuccess ? 'Yes' : 'No'}</p>
-        <p>Auto-enrolled Courses: {autoEnrolledCourses?.length || 0}</p>
-      </div>
+      <Card className="p-4 bg-blue-50 border-blue-200">
+        <h3 className="font-bold mb-2 text-blue-800">Debug Information:</h3>
+        <div className="text-sm text-blue-700 space-y-1">
+          <p><strong>User ID:</strong> {user?.id}</p>
+          <p><strong>Raw Courses:</strong> {courses?.length || 0} total</p>
+          <p><strong>Published Courses:</strong> {publishedCourses.length}</p>
+          <p><strong>Raw Enrollments:</strong> {enrollments?.length || 0}</p>
+          <p><strong>Enrollment Map Size:</strong> {enrollmentMap.size}</p>
+          <p><strong>Auto-enroll Success:</strong> {autoEnrollSuccess ? 'Yes' : 'No'}</p>
+          <p><strong>Auto-enrolled Courses:</strong> {autoEnrolledCourses?.length || 0}</p>
+          {courses && courses.length > 0 && (
+            <div className="mt-2">
+              <p><strong>Course Details:</strong></p>
+              {courses.map((course, index) => (
+                <div key={course?.id || index} className="ml-4 text-xs">
+                  • {course?.title || 'No title'} - Status: {course?.status || 'No status'} - ID: {course?.id || 'No ID'}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </Card>
 
       {/* Courses Grid with Scrolling */}
-      <ScrollArea className="h-[calc(100vh-400px)]">
+      <ScrollArea className="h-[calc(100vh-500px)]">
         {publishedCourses.length === 0 ? (
           <div className="text-center py-8">
             <BookOpen className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
             <h3 className="text-lg font-semibold mb-2">No Published Courses Available</h3>
             <p className="text-muted-foreground">Check back later for new courses or contact your administrator.</p>
-            <p className="text-sm text-muted-foreground mt-2">
-              Total courses in system: {courses?.length || 0} | 
-              Published: {publishedCourses.length}
-            </p>
+            <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <p className="text-sm text-yellow-700">
+                <strong>Debug Info:</strong> Total courses in system: {courses?.length || 0} | 
+                Published: {publishedCourses.length} | 
+                Courses loading: {coursesLoading ? 'Yes' : 'No'}
+              </p>
+              {courses && courses.length > 0 && (
+                <p className="text-xs text-yellow-600 mt-2">
+                  Available courses: {courses.map(c => `"${c?.title}" (${c?.status})`).join(', ')}
+                </p>
+              )}
+            </div>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-6">

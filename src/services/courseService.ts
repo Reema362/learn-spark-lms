@@ -26,7 +26,20 @@ export class CourseService {
       const { data: courses, error: coursesError } = await supabase
         .from('courses')
         .select(`
-          *,
+          id,
+          title,
+          description,
+          content,
+          category_id,
+          duration_hours,
+          difficulty_level,
+          is_mandatory,
+          thumbnail_url,
+          video_url,
+          status,
+          created_at,
+          updated_at,
+          created_by,
           course_categories (
             id,
             name,
@@ -47,20 +60,39 @@ export class CourseService {
 
       console.log('Raw courses from Supabase:', courses);
 
-      // Transform the data to match expected structure
-      const transformedCourses = courses?.map(course => ({
-        ...course,
-        course_categories: course.course_categories ? {
-          name: course.course_categories.name,
-          color: course.course_categories.color
-        } : null,
-        profiles: course.profiles ? {
-          first_name: course.profiles.first_name,
-          last_name: course.profiles.last_name
-        } : null
-      })) || [];
+      // Transform the data to match expected structure and ensure status field is preserved
+      const transformedCourses = courses?.map(course => {
+        console.log(`Course ${course.title} - Status: ${course.status}, ID: ${course.id}`);
+        return {
+          id: course.id,
+          title: course.title,
+          description: course.description,
+          content: course.content,
+          category_id: course.category_id,
+          duration_hours: course.duration_hours,
+          difficulty_level: course.difficulty_level,
+          is_mandatory: course.is_mandatory,
+          thumbnail_url: course.thumbnail_url,
+          video_url: course.video_url,
+          status: course.status, // Ensure status is preserved
+          created_at: course.created_at,
+          updated_at: course.updated_at,
+          created_by: course.created_by,
+          course_categories: course.course_categories ? {
+            id: course.course_categories.id,
+            name: course.course_categories.name,
+            color: course.course_categories.color
+          } : null,
+          profiles: course.profiles ? {
+            id: course.profiles.id,
+            first_name: course.profiles.first_name,
+            last_name: course.profiles.last_name
+          } : null
+        };
+      }) || [];
       
       console.log('Transformed courses:', transformedCourses);
+      console.log('Published courses count:', transformedCourses.filter(c => c.status === 'published').length);
       return transformedCourses;
     } else {
       // Return demo courses for app session users - check localStorage
