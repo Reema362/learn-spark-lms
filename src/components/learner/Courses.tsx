@@ -14,19 +14,25 @@ import { useAuth } from '@/context/AuthContext';
 const Courses = () => {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
-  const { data: courses, isLoading, error } = useCourses();
+  console.log('Courses component - user:', user, 'loading:', loading);
+  
+  const { data: courses, isLoading: coursesLoading, error } = useCourses();
+  console.log('Courses data:', courses, 'loading:', coursesLoading, 'error:', error);
 
   const { data: enrollments, refetch: refetchEnrollments } = useCourseEnrollments(user?.id);
+  console.log('Enrollments data:', enrollments);
   
   // Auto-enroll in published courses
-  const { data: autoEnrolledCourses } = useAutoEnrollInPublishedCourses(user?.id);
+  const { data: autoEnrolledCourses, isSuccess: autoEnrollSuccess } = useAutoEnrollInPublishedCourses(user?.id);
+  console.log('Auto-enrolled courses:', autoEnrolledCourses, 'success:', autoEnrollSuccess);
 
   // Refresh enrollments when auto-enrollment happens
   useEffect(() => {
-    if (autoEnrolledCourses && autoEnrolledCourses.length > 0) {
+    if (autoEnrollSuccess && autoEnrolledCourses && autoEnrolledCourses.length > 0) {
+      console.log('Auto-enrollment completed, refetching enrollments');
       refetchEnrollments();
     }
-  }, [autoEnrolledCourses, refetchEnrollments]);
+  }, [autoEnrollSuccess, autoEnrolledCourses, refetchEnrollments]);
 
   // Filter published courses and ensure proper data structure
   const publishedCourses = React.useMemo(() => {
@@ -149,7 +155,7 @@ const Courses = () => {
     );
   }
 
-  if (isLoading) {
+  if (coursesLoading) {
     return (
       <div className="space-y-6 animate-fade-in">
         <div className="flex justify-center items-center min-h-[400px]">
@@ -160,6 +166,7 @@ const Courses = () => {
   }
 
   if (error) {
+    console.error('Error in courses component:', error);
     return (
       <div className="space-y-6 animate-fade-in">
         <div className="flex justify-center items-center min-h-[400px]">
@@ -176,12 +183,13 @@ const Courses = () => {
   }
 
   if (!user) {
+    console.log('No user found, showing login prompt');
     return (
       <div className="space-y-6 animate-fade-in">
         <div className="flex justify-center items-center min-h-[400px]">
           <div className="text-center">
             <p className="text-muted-foreground">Please log in to view courses</p>
-            <Button onClick={() => window.location.href = '/login'} className="mt-4">
+            <Button onClick={() => navigate('/login')} className="mt-4">
               Go to Login
             </Button>
           </div>

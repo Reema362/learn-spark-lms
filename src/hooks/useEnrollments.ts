@@ -64,6 +64,8 @@ export const useAutoEnrollInPublishedCourses = (userId?: string) => {
     queryFn: async () => {
       if (!userId) return [];
 
+      console.log('Starting auto-enrollment check for user:', userId);
+
       // Check authentication type
       const { data: { session } } = await supabase.auth.getSession();
       
@@ -87,6 +89,8 @@ export const useAutoEnrollInPublishedCourses = (userId?: string) => {
           return [];
         }
 
+        console.log(`Found ${publishedCourses.length} published courses`);
+
         // Get existing enrollments for this user
         const { data: existingEnrollments } = await supabase
           .from('course_enrollments')
@@ -103,11 +107,11 @@ export const useAutoEnrollInPublishedCourses = (userId?: string) => {
         if (coursesToEnroll.length > 0) {
           console.log(`Auto-enrolling in ${coursesToEnroll.length} new published courses`);
           
-          // Create enrollments for new courses
+          // Create enrollments for new courses with proper typing
           const enrollments = coursesToEnroll.map(course => ({
             user_id: userId,
             course_id: course.id,
-            status: 'not_started',
+            status: 'not_started' as const,
             progress_percentage: 0,
             enrolled_at: new Date().toISOString()
           }));
@@ -121,6 +125,8 @@ export const useAutoEnrollInPublishedCourses = (userId?: string) => {
           } else {
             console.log('Successfully auto-enrolled in published courses');
           }
+        } else {
+          console.log('User already enrolled in all published courses');
         }
 
         return publishedCourses;
