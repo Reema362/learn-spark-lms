@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,40 +8,76 @@ import { BookOpen, Clock, Award, Play, CheckCircle, Video, Users } from 'lucide-
 import { useCourses } from '@/hooks/useCourses';
 import { useCourseEnrollments, useAutoEnrollInPublishedCourses } from '@/hooks/useEnrollments';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 
 const Courses = () => {
   const navigate = useNavigate();
   const { data: courses, isLoading, error } = useCourses();
+  const [currentUser, setCurrentUser] = useState<any>(null);
 
-  // Get current user with improved detection
-  const getCurrentUser = () => {
-    // Try Supabase auth first
-    const authToken = localStorage.getItem('supabase.auth.token');
-    if (authToken) {
+  // Get current user with proper Supabase session detection
+  useEffect(() => {
+    const getCurrentUser = async () => {
       try {
-        const parsedToken = JSON.parse(authToken);
-        if (parsedToken?.user) {
-          return parsedToken.user;
+        // Get current Supabase session
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session?.user) {
+          console.log('Supabase authenticated user found:', session.user.email);
+          setCurrentUser({
+            id: session.user.id,
+            email: session.user.email,
+            role: 'learner', // Default role for learners
+            name: session.user.email // Use email as name fallback
+          });
+        } else {
+          // Fall back to demo user if no Supabase session
+          console.log('No Supabase session, checking for demo user');
+          const demoUser = localStorage.getItem('avocop_user');
+          if (demoUser) {
+            try {
+              const parsedUser = JSON.parse(demoUser);
+              console.log('Demo user found:', parsedUser.email);
+              setCurrentUser(parsedUser);
+            } catch (e) {
+              console.log('Error parsing demo user:', e);
+              setCurrentUser(null);
+            }
+          } else {
+            console.log('No user found');
+            setCurrentUser(null);
+          }
         }
-      } catch (e) {
-        console.log('Error parsing Supabase auth token');
+      } catch (error) {
+        console.error('Error getting current user:', error);
+        setCurrentUser(null);
       }
-    }
-    
-    // Fall back to demo user
-    const demoUser = localStorage.getItem('avocop_user');
-    if (demoUser) {
-      try {
-        return JSON.parse(demoUser);
-      } catch (e) {
-        console.log('Error parsing demo user');
-      }
-    }
-    
-    return null;
-  };
+    };
 
-  const currentUser = getCurrentUser();
+    getCurrentUser();
+
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log('Auth state changed:', event, session?.user?.email);
+        if (session?.user) {
+          setCurrentUser({
+            id: session.user.id,
+            email: session.user.email,
+            role: 'learner',
+            name: session.user.email
+          });
+        } else {
+          setCurrentUser(null);
+        }
+      }
+    );
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
   const { data: enrollments, refetch: refetchEnrollments } = useCourseEnrollments(currentUser?.id);
   
   // Auto-enroll in published courses
