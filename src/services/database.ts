@@ -26,7 +26,7 @@ export class DatabaseService {
     return UserService.createUser(userData);
   }
 
-  // Course management delegation
+  // Course management delegation - use CourseService consistently
   static async getCourses() {
     return CourseService.getCourses();
   }

@@ -3,7 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, RefreshCw } from 'lucide-react';
-import { useCourses, useCourseCategories, useCreateCourse, useUpdateCourse, useDeleteCourse, useUploadFile } from '@/hooks/useDatabase';
+import { useCourses, useCourseCategories, useCreateCourse, useUpdateCourse, useDeleteCourse } from '@/hooks/useCourses';
+import { useUploadFile } from '@/hooks/useFileUpload';
 import { createSampleCategories } from '@/utils/createSampleCategories';
 import VideoUpload from './VideoUpload';
 import CoursePreview from './CoursePreview';
@@ -92,9 +93,14 @@ const CourseManagement = () => {
   const handleEditCourse = async () => {
     if (!editingCourse) return;
     try {
+      console.log('Updating course with data:', editingCourse);
       await updateCourse.mutateAsync({
         id: editingCourse.id,
-        updates: editingCourse
+        updates: {
+          title: editingCourse.title,
+          description: editingCourse.description,
+          status: editingCourse.status
+        }
       });
       setIsEditDialogOpen(false);
       setEditingCourse(null);
