@@ -68,8 +68,62 @@ export const useAutoEnrollInPublishedCourses = (userId?: string) => {
       const { data: { session } } = await supabase.auth.getSession();
       
       if (session?.user) {
-        // For Supabase users - this would be handled by RLS policies and triggers
-        return [];
+        // For Supabase users - auto-enroll in all published courses
+        console.log('Auto-enrolling Supabase user in published courses');
+        
+        // Get all published courses
+        const { data: publishedCourses, error: coursesError } = await supabase
+          .from('courses')
+          .select('id, title')
+          .eq('status', 'published');
+
+        if (coursesError) {
+          console.error('Error fetching published courses:', coursesError);
+          return [];
+        }
+
+        if (!publishedCourses || publishedCourses.length === 0) {
+          console.log('No published courses found');
+          return [];
+        }
+
+        // Get existing enrollments for this user
+        const { data: existingEnrollments } = await supabase
+          .from('course_enrollments')
+          .select('course_id')
+          .eq('user_id', userId);
+
+        const enrolledCourseIds = new Set(existingEnrollments?.map(e => e.course_id) || []);
+
+        // Find courses that need enrollment
+        const coursesToEnroll = publishedCourses.filter(course => 
+          !enrolledCourseIds.has(course.id)
+        );
+
+        if (coursesToEnroll.length > 0) {
+          console.log(`Auto-enrolling in ${coursesToEnroll.length} new published courses`);
+          
+          // Create enrollments for new courses
+          const enrollments = coursesToEnroll.map(course => ({
+            user_id: userId,
+            course_id: course.id,
+            status: 'not_started',
+            progress_percentage: 0,
+            enrolled_at: new Date().toISOString()
+          }));
+
+          const { error: enrollError } = await supabase
+            .from('course_enrollments')
+            .insert(enrollments);
+
+          if (enrollError) {
+            console.error('Error auto-enrolling in courses:', enrollError);
+          } else {
+            console.log('Successfully auto-enrolled in published courses');
+          }
+        }
+
+        return publishedCourses;
       } else {
         // For demo users - auto-enroll in published courses
         const demoCourses = JSON.parse(localStorage.getItem('demo-courses') || '[]');

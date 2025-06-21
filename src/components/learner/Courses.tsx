@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,80 +9,17 @@ import { BookOpen, Clock, Award, Play, CheckCircle, Video, Users } from 'lucide-
 import { useCourses } from '@/hooks/useCourses';
 import { useCourseEnrollments, useAutoEnrollInPublishedCourses } from '@/hooks/useEnrollments';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/context/AuthContext';
 
 const Courses = () => {
   const navigate = useNavigate();
+  const { user, loading } = useAuth();
   const { data: courses, isLoading, error } = useCourses();
-  const [currentUser, setCurrentUser] = useState<any>(null);
 
-  // Get current user with proper Supabase session detection
-  useEffect(() => {
-    const getCurrentUser = async () => {
-      try {
-        // Get current Supabase session
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (session?.user) {
-          console.log('Supabase authenticated user found:', session.user.email);
-          setCurrentUser({
-            id: session.user.id,
-            email: session.user.email,
-            role: 'learner', // Default role for learners
-            name: session.user.email // Use email as name fallback
-          });
-        } else {
-          // Fall back to demo user if no Supabase session
-          console.log('No Supabase session, checking for demo user');
-          const demoUser = localStorage.getItem('avocop_user');
-          if (demoUser) {
-            try {
-              const parsedUser = JSON.parse(demoUser);
-              console.log('Demo user found:', parsedUser.email);
-              setCurrentUser(parsedUser);
-            } catch (e) {
-              console.log('Error parsing demo user:', e);
-              setCurrentUser(null);
-            }
-          } else {
-            console.log('No user found');
-            setCurrentUser(null);
-          }
-        }
-      } catch (error) {
-        console.error('Error getting current user:', error);
-        setCurrentUser(null);
-      }
-    };
-
-    getCurrentUser();
-
-    // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log('Auth state changed:', event, session?.user?.email);
-        if (session?.user) {
-          setCurrentUser({
-            id: session.user.id,
-            email: session.user.email,
-            role: 'learner',
-            name: session.user.email
-          });
-        } else {
-          setCurrentUser(null);
-        }
-      }
-    );
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, []);
-
-  const { data: enrollments, refetch: refetchEnrollments } = useCourseEnrollments(currentUser?.id);
+  const { data: enrollments, refetch: refetchEnrollments } = useCourseEnrollments(user?.id);
   
   // Auto-enroll in published courses
-  const { data: autoEnrolledCourses } = useAutoEnrollInPublishedCourses(currentUser?.id);
+  const { data: autoEnrolledCourses } = useAutoEnrollInPublishedCourses(user?.id);
 
   // Refresh enrollments when auto-enrollment happens
   useEffect(() => {
@@ -201,6 +139,16 @@ const Courses = () => {
   const completedCourses = enrollments?.filter(e => e.status === 'completed').length || 0;
   const inProgressCourses = enrollments?.filter(e => e.status === 'in_progress').length || 0;
 
+  if (loading) {
+    return (
+      <div className="space-y-6 animate-fade-in">
+        <div className="flex justify-center items-center min-h-[400px]">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>
+      </div>
+    );
+  }
+
   if (isLoading) {
     return (
       <div className="space-y-6 animate-fade-in">
@@ -227,7 +175,7 @@ const Courses = () => {
     );
   }
 
-  if (!currentUser) {
+  if (!user) {
     return (
       <div className="space-y-6 animate-fade-in">
         <div className="flex justify-center items-center min-h-[400px]">
