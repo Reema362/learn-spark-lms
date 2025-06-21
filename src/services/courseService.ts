@@ -20,10 +20,24 @@ export class CourseService {
     const { data: { session } } = await supabase.auth.getSession();
     
     if (session?.user) {
-      // Use Supabase if authenticated - fetch courses and categories separately
+      // Use Supabase if authenticated - fetch courses with proper joins
+      console.log('Fetching courses from Supabase for authenticated user');
+      
       const { data: courses, error: coursesError } = await supabase
         .from('courses')
-        .select('*')
+        .select(`
+          *,
+          course_categories (
+            id,
+            name,
+            color
+          ),
+          profiles:created_by (
+            id,
+            first_name,
+            last_name
+          )
+        `)
         .order('created_at', { ascending: false });
       
       if (coursesError) {
@@ -31,39 +45,23 @@ export class CourseService {
         throw coursesError;
       }
 
-      // Fetch categories separately
-      const { data: categories, error: categoriesError } = await supabase
-        .from('course_categories')
-        .select('*');
-      
-      if (categoriesError) {
-        console.error('Error fetching categories from Supabase:', categoriesError);
-        // Don't throw error for categories, just continue without them
-      }
+      console.log('Raw courses from Supabase:', courses);
 
-      // Fetch profiles separately for created_by information
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id, first_name, last_name');
+      // Transform the data to match expected structure
+      const transformedCourses = courses?.map(course => ({
+        ...course,
+        course_categories: course.course_categories ? {
+          name: course.course_categories.name,
+          color: course.course_categories.color
+        } : null,
+        profiles: course.profiles ? {
+          first_name: course.profiles.first_name,
+          last_name: course.profiles.last_name
+        } : null
+      })) || [];
       
-      if (profilesError) {
-        console.error('Error fetching profiles from Supabase:', profilesError);
-        // Don't throw error for profiles, just continue without them
-      }
-
-      // Merge the data manually
-      const coursesWithRelations = courses?.map(course => {
-        const category = categories?.find(cat => cat.id === course.category_id);
-        const profile = profiles?.find(prof => prof.id === course.created_by);
-        
-        return {
-          ...course,
-          course_categories: category ? { name: category.name, color: category.color } : null,
-          profiles: profile ? { first_name: profile.first_name, last_name: profile.last_name } : null
-        };
-      }) || [];
-      
-      return coursesWithRelations;
+      console.log('Transformed courses:', transformedCourses);
+      return transformedCourses;
     } else {
       // Return demo courses for app session users - check localStorage
       const demoCourses = JSON.parse(localStorage.getItem('demo-courses') || '[]');

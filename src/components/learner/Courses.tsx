@@ -36,7 +36,12 @@ const Courses = () => {
 
   // Filter published courses and ensure proper data structure
   const publishedCourses = React.useMemo(() => {
-    if (!courses) return [];
+    if (!courses) {
+      console.log('No courses data available');
+      return [];
+    }
+    
+    console.log('Processing courses for published filter:', courses);
     
     const published = courses.filter(course => {
       // Ensure course has required properties
@@ -45,10 +50,12 @@ const Courses = () => {
         return false;
       }
       
-      return course.status === 'published';
+      const isPublished = course.status === 'published';
+      console.log(`Course ${course.title} (${course.id}) - Status: ${course.status}, Published: ${isPublished}`);
+      return isPublished;
     });
     
-    console.log('Published courses for learners:', published);
+    console.log('Final published courses for learners:', published);
     return published;
   }, [courses]);
 
@@ -56,9 +63,12 @@ const Courses = () => {
   const enrollmentMap = new Map();
   if (enrollments) {
     enrollments.forEach(enrollment => {
-      enrollmentMap.set(enrollment.course_id, enrollment);
+      if (enrollment.courses) {
+        enrollmentMap.set(enrollment.courses.id, enrollment);
+      }
     });
   }
+  console.log('Enrollment map:', Array.from(enrollmentMap.entries()));
 
   const formatDuration = (durationHours: number) => {
     if (!durationHours || durationHours <= 0) return '30 min';
@@ -251,13 +261,28 @@ const Courses = () => {
         </CardContent>
       </Card>
 
+      {/* Debug Information */}
+      <div className="p-4 bg-gray-100 rounded-lg text-sm">
+        <h3 className="font-bold mb-2">Debug Information:</h3>
+        <p>User ID: {user?.id}</p>
+        <p>Total Courses: {courses?.length || 0}</p>
+        <p>Published Courses: {publishedCourses.length}</p>
+        <p>Total Enrollments: {enrollments?.length || 0}</p>
+        <p>Auto-enroll Success: {autoEnrollSuccess ? 'Yes' : 'No'}</p>
+        <p>Auto-enrolled Courses: {autoEnrolledCourses?.length || 0}</p>
+      </div>
+
       {/* Courses Grid with Scrolling */}
       <ScrollArea className="h-[calc(100vh-400px)]">
         {publishedCourses.length === 0 ? (
           <div className="text-center py-8">
             <BookOpen className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No Courses Available</h3>
-            <p className="text-muted-foreground">Check back later for new courses.</p>
+            <h3 className="text-lg font-semibold mb-2">No Published Courses Available</h3>
+            <p className="text-muted-foreground">Check back later for new courses or contact your administrator.</p>
+            <p className="text-sm text-muted-foreground mt-2">
+              Total courses in system: {courses?.length || 0} | 
+              Published: {publishedCourses.length}
+            </p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-6">

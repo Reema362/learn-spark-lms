@@ -8,16 +8,31 @@ export const useCourseEnrollments = (userId?: string) => {
     queryFn: async () => {
       if (!userId) return [];
 
+      console.log('Fetching course enrollments for user:', userId);
+
       // Check authentication type
       const { data: { session } } = await supabase.auth.getSession();
       
       if (session?.user) {
-        // Use Supabase for authenticated users
+        // Use Supabase for authenticated users with proper joins
         const { data, error } = await supabase
           .from('course_enrollments')
           .select(`
             *,
-            courses(id, title, description, status)
+            courses (
+              id,
+              title,
+              description,
+              status,
+              thumbnail_url,
+              duration_hours,
+              difficulty_level,
+              is_mandatory,
+              course_categories (
+                name,
+                color
+              )
+            )
           `)
           .eq('user_id', userId);
 
@@ -26,7 +41,13 @@ export const useCourseEnrollments = (userId?: string) => {
           return [];
         }
 
-        return data || [];
+        console.log('Raw enrollment data from Supabase:', data);
+
+        // Filter out enrollments where course data is null (deleted courses)
+        const validEnrollments = (data || []).filter(enrollment => enrollment.courses);
+        
+        console.log('Valid enrollments after filtering:', validEnrollments);
+        return validEnrollments;
       } else {
         // Use localStorage for demo users
         const demoEnrollments = JSON.parse(localStorage.getItem('demo-enrollments') || '[]');
@@ -57,7 +78,7 @@ export const useCourseEnrollments = (userId?: string) => {
   });
 };
 
-// Auto-enroll learner in all published courses
+// Auto-enroll learner in all published courses - simplified and more reliable
 export const useAutoEnrollInPublishedCourses = (userId?: string) => {
   return useQuery({
     queryKey: ['auto-enroll-published-courses', userId],
@@ -70,8 +91,8 @@ export const useAutoEnrollInPublishedCourses = (userId?: string) => {
       const { data: { session } } = await supabase.auth.getSession();
       
       if (session?.user) {
-        // For Supabase users - auto-enroll in all published courses
-        console.log('Auto-enrolling Supabase user in published courses');
+        // For Supabase users - simplified auto-enrollment
+        console.log('Processing auto-enrollment for Supabase user');
         
         // Get all published courses
         const { data: publishedCourses, error: coursesError } = await supabase
@@ -89,7 +110,7 @@ export const useAutoEnrollInPublishedCourses = (userId?: string) => {
           return [];
         }
 
-        console.log(`Found ${publishedCourses.length} published courses`);
+        console.log(`Found ${publishedCourses.length} published courses:`, publishedCourses);
 
         // Get existing enrollments for this user
         const { data: existingEnrollments } = await supabase
@@ -98,6 +119,7 @@ export const useAutoEnrollInPublishedCourses = (userId?: string) => {
           .eq('user_id', userId);
 
         const enrolledCourseIds = new Set(existingEnrollments?.map(e => e.course_id) || []);
+        console.log('User already enrolled in courses:', Array.from(enrolledCourseIds));
 
         // Find courses that need enrollment
         const coursesToEnroll = publishedCourses.filter(course => 
@@ -105,7 +127,7 @@ export const useAutoEnrollInPublishedCourses = (userId?: string) => {
         );
 
         if (coursesToEnroll.length > 0) {
-          console.log(`Auto-enrolling in ${coursesToEnroll.length} new published courses`);
+          console.log(`Auto-enrolling in ${coursesToEnroll.length} new published courses:`, coursesToEnroll);
           
           // Create enrollments for new courses with proper typing
           const enrollments = coursesToEnroll.map(course => ({
@@ -122,6 +144,7 @@ export const useAutoEnrollInPublishedCourses = (userId?: string) => {
 
           if (enrollError) {
             console.error('Error auto-enrolling in courses:', enrollError);
+            // Don't throw error, just log and continue
           } else {
             console.log('Successfully auto-enrolled in published courses');
           }
